@@ -589,7 +589,6 @@ window.onload = () => {
           ctx.beginPath();
           ctx.strokeStyle =
             "rgba(" + (255 - 255 * strength) + "," + 255 * strength + ",0 ," + strength + ")";
-          console.log(gForce);
           ctx.moveTo(body.pos.x, body.pos.y);
           ctx.lineTo(currentBody.pos.x, currentBody.pos.y);
           ctx.closePath();
