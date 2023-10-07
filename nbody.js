@@ -97,7 +97,7 @@ window.onload = () => {
   // interactive variables
   let panOffset = { x: 0, y: 0 };
   let currentOffset = { x: 0, y: 0 };
-  let prevOffset = { x: 0, y: 0 };
+  let collideOffset = { x: 0, y: 0 };
   let panSpeed = 8;
   let trackBody;
   let trackNum = 0;
@@ -175,12 +175,16 @@ window.onload = () => {
     };
 
     form.clrOffscreen.onclick = () => {
+      let offset = {
+        x: collide ? -collideOffset.x + currentOffset.x : 0,
+        y: collide ? -collideOffset.y + currentOffset.y : 0,
+      };
       bodies.forEach((body) => {
         if (
-          body.pos.x > canvas.width ||
-          body.pos.x < 0 ||
-          body.pos.y > canvas.height ||
-          body.pos.y < 0
+          body.pos.x > offset.x + canvas.width ||
+          body.pos.x < offset.x ||
+          body.pos.y > offset.y + canvas.height ||
+          body.pos.y < offset.y
         ) {
           remove(bodies, body.id);
         }
@@ -225,6 +229,10 @@ window.onload = () => {
       form.initVelOut.innerText = event.target.value;
       initVel = event.target.value;
     });
+
+    form.collide.addEventListener("input", (event) => {
+      form.clrOffscreen.click();
+    });
   }
 
   // interaction event listeners
@@ -235,26 +243,31 @@ window.onload = () => {
         activeElement.tagName !== "INPUT" &&
         activeElement.tagName !== "SELECT" &&
         activeElement.tagName !== "BUTTON";
-      // console.log(event.code);
+      console.log(event.code);
       if (register) {
         switch (event.code) {
           case "ArrowLeft":
           case "KeyA":
+            event.preventDefault();
             panOffset.x = panSpeed;
             break;
           case "ArrowRight":
           case "KeyD":
+            event.preventDefault();
             panOffset.x = -panSpeed;
             break;
           case "ArrowUp":
           case "KeyW":
+            event.preventDefault();
             panOffset.y = panSpeed;
             break;
           case "ArrowDown":
           case "KeyS":
+            event.preventDefault();
             panOffset.y = -panSpeed;
             break;
           case "Space":
+            event.preventDefault();
             if (trackNum < bodies.length) {
               trackBody = bodies[trackNum++];
               newBody = true;
@@ -265,9 +278,44 @@ window.onload = () => {
             }
             break;
           case "Escape":
+            event.preventDefault();
             trackBody = null;
             trackNum = 0;
             newBody = false;
+            break;
+          case "KeyP":
+            form.toggle.click();
+            break;
+          case "KeyR":
+            form.randBtn.click();
+            break;
+          case "Backspace":
+            form.clear.click();
+            break;
+          case "Delete":
+            form.clrOffscreen.click();
+            break;
+          case "Enter":
+            form.add.click();
+            break;
+          case "KeyE":
+            form.collide.click();
+            break;
+          case "KeyT":
+            form.trace.click();
+            break;
+          case "KeyP":
+            form.continuous.click();
+            break;
+          case "KeyF":
+            form.fade.click();
+            break;
+          case "KeyC":
+            pan(
+              collide
+                ? { x: -currentOffset.x + collideOffset.x, y: -currentOffset.y + collideOffset.y }
+                : { x: -currentOffset.x, y: -currentOffset.y }
+            );
             break;
           case "ShiftLeft":
             canvasZoom += 0.005;
@@ -506,15 +554,17 @@ window.onload = () => {
       // edge collision - set accel to 0 when colliding to prevent changes in velocity
       if (collide) {
         if (
-          this.pos.x + this.vel.x >= currentOffset.x + canvas.width - this.radius ||
-          this.pos.x + this.vel.x <= currentOffset.x + this.radius
+          this.pos.x + this.vel.x >=
+            -collideOffset.x + currentOffset.x + canvas.width - this.radius ||
+          this.pos.x + this.vel.x <= -collideOffset.x + currentOffset.x + this.radius
         ) {
           this.vel.x = -this.vel.x;
           accel.x = 0;
         }
         if (
-          this.pos.y + this.vel.y >= currentOffset.y + canvas.height - this.radius ||
-          this.pos.y + this.vel.y <= currentOffset.y + this.radius
+          this.pos.y + this.vel.y >=
+            -collideOffset.y + currentOffset.y + canvas.height - this.radius ||
+          this.pos.y + this.vel.y <= -collideOffset.y + currentOffset.y + this.radius
         ) {
           this.vel.y = -this.vel.y;
           accel.y = 0;
@@ -678,7 +728,7 @@ window.onload = () => {
     }
   }
 
-  // loop
+  // draw and animate
   function draw() {
     continuous = form.continuous.checked;
     trace = form.trace.checked;
@@ -687,6 +737,7 @@ window.onload = () => {
     drawGravityStrength = form.drawGravityStrength.checked;
     drawVector = form.drawVector.checked;
     collide = form.collide.checked;
+    if (collide) form.clrOffscreen.click();
 
     updateGraphs(100);
 
@@ -707,15 +758,24 @@ window.onload = () => {
     }
     // draw collision box
     if (collide) {
+      if (!collideOffset.x && !collideOffset.y) {
+        collideOffset.x = currentOffset.x;
+        collideOffset.y = currentOffset.y;
+      }
       if (trackBody) {
         ctx.fillStyle = "rgba(0, 0, 0, 1)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
       ctx.strokeStyle = "white";
-      ctx.strokeRect(currentOffset.x, currentOffset.y, canvas.width, canvas.height);
+      ctx.strokeRect(
+        -collideOffset.x + currentOffset.x,
+        -collideOffset.y + currentOffset.y,
+        canvas.width,
+        canvas.height
+      );
+    } else {
+      collideOffset.x = collideOffset.y = 0;
     }
-    prevOffset.x = currentOffset.x;
-    prevOffset.y = currentOffset.y;
     bodies.forEach((body, i) => {
       body.update(gravity(body, i), drawGravity);
       body.draw(drawVector);
