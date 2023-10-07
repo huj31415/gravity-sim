@@ -8,9 +8,7 @@
   </head>
   <body>
     <span class="column">
-      <embed>
-        <canvas id="canvas" width="1280" height="720"></canvas>
-      </embed>
+      <canvas id="canvas" class="main" width="1280" height="720"></canvas>
     </span>
     <span class="column right">
       <h2>N-body gravity simulator</h2>
@@ -56,20 +54,20 @@
       </div>
       <hr />
       <div>
-        <input type="range" id="timestep" name="timestep" value="30" width="400px" />
-        <label for="timestep">Simulation rate</label>
+        <input type="range" id="timestep" name="timestep" value="1" max="2" min="0" step="0.01" width="400px" />
+        <label for="timestep">Timestep (<span id="tOut">1</span>)</label>
       </div>
       <div>
-        <input type="range" id="g" name="g" value="25" width="400px" />
-        <label for="g">G constant</label>
+        <input type="range" id="g" name="g" value="0.25" max="2" min="0" step=".01" width="400px" />
+        <label for="g">G constant (<span id="gOut">0.25</span>)</label>
       </div>
       <div>
-        <input type="range" id="initVel" name="initVel" value="50" width="400px" />
-        <label for="initVel">Max init velocity</label>
+        <input type="range" id="initVel" name="initVel" value="5" max="20" min="0" step="0.1" width="400px" />
+        <label for="initVel">Max init speed (<span id="initVelOut">5</span>)</label>
       </div>
-      <div>
+      <!-- <div>
         <button id="apply" class="fullwidth">Apply changes</button>
-      </div>
+      </div> -->
       <div>
         <input type="checkbox" id="trace" name="trace" checked />
         <label for="trace">Trace paths</label>
@@ -91,6 +89,10 @@
         <label for="drawG">Draw acceleration vectors (red)</label>
       </div>
       <div>
+        <input type="checkbox" id="drawGStrength" name="drawGStrength" checked />
+        <label for="drawGStrength">Draw gravity strength (SLOW)</label>
+      </div>
+      <div>
         <input type="checkbox" id="collide" name="collide" />
         <label for="collide">Edge collide</label>
       </div>
@@ -103,13 +105,13 @@
         <canvas width="140" height="100" id="fpsGraph"></canvas>
         <canvas width="140" height="100" id="bodyGraph"></canvas>
       </div>
-      <hr>
+      <hr />
       <div>
-        Controls:<br>
-        Arrow keys/WASD: pan view<br>
-        Space: cycle tracked body<br>
-        Esc: cancel tracking<br>
-        <p style="display:none">Shift/Ctrl/Mousewheel: Zoom in/out</p>
+        Controls:<br />
+        Arrow keys/WASD: pan view<br />
+        Space: cycle tracked body<br />
+        Esc: cancel tracking<br />
+        <p style="display: none">Shift/Ctrl/Mousewheel: Zoom in/out</p>
       </div>
     </span>
   </body>

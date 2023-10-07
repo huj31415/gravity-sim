@@ -1,4 +1,7 @@
 // TODO: zoom, collision particle fx based on relative velocity???
+// lines between each object showing strength of gravity
+// show value of range inputs
+// keypress trigger buttons
 
 window.onload = () => {
   frameByFrame = 0; // Chromebook Simulator (or for debug purposes)
@@ -6,17 +9,21 @@ window.onload = () => {
   // initialize user interface
   const form = {
     timestep: document.getElementById("timestep"),
+    tOut: document.getElementById("tOut"),
     numBodies: document.getElementById("num"),
     trace: document.getElementById("trace"),
     fade: document.getElementById("fade"),
     drawVector: document.getElementById("vectors"),
     drawGravity: document.getElementById("drawG"),
+    drawGravityStrength: document.getElementById("drawGStrength"),
     continuous: document.getElementById("continuous"),
     G: document.getElementById("g"),
+    GOut: document.getElementById("gOut"),
     collide: document.getElementById("collide"),
     maxSize: document.getElementById("maxSize"),
     minSize: document.getElementById("minSize"),
     initVel: document.getElementById("initVel"),
+    initVelOut: document.getElementById("initVelOut"),
     randBtn: document.getElementById("rand"),
     loadBtn: document.getElementById("loadPreset"),
     presets: document.getElementById("presets"),
@@ -37,13 +44,21 @@ window.onload = () => {
   const ctx = canvas.getContext("2d");
   let canvasZoom = 1;
   // canvas.style.zoom = canvasZoom * 100 + "%";
-  canvas.height = (window.innerHeight - 25);
-  canvas.width = (window.innerWidth - 350);
+  canvas.height = window.innerHeight - 25;
+  canvas.width = window.innerWidth - 350;
   form.viewport.innerText = canvas.width + " x " + canvas.height;
   let center = { x: canvas.width / 2, y: canvas.height / 2 };
   ctx.fillStyle = "rgba(0, 0, 0, 1)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   // ctx.globalAlpha = 0.5;
+  window.onresize = () => {
+    canvas.height = window.innerHeight - 25;
+    canvas.width = window.innerWidth - 350;
+    form.viewport.innerText = canvas.width + " x " + canvas.height;
+    center = { x: canvas.width / 2, y: canvas.height / 2 };
+    ctx.fillStyle = "rgba(0, 0, 0, 1)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  };
 
   // initialize graphs
   const fpsGraph = document.getElementById("fpsGraph");
@@ -65,19 +80,19 @@ window.onload = () => {
     fade,
     drawVector,
     drawGravity,
+    drawGravityStrength,
     collide,
     maxSize,
     minSize,
     initVel,
     timestep,
-    continuous;
-
+    oldTimestep;
+  continuous;
+  
   // tracking variables
   let collisionCount = (frameCount = bodyCount = activeBodies = 0);
   let lastTime = performance.now();
-  let simulate = true,
-    drawing = false,
-    clearTrails = false;
+  let clearTrails = (paused = false);
 
   // interactive variables
   let panOffset = { x: 0, y: 0 };
@@ -88,76 +103,69 @@ window.onload = () => {
   let trackNum = 0;
   let newBody = false;
 
+  draw();
+
   // form event listeners
   {
     // begin the simulation
     form.randBtn.onclick = () => {
-      simulate = true;
       // form.collide.checked = true;
       initParams();
       initRandBodies(numBodies, minSize, maxSize, initVel);
-      if (!drawing) draw();
       activeBodies = bodies.length;
       form.bodyCount.innerText = activeBodies;
     };
 
     form.loadBtn.onclick = () => {
-      simulate = true;
-      initParams(100);
+      initParams();
       switch (form.presets.value) {
         case "0": // 500 body chaos
-          form.G.value = 100;
-          form.drawVector.checked = false;
-          form.drawGravity.checked = false;
-          form.timestep.value = 5;
-          form.numBodies.value = 500;
-          form.maxSize.value = 3;
-          form.minSize.value = 2;
-          initParams();
+          form.G.value = form.GOut.innerText = 1;
+          form.drawVector.checked = drawVector = false;
+          form.drawGravity.checked = drawGravity = false;
+          form.timestep.value = form.tOut.innerText = 0.5;
+          form.numBodies.value = numBodies = 500;
+          form.maxSize.value = maxSize = 3;
+          form.minSize.value = minSize = 2;
+          form.drawGravityStrength.checked = drawGravityStrength = false;
           initRandBodies(numBodies, minSize, maxSize, initVel);
           break;
         case "1": // sun and 3 planets
           form.collide.checked = false;
-          form.G.value = 15;
-          initParams();
+          form.G.value = form.GOut.innerText = 0.15;
+          G = 0.15;
           initOrbitBodies1();
           break;
         case "2": // two equal bodies
           form.collide.checked = false;
-          form.G.value = 15;
-          initParams();
+          form.G.value = form.GOut.innerText = 0.15;
+          G = 0.15;
           initOrbitBodies2();
           break;
         case "3": // sun planets and moon
           form.collide.checked = false;
-          form.G.value = 25;
-          initParams();
+          form.G.value = form.GOut.innerText = 0.25;
+          G = 0.25;
           initOrbitBodies3();
           break;
         case "4": // solar system
           form.collide.checked = false;
-          initParams();
           G = Gconst;
           initSolarSystem();
       }
       activeBodies = bodies.length;
       form.bodyCount.innerText = activeBodies;
-      if (!drawing) draw();
     };
 
     // add a body
     form.add.onclick = () => {
-      simulate = true;
       activeBodies += 1;
       initParams();
       initRandBodies(1, minSize, maxSize, initVel);
-      if (!drawing) draw();
     };
 
     // clear bodies
     form.clear.onclick = () => {
-      simulate = false;
-      drawing = false;
       bodies = [];
       ctx.fillStyle = "rgba(0, 0, 0, 1)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -179,32 +187,42 @@ window.onload = () => {
       activeBodies = bodies.length;
     };
 
-    // apply changes to params
-    form.apply.onclick = () => {
-      simulate = true;
-      initParams();
-    };
-
     // pause/play sim
     form.toggle.onclick = () => {
-      simulate = !simulate;
-      if (simulate) draw();
+      paused = !paused;
+      if (timestep) {
+        oldTimestep = timestep;
+        timestep = 0;
+        form.timestep.value = 0;
+      } else {
+        timestep = oldTimestep;
+        form.timestep.value = timestep;
+      }
     };
 
-    function initParams(timeFactor = 50, gFactor = 100, velFactor = 10) {
-      timestep = form.timestep.value / timeFactor;
+    function initParams() {
+      if (!paused) timestep = form.timestep.value;
+      initVel = form.initVel.value;
+      G = form.G.value;
       numBodies = form.numBodies.value;
-      // trace = form.trace.checked;
-      // fade = trace ? form.fade.checked : false;
-      // drawVector = form.drawVector.checked;
-      // drawGravity = form.drawGravity.checked;
-      // continuous = form.continuous.checked;
-      // collide = form.collide.checked;
-      G = form.G.value / gFactor;
       maxSize = form.maxSize.value;
       minSize = form.minSize.value;
-      initVel = (form.initVel.value / velFactor) ** 1.4;
     }
+
+    form.timestep.addEventListener("input", (event) => {
+      form.tOut.innerText = event.target.value;
+      timestep = event.target.value;
+    });
+
+    form.G.addEventListener("input", (event) => {
+      form.GOut.innerText = event.target.value;
+      G = event.target.value;
+    });
+
+    form.initVel.addEventListener("input", (event) => {
+      form.initVelOut.innerText = event.target.value;
+      initVel = event.target.value;
+    });
   }
 
   // interaction event listeners
@@ -564,6 +582,16 @@ window.onload = () => {
         angle = Math.atan2(dist.x, dist.y);
         force.x += gForce * Math.sin(angle);
         force.y += gForce * Math.cos(angle);
+        if (drawGravityStrength) {
+          let strength = (1 - 10 / (gForce + 10));
+          ctx.beginPath();
+          ctx.strokeStyle = "rgba("+(255-255*strength)+","+255*strength+",0 ," + strength + ")";
+          console.log(gForce);
+          ctx.moveTo(body.pos.x, body.pos.y);
+          ctx.lineTo(currentBody.pos.x, currentBody.pos.y);
+          ctx.closePath();
+          ctx.stroke();
+        }
       }
     });
     accel.x = force.x / currentBody.mass;
@@ -651,21 +679,20 @@ window.onload = () => {
     trace = form.trace.checked;
     fade = trace ? form.fade.checked : false;
     drawGravity = form.drawGravity.checked;
+    drawGravityStrength = form.drawGravityStrength.checked;
     drawVector = form.drawVector.checked;
     collide = form.collide.checked;
 
     updateGraphs(100);
 
-    if (simulate) {
-      drawing = true;
-      frameByFrame ? setTimeout(draw, frameByFrame) : requestAnimationFrame(draw);
-    }
+    frameByFrame ? setTimeout(draw, frameByFrame) : requestAnimationFrame(draw);
+
     if (trackBody) track(trackBody);
     if (panOffset.x != 0 || panOffset.y != 0) {
       pan(panOffset, false);
       trace = false;
     }
-    if (fade && trace) {
+    if (fade && trace && !paused) {
       ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
@@ -685,8 +712,8 @@ window.onload = () => {
     prevOffset.x = currentOffset.x;
     prevOffset.y = currentOffset.y;
     bodies.forEach((body, i) => {
-      body.draw(drawVector);
       body.update(gravity(body, i), drawGravity);
+      body.draw(drawVector);
     });
     if (clearTrails) {
       ctx.fillStyle = "rgba(0, 0, 0, 1)";

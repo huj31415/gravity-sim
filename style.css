@@ -9,6 +9,10 @@ canvas {
   zoom: 100%;
 }
 
+canvas.main {
+    position: fixed;
+}
+
 input[type="range"],
 input[type="number"] {
   margin: 3px;
