@@ -486,21 +486,23 @@ window.onload = () => {
       ctx.fillStyle = this.color;
       ctx.fill();
 
-      // connect to previous
-      if (continuous && trace) {
+      if (trackBody != this) {
+        // connect to previous
+        if (continuous && trace) {
+          ctx.beginPath();
+          ctx.lineWidth = 2 * this.radius;
+          ctx.strokeStyle = this.color;
+          ctx.moveTo(this.pos.x, this.pos.y);
+          ctx.lineTo(this.prevPos.x, this.prevPos.y);
+          ctx.closePath();
+          ctx.stroke();
+        }
         ctx.beginPath();
-        ctx.lineWidth = 2 * this.radius;
-        ctx.strokeStyle = this.color;
-        ctx.moveTo(this.pos.x, this.pos.y);
-        ctx.lineTo(this.prevPos.x, this.prevPos.y);
+        ctx.arc(this.prevPos.x, this.prevPos.y, this.radius, 0, Math.PI * 2, true);
         ctx.closePath();
-        ctx.stroke();
+        ctx.fillStyle = this.color;
+        ctx.fill();
       }
-      ctx.beginPath();
-      ctx.arc(this.prevPos.x, this.prevPos.y, this.radius, 0, Math.PI * 2, true);
-      ctx.closePath();
-      ctx.fillStyle = this.color;
-      ctx.fill();
 
       // center
       ctx.beginPath();
