@@ -1,7 +1,4 @@
 // TODO: zoom, collision particle fx based on relative velocity???
-// lines between each object showing strength of gravity
-// show value of range inputs
-// keypress trigger buttons
 
 window.onload = () => {
   frameByFrame = 0; // Chromebook Simulator (or for debug purposes)
@@ -310,7 +307,7 @@ window.onload = () => {
           case "KeyF":
             form.fade.click();
             break;
-          case "KeyC":
+          case "Home":
             pan(
               collide
                 ? { x: -currentOffset.x + collideOffset.x, y: -currentOffset.y + collideOffset.y }
@@ -737,7 +734,7 @@ window.onload = () => {
     drawGravityStrength = form.drawGravityStrength.checked;
     drawVector = form.drawVector.checked;
     collide = form.collide.checked;
-    if (collide) form.clrOffscreen.click();
+    // if (collide) form.clrOffscreen.click();
 
     updateGraphs(100);
 
