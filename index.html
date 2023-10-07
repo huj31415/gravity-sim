@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+
+<html lang="en-us">
+  <head>
+    <title>N body gravity simulation</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="./nbody.js"></script>
+  </head>
+  <body>
+    <span class="column">
+      <embed>
+        <canvas id="canvas" width="1280" height="720"></canvas>
+      </embed>
+    </span>
+    <span class="column right">
+      <h2>N-body gravity simulator</h2>
+      <div>Collisions: <span id="collisionCount">0</span></div>
+      <div>Active bodies: <span id="bodyCount">0</span></div>
+      <div>Current FPS: <span id="fps">0</span></div>
+      <div>Viewport: <span id="viewport">0 &times; 0</span></div>
+      <div>Viewport offset: X=<span id="offset">0 Y=0</span></div>
+      <hr />
+      <div>
+        <button id="rand">Random</button>
+        <button id="add">Add body</button>
+      </div>
+      <div>
+        <button id="clear">Clear bodies</button>
+        <button id="clrOffscreen">Clear offscreen</button>
+      </div>
+      <div>
+        <select id="presets" name="presets">
+          <option value="0">Preset 0</option>
+          <option value="1">Preset 1</option>
+          <option value="2">Preset 2</option>
+          <option value="3">Preset 3</option>
+          <!-- <option value="4">SolarSystem</option> -->
+        </select>
+        <button id="loadPreset">Load preset</button>
+      </div>
+      <div>
+        <button id="toggle" class="fullwidth">Pause / Play</button>
+      </div>
+      <hr />
+      <div>
+        <input type="number" id="num" name="num" value="5" width="400px" />
+        <label for="num">Number of objects</label>
+      </div>
+      <div>
+        <input type="number" id="maxSize" name="maxSize" value="10" width="400px" />
+        <label for="maxSize">Max size</label>
+      </div>
+      <div>
+        <input type="number" id="minSize" name="minSize" value="5" width="400px" />
+        <label for="minSize">Min size</label>
+      </div>
+      <hr />
+      <div>
+        <input type="range" id="timestep" name="timestep" value="30" width="400px" />
+        <label for="timestep">Simulation rate</label>
+      </div>
+      <div>
+        <input type="range" id="g" name="g" value="25" width="400px" />
+        <label for="g">G constant</label>
+      </div>
+      <div>
+        <input type="range" id="initVel" name="initVel" value="50" width="400px" />
+        <label for="initVel">Max init velocity</label>
+      </div>
+      <div>
+        <button id="apply" class="fullwidth">Apply changes</button>
+      </div>
+      <div>
+        <input type="checkbox" id="trace" name="trace" checked />
+        <label for="trace">Trace paths</label>
+      </div>
+      <div>
+        <input type="checkbox" id="continuous" name="continuous" checked />
+        <label for="continuous">Continuous paths</label>
+      </div>
+      <div>
+        <input type="checkbox" id="fade" name="fade" checked />
+        <label for="fade">Fade paths</label>
+      </div>
+      <div>
+        <input type="checkbox" id="vectors" name="vectors" checked />
+        <label for="vectors">Draw motion vectors (blue)</label>
+      </div>
+      <div>
+        <input type="checkbox" id="drawG" name="drawG" checked />
+        <label for="drawG">Draw acceleration vectors (red)</label>
+      </div>
+      <div>
+        <input type="checkbox" id="collide" name="collide" />
+        <label for="collide">Edge collide</label>
+      </div>
+      <hr />
+      <div>
+        <span style="display: inline-block; width: 140px">FPS</span>
+        <span style="display: inline-block; width: 140px">Active bodies</span>
+      </div>
+      <div>
+        <canvas width="140" height="100" id="fpsGraph"></canvas>
+        <canvas width="140" height="100" id="bodyGraph"></canvas>
+      </div>
+      <hr>
+      <div>
+        Controls:<br>
+        Arrow keys/WASD: pan view<br>
+        Space: cycle tracked body<br>
+        Esc: cancel tracking<br>
+        <p style="display:none">Shift/Ctrl/Mousewheel: Zoom in/out</p>
+      </div>
+    </span>
+  </body>
+</html>

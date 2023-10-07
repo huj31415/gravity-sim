@@ -1,0 +1,49 @@
+body {
+  font-family: "Segoe UI", sans-serif;
+  /* font-size: .95em; */
+}
+
+canvas {
+  border: 1px solid black;
+  /* width: 100%; */
+  zoom: 100%;
+}
+
+input[type="range"],
+input[type="number"] {
+  margin: 3px;
+}
+
+input[type="number"] {
+  width: 132px;
+}
+
+input[type="range"] {
+  width: 140px;
+}
+
+button,
+select {
+  display: inline-block;
+  margin: 3px;
+  padding: 2px;
+  width: 140px;
+}
+
+button.fullwidth {
+  width: 290px;
+}
+
+.column {
+  /* float: left; */
+  padding: 5px;
+}
+
+.right {
+    display: block;
+    position: absolute;
+    right: 15px;
+    top: 0px;
+    width: 300px;
+    background: white;
+}
