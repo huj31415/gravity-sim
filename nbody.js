@@ -235,7 +235,7 @@ window.onload = () => {
         activeElement.tagName !== "INPUT" &&
         activeElement.tagName !== "SELECT" &&
         activeElement.tagName !== "BUTTON";
-      console.log(event.code);
+      // console.log(event.code);
       if (register) {
         switch (event.code) {
           case "ArrowLeft":
@@ -555,6 +555,7 @@ window.onload = () => {
     }
   }
 
+  // calculate gravitational forces between each body
   function gravity(currentBody, index) {
     let dist = { net: 0, x: 0, y: 0 };
     let force = { x: 0, y: 0 };
@@ -601,6 +602,7 @@ window.onload = () => {
     return accel;
   }
 
+  // calculate collisions, create new body
   function collision(body1, body2) {
     collisionCount += 1;
     form.collisionCount.innerText = collisionCount;
@@ -676,6 +678,7 @@ window.onload = () => {
     }
   }
 
+  // loop
   function draw() {
     continuous = form.continuous.checked;
     trace = form.trace.checked;
