@@ -86,9 +86,9 @@ window.onload = () => {
     minSize,
     initVel,
     timestep,
-    oldTimestep;
-  continuous;
-  
+    oldTimestep,
+    continuous;
+
   // tracking variables
   let collisionCount = (frameCount = bodyCount = activeBodies = 0);
   let lastTime = performance.now();
@@ -160,6 +160,7 @@ window.onload = () => {
     // add a body
     form.add.onclick = () => {
       activeBodies += 1;
+      form.bodyCount.innerText = activeBodies;
       initParams();
       initRandBodies(1, minSize, maxSize, initVel);
     };
@@ -185,6 +186,7 @@ window.onload = () => {
         }
       });
       activeBodies = bodies.length;
+      form.bodyCount.innerText = activeBodies;
     };
 
     // pause/play sim
@@ -582,10 +584,11 @@ window.onload = () => {
         angle = Math.atan2(dist.x, dist.y);
         force.x += gForce * Math.sin(angle);
         force.y += gForce * Math.cos(angle);
-        if (drawGravityStrength) {
-          let strength = (1 - 10 / (gForce + 10));
+        if (drawGravityStrength && timestep) {
+          let strength = 1 - 10 / (gForce + 10);
           ctx.beginPath();
-          ctx.strokeStyle = "rgba("+(255-255*strength)+","+255*strength+",0 ," + strength + ")";
+          ctx.strokeStyle =
+            "rgba(" + (255 - 255 * strength) + "," + 255 * strength + ",0 ," + strength + ")";
           console.log(gForce);
           ctx.moveTo(body.pos.x, body.pos.y);
           ctx.lineTo(currentBody.pos.x, currentBody.pos.y);
@@ -692,7 +695,7 @@ window.onload = () => {
       pan(panOffset, false);
       trace = false;
     }
-    if (fade && trace && !paused) {
+    if (fade && trace && timestep) {
       ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
