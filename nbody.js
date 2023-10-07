@@ -301,7 +301,7 @@ window.onload = () => {
           case "KeyT":
             form.trace.click();
             break;
-          case "KeyP":
+          case "KeyC":
             form.continuous.click();
             break;
           case "KeyF":
