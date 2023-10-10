@@ -6,6 +6,8 @@ window.onload = () => {
 
   // initialize user interface
   const ui = {
+    panel: document.getElementById("settings"),
+    collapse: document.getElementById("toggleSettings"),
     timestep: document.getElementById("timestep"),
     tOut: document.getElementById("tOut"),
     numBodies: document.getElementById("num"),
@@ -40,22 +42,18 @@ window.onload = () => {
   // initialize main canvas
   const canvas = document.getElementById("canvas");
   const ctx = canvas.getContext("2d");
-  let canvasZoom = 1;
+  // let canvasZoom = 1;
   // canvas.style.zoom = canvasZoom * 100 + "%";
-  canvas.height = window.innerHeight - 25;
-  canvas.width = window.innerWidth - 350;
+  canvas.height = window.innerHeight; // - 25;
+  canvas.width = window.innerWidth;// - 335;
   ui.viewport.innerText = canvas.width + " x " + canvas.height;
   let center = { x: canvas.width / 2, y: canvas.height / 2 };
-  ctx.fillStyle = "rgba(0, 0, 0, 1)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
   // ctx.globalAlpha = 0.5;
   window.onresize = () => {
-    canvas.height = window.innerHeight - 25;
-    canvas.width = window.innerWidth - 350;
+    canvas.height = window.innerHeight; // - 25;
+    canvas.width = window.innerWidth; // - 350;
     ui.viewport.innerText = canvas.width + " x " + canvas.height;
     center = { x: canvas.width / 2, y: canvas.height / 2 };
-    ctx.fillStyle = "rgba(0, 0, 0, 1)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
   };
 
   // initialize graphs
@@ -105,6 +103,16 @@ window.onload = () => {
 
   // form event listeners
   {
+    ui.collapse.onclick = () => {
+      ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
+      if (ui.panel.classList.contains("hidden")) {
+        ui.panel.classList.remove("hidden");
+        // canvas.width = window.innerWidth - 335;
+      } else {
+        ui.panel.classList.add("hidden");
+        // canvas.width = window.innerWidth;
+      }
+    };
     // begin the simulation
     ui.randBtn.onclick = () => {
       // form.collide.checked = true;

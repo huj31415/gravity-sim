@@ -7,10 +7,12 @@
     <script src="./nbody.js"></script>
   </head>
   <body>
-    <span class="column">
-      <canvas id="canvas" class="main" width="1280" height="720"></canvas>
-    </span>
-    <span class="column right">
+    <!-- <span class="column"> -->
+    <canvas id="canvas" class="main" width="1280" height="720"></canvas>
+    <!-- </span> -->
+
+    <button id="toggleSettings">&gt;</button>
+    <span class="right" id="settings">
       <h2>N-body gravity simulator</h2>
       <div>Collisions: <span id="collisionCount">0</span></div>
       <div>Active bodies: <span id="bodyCount">0</span></div>
@@ -54,7 +56,16 @@
       </div>
       <hr />
       <div>
-        <input type="range" id="timestep" name="timestep" value="1" max="2" min="0" step="0.01" width="400px" />
+        <input
+          type="range"
+          id="timestep"
+          name="timestep"
+          value="1"
+          max="2"
+          min="0"
+          step="0.01"
+          width="400px"
+        />
         <label for="timestep">Timestep (<span id="tOut">1</span>)</label>
       </div>
       <div>
@@ -62,7 +73,16 @@
         <label for="g">G constant (<span id="gOut">0.25</span>)</label>
       </div>
       <div>
-        <input type="range" id="initVel" name="initVel" value="5" max="20" min="0" step="0.1" width="400px" />
+        <input
+          type="range"
+          id="initVel"
+          name="initVel"
+          value="5"
+          max="20"
+          min="0"
+          step="0.1"
+          width="400px"
+        />
         <label for="initVel">Max init speed (<span id="initVelOut">5</span>)</label>
       </div>
       <!-- <div>
