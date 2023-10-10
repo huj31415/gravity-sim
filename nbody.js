@@ -1,10 +1,11 @@
 // TODO: zoom, collision particle fx based on relative velocity???
+// eliminate redundant gravity calcs
 
 window.onload = () => {
   frameByFrame = 0; // Chromebook Simulator (or for debug purposes)
 
   // initialize user interface
-  const form = {
+  const ui = {
     timestep: document.getElementById("timestep"),
     tOut: document.getElementById("tOut"),
     numBodies: document.getElementById("num"),
@@ -43,7 +44,7 @@ window.onload = () => {
   // canvas.style.zoom = canvasZoom * 100 + "%";
   canvas.height = window.innerHeight - 25;
   canvas.width = window.innerWidth - 350;
-  form.viewport.innerText = canvas.width + " x " + canvas.height;
+  ui.viewport.innerText = canvas.width + " x " + canvas.height;
   let center = { x: canvas.width / 2, y: canvas.height / 2 };
   ctx.fillStyle = "rgba(0, 0, 0, 1)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -51,7 +52,7 @@ window.onload = () => {
   window.onresize = () => {
     canvas.height = window.innerHeight - 25;
     canvas.width = window.innerWidth - 350;
-    form.viewport.innerText = canvas.width + " x " + canvas.height;
+    ui.viewport.innerText = canvas.width + " x " + canvas.height;
     center = { x: canvas.width / 2, y: canvas.height / 2 };
     ctx.fillStyle = "rgba(0, 0, 0, 1)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -105,73 +106,73 @@ window.onload = () => {
   // form event listeners
   {
     // begin the simulation
-    form.randBtn.onclick = () => {
+    ui.randBtn.onclick = () => {
       // form.collide.checked = true;
       initParams();
       initRandBodies(numBodies, minSize, maxSize, initVel);
       activeBodies = bodies.length;
-      form.bodyCount.innerText = activeBodies;
+      ui.bodyCount.innerText = activeBodies;
     };
 
-    form.loadBtn.onclick = () => {
+    ui.loadBtn.onclick = () => {
       initParams();
-      switch (form.presets.value) {
+      switch (ui.presets.value) {
         case "0": // 500 body chaos
-          form.G.value = form.GOut.innerText = 1;
-          form.drawVector.checked = drawVector = false;
-          form.drawGravity.checked = drawGravity = false;
-          form.timestep.value = form.tOut.innerText = 0.5;
-          form.numBodies.value = numBodies = 500;
-          form.maxSize.value = maxSize = 3;
-          form.minSize.value = minSize = 2;
-          form.drawGravityStrength.checked = drawGravityStrength = false;
+          ui.G.value = ui.GOut.innerText = 1;
+          ui.drawVector.checked = drawVector = false;
+          ui.drawGravity.checked = drawGravity = false;
+          ui.timestep.value = ui.tOut.innerText = 0.5;
+          ui.numBodies.value = numBodies = 500;
+          ui.maxSize.value = maxSize = 3;
+          ui.minSize.value = minSize = 2;
+          ui.drawGravityStrength.checked = drawGravityStrength = false;
           initRandBodies(numBodies, minSize, maxSize, initVel);
           break;
         case "1": // sun and 3 planets
-          form.collide.checked = false;
-          form.G.value = form.GOut.innerText = 0.15;
+          ui.collide.checked = false;
+          ui.G.value = ui.GOut.innerText = 0.15;
           G = 0.15;
           initOrbitBodies1();
           break;
         case "2": // two equal bodies
-          form.collide.checked = false;
-          form.G.value = form.GOut.innerText = 0.15;
+          ui.collide.checked = false;
+          ui.G.value = ui.GOut.innerText = 0.15;
           G = 0.15;
           initOrbitBodies2();
           break;
         case "3": // sun planets and moon
-          form.collide.checked = false;
-          form.G.value = form.GOut.innerText = 0.25;
+          ui.collide.checked = false;
+          ui.G.value = ui.GOut.innerText = 0.25;
           G = 0.25;
           initOrbitBodies3();
           break;
         case "4": // solar system
-          form.collide.checked = false;
+          ui.collide.checked = false;
           G = Gconst;
           initSolarSystem();
       }
       activeBodies = bodies.length;
-      form.bodyCount.innerText = activeBodies;
+      ui.bodyCount.innerText = activeBodies;
     };
 
     // add a body
-    form.add.onclick = () => {
+    ui.add.onclick = () => {
       activeBodies += 1;
-      form.bodyCount.innerText = activeBodies;
+      ui.bodyCount.innerText = activeBodies;
       initParams();
       initRandBodies(1, minSize, maxSize, initVel);
     };
 
     // clear bodies
-    form.clear.onclick = () => {
+    ui.clear.onclick = () => {
       bodies = [];
       ctx.fillStyle = "rgba(0, 0, 0, 1)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       activeBodies = bodies.length;
-      form.bodyCount.innerText = activeBodies;
+      ui.bodyCount.innerText = activeBodies;
     };
 
-    form.clrOffscreen.onclick = () => {
+    ui.clrOffscreen.onclick = () => {
       let offset = {
         x: collide ? -collideOffset.x + currentOffset.x : 0,
         y: collide ? -collideOffset.y + currentOffset.y : 0,
@@ -187,48 +188,48 @@ window.onload = () => {
         }
       });
       activeBodies = bodies.length;
-      form.bodyCount.innerText = activeBodies;
+      ui.bodyCount.innerText = activeBodies;
     };
 
     // pause/play sim
-    form.toggle.onclick = () => {
+    ui.toggle.onclick = () => {
       paused = !paused;
       if (timestep) {
         oldTimestep = timestep;
         timestep = 0;
-        form.timestep.value = 0;
+        ui.timestep.value = 0;
       } else {
         timestep = oldTimestep;
-        form.timestep.value = timestep;
+        ui.timestep.value = timestep;
       }
     };
 
     function initParams() {
-      if (!paused) timestep = form.timestep.value;
-      initVel = form.initVel.value;
-      G = form.G.value;
-      numBodies = form.numBodies.value;
-      maxSize = form.maxSize.value;
-      minSize = form.minSize.value;
+      if (!paused) timestep = ui.timestep.value;
+      initVel = ui.initVel.value;
+      G = ui.G.value;
+      numBodies = ui.numBodies.value;
+      maxSize = ui.maxSize.value;
+      minSize = ui.minSize.value;
     }
 
-    form.timestep.addEventListener("input", (event) => {
-      form.tOut.innerText = event.target.value;
+    ui.timestep.addEventListener("input", (event) => {
+      ui.tOut.innerText = event.target.value;
       timestep = event.target.value;
     });
 
-    form.G.addEventListener("input", (event) => {
-      form.GOut.innerText = event.target.value;
+    ui.G.addEventListener("input", (event) => {
+      ui.GOut.innerText = event.target.value;
       G = event.target.value;
     });
 
-    form.initVel.addEventListener("input", (event) => {
-      form.initVelOut.innerText = event.target.value;
+    ui.initVel.addEventListener("input", (event) => {
+      ui.initVelOut.innerText = event.target.value;
       initVel = event.target.value;
     });
 
-    form.collide.addEventListener("input", (event) => {
-      form.clrOffscreen.click();
+    ui.collide.addEventListener("input", (event) => {
+      ui.clrOffscreen.click();
     });
   }
 
@@ -281,31 +282,31 @@ window.onload = () => {
             newBody = false;
             break;
           case "KeyP":
-            form.toggle.click();
+            ui.toggle.click();
             break;
           case "KeyR":
-            form.randBtn.click();
+            ui.randBtn.click();
             break;
           case "Backspace":
-            form.clear.click();
+            ui.clear.click();
             break;
           case "Delete":
-            form.clrOffscreen.click();
+            ui.clrOffscreen.click();
             break;
           case "Enter":
-            form.add.click();
+            ui.add.click();
             break;
           case "KeyE":
-            form.collide.click();
+            ui.collide.click();
             break;
           case "KeyT":
-            form.trace.click();
+            ui.trace.click();
             break;
           case "KeyC":
-            form.continuous.click();
+            ui.continuous.click();
             break;
           case "KeyF":
-            form.fade.click();
+            ui.fade.click();
             break;
           case "Home":
             pan(
@@ -486,7 +487,7 @@ window.onload = () => {
       ctx.fillStyle = this.color;
       ctx.fill();
 
-      if (trackBody != this) {
+      if (trackBody != this && trace) {
         // connect to previous
         if (continuous && trace) {
           ctx.beginPath();
@@ -553,24 +554,24 @@ window.onload = () => {
       // edge collision - set accel to 0 when colliding to prevent changes in velocity
       if (collide) {
         if (
-          this.pos.x + this.vel.x >=
+          this.pos.x + this.vel.x * timestep >=
             -collideOffset.x + currentOffset.x + canvas.width - this.radius ||
-          this.pos.x + this.vel.x <= -collideOffset.x + currentOffset.x + this.radius
+          this.pos.x + this.vel.x * timestep <= -collideOffset.x + currentOffset.x + this.radius
         ) {
           this.vel.x = -this.vel.x;
           accel.x = 0;
         }
         if (
-          this.pos.y + this.vel.y >=
+          this.pos.y + this.vel.y * timestep >=
             -collideOffset.y + currentOffset.y + canvas.height - this.radius ||
-          this.pos.y + this.vel.y <= -collideOffset.y + currentOffset.y + this.radius
+          this.pos.y + this.vel.y * timestep <= -collideOffset.y + currentOffset.y + this.radius
         ) {
           this.vel.y = -this.vel.y;
           accel.y = 0;
         }
       }
       if (drawGravity) {
-        let mult = 80 * timestep;
+        let mult = 50 * timestep;
         ctx.beginPath();
         ctx.lineWidth = 1;
         ctx.strokeStyle = "red";
@@ -585,6 +586,9 @@ window.onload = () => {
       // integrate velocity every frame
       this.pos.x += this.vel.x * timestep;
       this.pos.y += this.vel.y * timestep;
+
+      // draw
+      // this.draw(drawVector);
     }
     toString() {
       return (
@@ -627,22 +631,23 @@ window.onload = () => {
           bodies.includes(body)
         ) {
           collision(currentBody, body);
-        }
-        // get total gravity
-        gForce = (G * (body.mass * currentBody.mass)) / Math.pow(dist.net, 2);
-        // get the angle between the two bodies
-        angle = Math.atan2(dist.x, dist.y);
-        force.x += gForce * Math.sin(angle);
-        force.y += gForce * Math.cos(angle);
-        if (drawGravityStrength && timestep) {
-          let strength = 1 - 10 / (gForce + 10);
-          ctx.beginPath();
-          ctx.strokeStyle =
-            "rgba(" + (255 - 255 * strength) + "," + 255 * strength + ",0 ," + strength + ")";
-          ctx.moveTo(body.pos.x, body.pos.y);
-          ctx.lineTo(currentBody.pos.x, currentBody.pos.y);
-          ctx.closePath();
-          ctx.stroke();
+        } else {
+          // get total gravity
+          gForce = (G * (body.mass * currentBody.mass)) / Math.pow(dist.net, 2);
+          // get the angle between the two bodies
+          angle = Math.atan2(dist.x, dist.y);
+          force.x += gForce * Math.sin(angle);
+          force.y += gForce * Math.cos(angle);
+          if (drawGravityStrength && timestep) {
+            let strength = 1 - 10 / (gForce + 10);
+            ctx.beginPath();
+            ctx.strokeStyle =
+              "rgba(" + (255 - 255 * strength) + "," + 255 * strength + ",0 ," + strength + ")";
+            ctx.moveTo(body.pos.x, body.pos.y);
+            ctx.lineTo(currentBody.pos.x, currentBody.pos.y);
+            ctx.closePath();
+            ctx.stroke();
+          }
         }
       }
     });
@@ -654,9 +659,9 @@ window.onload = () => {
   // calculate collisions, create new body
   function collision(body1, body2) {
     collisionCount += 1;
-    form.collisionCount.innerText = collisionCount;
+    ui.collisionCount.innerText = collisionCount;
     activeBodies = bodies.length - 1;
-    form.bodyCount.innerText = activeBodies;
+    ui.bodyCount.innerText = activeBodies;
 
     // merge masses and calculate corresponding radius and velocity based on momentum
     let mass = body1.mass + body2.mass;
@@ -695,7 +700,7 @@ window.onload = () => {
     if (elapsedTime >= interval) {
       // Update 10 times per second
       const fps = frameCount / (elapsedTime / 1000);
-      form.fps.innerText = Math.round(fps * 100) / 100;
+      ui.fps.innerText = Math.round(fps * 100) / 100;
 
       //let xCoord = (currentTime / 500 * 3) % fpsGraph.width;
       xCoord += 2;
@@ -729,13 +734,13 @@ window.onload = () => {
 
   // draw and animate
   function draw() {
-    continuous = form.continuous.checked;
-    trace = form.trace.checked;
-    fade = trace ? form.fade.checked : false;
-    drawGravity = form.drawGravity.checked;
-    drawGravityStrength = form.drawGravityStrength.checked;
-    drawVector = form.drawVector.checked;
-    collide = form.collide.checked;
+    continuous = ui.continuous.checked;
+    trace = ui.trace.checked;
+    fade = trace ? ui.fade.checked : false;
+    drawGravity = ui.drawGravity.checked;
+    drawGravityStrength = ui.drawGravityStrength.checked;
+    drawVector = ui.drawVector.checked;
+    collide = ui.collide.checked;
     // if (collide) form.clrOffscreen.click();
 
     updateGraphs(100);
@@ -750,8 +755,7 @@ window.onload = () => {
     if (fade && trace && timestep) {
       ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    if (!trace) {
+    } else if (!trace) {
       ctx.fillStyle = "rgba(0, 0, 0, 1)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
@@ -776,8 +780,8 @@ window.onload = () => {
       collideOffset.x = collideOffset.y = 0;
     }
     bodies.forEach((body, i) => {
-      body.update(gravity(body, i), drawGravity);
       body.draw(drawVector);
+      body.update(gravity(body, i), drawGravity);
     });
     if (clearTrails) {
       ctx.fillStyle = "rgba(0, 0, 0, 1)";
@@ -799,7 +803,7 @@ window.onload = () => {
       body.pos.x += offset.x;
       body.pos.y += offset.y;
     });
-    form.offset.innerText = Math.round(currentOffset.x) + " Y=" + Math.round(currentOffset.y);
+    ui.offset.innerText = Math.round(currentOffset.x) + " Y=" + Math.round(currentOffset.y);
   }
 
   // track body by panning and zeroing velocity
@@ -830,11 +834,13 @@ window.onload = () => {
     center.y = canvas.height / 2;
   }
   // proper implementation hopefully
+  // add a position offset based on distance from center of the screen
+  // without affecting position used by calcs
   function zoom(clearTrails = false) {
     // remove faint trails
     if (clearTrails) {
-      ctx.fillStyle = "rgba(0, 0, 0, 1)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      continuous = false;
+      clearTrails = true;
     }
   }
 };
