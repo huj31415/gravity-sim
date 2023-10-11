@@ -46,15 +46,12 @@ window.onload = () => {
   canvas.width = window.innerWidth; // - 335;
   ui.viewport.innerText = canvas.width + " x " + canvas.height;
   let center = { x: canvas.width / 2, y: canvas.height / 2 };
-  // ctx.translate(center.x, center.y);
   // ctx.globalAlpha = 0.5;
   window.onresize = () => {
     canvas.height = window.innerHeight; // - 25;
     canvas.width = window.innerWidth; // - 350;
     ui.viewport.innerText = canvas.width + " x " + canvas.height;
-    // ctx.translate(-center.x, -center.y);
     center = { x: canvas.width / 2, y: canvas.height / 2 };
-    // ctx.translate(center.x, center.y);
   };
 
   // initialize graphs
@@ -106,28 +103,6 @@ window.onload = () => {
 
   // form event listeners
   {
-    canvas.onmousedown = (event) => {
-      let mouse = { x: event.clientX, y: event.clientY };
-      canvas.addEventListener("mousemove", handleMouseMove);
-      mouseStart.x = mouse.x;
-      mouseStart.y = mouse.y;
-    };
-    canvas.onmouseup = () => {
-      canvas.removeEventListener("mousemove", handleMouseMove);
-      panOffset = { x: 0, y: 0 };
-    };
-    function handleMouseMove(event) {
-      event.preventDefault();
-      event.stopPropagation();
-
-      panOffset.x = event.movementX;
-      panOffset.y = event.movementY;
-
-      mouseStop = setTimeout(mouseStopped, 10);
-    }
-    function mouseStopped() {
-      panOffset.x = panOffset.y = 0;
-    }
     ui.collapse.onclick = () => {
       ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
       if (ui.panel.classList.contains("hidden")) {
@@ -268,6 +243,29 @@ window.onload = () => {
 
   // interaction event listeners
   {
+    canvas.onmousedown = (event) => {
+      let mouse = { x: event.clientX, y: event.clientY };
+      canvas.addEventListener("mousemove", handleMouseMove);
+      mouseStart.x = mouse.x;
+      mouseStart.y = mouse.y;
+    };
+    canvas.onmouseup = () => {
+      canvas.removeEventListener("mousemove", handleMouseMove);
+      panOffset = { x: 0, y: 0 };
+    };
+    function handleMouseMove(event) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      panOffset.x = event.movementX;
+      panOffset.y = event.movementY;
+
+      mouseStop = setTimeout(mouseStopped, 10);
+    }
+    function mouseStopped() {
+      panOffset.x = panOffset.y = 0;
+    }
+
     window.onkeydown = (event) => {
       const activeElement = document.activeElement;
       const register =
@@ -706,10 +704,9 @@ window.onload = () => {
     };
     let velocity = { x: momentum.x / mass, y: momentum.y / mass };
     let pos = {
-      x: larger.pos.x, //(body1.pos.x * body1.mass + body2.pos.x * body2.mass) / mass,
-      y: larger.pos.y, //(body1.pos.y * body1.mass + body2.pos.y * body2.mass) / mass,
+      x: larger.pos.x,
+      y: larger.pos.y,
     };
-    // let radius = Math.sqrt(mass / Math.PI);
     let radius = getRadius(mass);
 
     // create new body
@@ -775,7 +772,6 @@ window.onload = () => {
     drawGravityStrength = ui.drawGravityStrength.checked;
     drawVector = ui.drawVector.checked;
     collide = ui.collide.checked;
-    // if (collide) form.clrOffscreen.click();
 
     updateGraphs(100);
 
