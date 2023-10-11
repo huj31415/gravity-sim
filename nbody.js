@@ -418,14 +418,14 @@ window.onload = () => {
           new Body(
             collide
               ? randInt(
-                  -collideOffset.x + currentOffset.x,
-                  -collideOffset.x + currentOffset.x + canvas.width
+                  -collideOffset.x + currentOffset.x + 2 * r,
+                  -collideOffset.x + currentOffset.x + canvas.width - 2 * r
                 )
               : randInt(center.x - viewport.x / 2 + 2 * r, center.x + viewport.x / 2 - 2 * r),
             collide
               ? randInt(
-                  -collideOffset.y + currentOffset.y,
-                  -collideOffset.y + currentOffset.y + canvas.height
+                  -collideOffset.y + currentOffset.y + 2 * r,
+                  -collideOffset.y + currentOffset.y + canvas.height - 2 * r
                 )
               : randInt(center.y - viewport.y / 2 + 2 * r, center.y + viewport.y / 2 - 2 * r),
             (Math.random() - 0.5) * 2 * v,
@@ -698,8 +698,9 @@ window.onload = () => {
           angle = Math.atan2(dist.x, dist.y);
           force.x += gForce * Math.sin(angle);
           force.y += gForce * Math.cos(angle);
-          if (drawGravityStrength) {
-            let strength = 1 - 10 / (gForce + 10);
+          let strength = 1 - 10 / (gForce + 10);
+          let drawThreshold = trace ? 1e-4 : 1e-2;
+          if (drawGravityStrength && strength >= drawThreshold) {
             ctx.beginPath();
             ctx.strokeStyle =
               "rgba(" + (255 - 255 * strength) + "," + 255 * strength + ",0 ," + strength + ")";

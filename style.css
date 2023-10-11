@@ -2,6 +2,7 @@ body {
   font-family: "Segoe UI", sans-serif;
   /* font-size: .95em; */
   overflow: hidden;
+  background: black;
 }
 
 canvas {
