@@ -92,11 +92,12 @@ window.onload = () => {
   let panOffset = { x: 0, y: 0 };
   let currentOffset = { x: 0, y: 0 };
   let collideOffset = { x: 0, y: 0 };
-  let mouseStart = { x: 0, y: 0 };
   let panSpeed = 8;
   let trackBody;
   let trackNum = 0;
   let zoomfactor = 1;
+  let totalzoom = 1;
+  let viewport = { x: canvas.width, y: canvas.height };
   let newBody = false;
 
   draw();
@@ -107,10 +108,8 @@ window.onload = () => {
       ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
       if (ui.panel.classList.contains("hidden")) {
         ui.panel.classList.remove("hidden");
-        // canvas.width = window.innerWidth - 335;
       } else {
         ui.panel.classList.add("hidden");
-        // canvas.width = window.innerWidth;
       }
     };
     // begin the simulation
@@ -175,7 +174,7 @@ window.onload = () => {
     ui.clear.onclick = () => {
       bodies = [];
       ctx.fillStyle = "rgba(0, 0, 0, 1)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
       activeBodies = bodies.length;
       ui.bodyCount.innerText = activeBodies;
     };
@@ -244,10 +243,9 @@ window.onload = () => {
   // interaction event listeners
   {
     canvas.onmousedown = (event) => {
-      let mouse = { x: event.clientX, y: event.clientY };
+      event.preventDefault();
+      event.stopPropagation();
       canvas.addEventListener("mousemove", handleMouseMove);
-      mouseStart.x = mouse.x;
-      mouseStart.y = mouse.y;
     };
     canvas.onmouseup = () => {
       canvas.removeEventListener("mousemove", handleMouseMove);
@@ -257,14 +255,31 @@ window.onload = () => {
       event.preventDefault();
       event.stopPropagation();
 
-      panOffset.x = event.movementX;
-      panOffset.y = event.movementY;
+      panOffset.x = event.movementX / totalzoom;
+      panOffset.y = event.movementY / totalzoom;
 
       setTimeout(mouseStopped, 10);
     }
     function mouseStopped() {
       panOffset.x = panOffset.y = 0;
     }
+
+    canvas.onwheel = (event) => {
+      zoomfactor = Math.sign(event.deltaY) < 0 ? 1.05 : 1 / 1.05;
+      ctx.transform(
+        zoomfactor,
+        0,
+        0,
+        zoomfactor,
+        (-(zoomfactor - 1) * canvas.width) / 2,
+        (-(zoomfactor - 1) * canvas.height) / 2
+      );
+      totalzoom *= zoomfactor;
+      viewport.x /= zoomfactor;
+      viewport.y /= zoomfactor;
+      ctx.fillStyle = "rgba(0, 0, 0, 1)";
+      ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
+    };
 
     window.onkeydown = (event) => {
       const activeElement = document.activeElement;
@@ -339,6 +354,14 @@ window.onload = () => {
           case "KeyF":
             ui.fade.click();
             break;
+          case "KeyU":
+            ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
+            if (ui.panel.classList.contains("hidden")) {
+              ui.panel.classList.remove("hidden");
+            } else {
+              ui.panel.classList.add("hidden");
+            }
+            break;
           case "Home":
             pan(
               collide
@@ -347,12 +370,49 @@ window.onload = () => {
             );
             break;
           case "ShiftLeft":
-            zoomfactor = 1.01;
+            zoomfactor = 1.005;
             // zoom(true);
+            ctx.transform(
+              zoomfactor,
+              0,
+              0,
+              zoomfactor,
+              (-(zoomfactor - 1) * canvas.width) / 2,
+              (-(zoomfactor - 1) * canvas.height) / 2
+            );
+            totalzoom *= zoomfactor;
+            viewport.x /= zoomfactor;
+            viewport.y /= zoomfactor;
+            ctx.fillStyle = "rgba(0, 0, 0, 1)";
+            ctx.fillRect(
+              center.x - viewport.x / 2,
+              center.y - viewport.y / 2,
+              viewport.x,
+              viewport.y
+            );
             break;
           case "ControlLeft":
-            zoomfactor = 0.99;
+            zoomfactor = 1 / 1.005;
             // zoom(true);
+            ctx.transform(
+              zoomfactor,
+              0,
+              0,
+              zoomfactor,
+              (-(zoomfactor - 1) * canvas.width) / 2,
+              (-(zoomfactor - 1) * canvas.height) / 2
+            );
+            totalzoom *= zoomfactor;
+            viewport.x /= zoomfactor;
+            viewport.y /= zoomfactor;
+
+            ctx.fillStyle = "rgba(0, 0, 0, 1)";
+            ctx.fillRect(
+              center.x - viewport.x / 2,
+              center.y - viewport.y / 2,
+              viewport.x,
+              viewport.y
+            );
             break;
           default:
             panOffset.x = panOffset.y = 0;
@@ -465,17 +525,6 @@ window.onload = () => {
   }
 
   // to remove bodies during collision
-  // function remove(arr, value) {
-  //   var i = 0;
-  //   while (i < arr.length) {
-  //     if (arr[i] === value) {
-  //       arr.splice(i, 1);
-  //     } else {
-  //       ++i;
-  //     }
-  //   }
-  //   return arr;
-  // }
   function remove(arr, id) {
     const index = arr.findIndex((body) => body.id === id);
     if (index !== -1) {
@@ -545,6 +594,7 @@ window.onload = () => {
         let mult = 10 * timestep;
         ctx.beginPath();
         ctx.strokeStyle = "blue";
+        ctx.lineWidth = 1 / totalzoom;
         ctx.moveTo(this.pos.x, this.pos.y);
         ctx.lineTo(this.pos.x + mult * this.vel.x, this.pos.y + mult * this.vel.y);
         ctx.closePath();
@@ -557,24 +607,27 @@ window.onload = () => {
         this.pos.x < 0 ||
         this.pos.x > canvas.width ||
         this.pos.y < 0 ||
-        this.pos.y > canvas.height
+        this.pos.y > canvas.height ||
+        true
       ) {
+        // ctx.fillRect(center.x - (viewport.x / 2), center.y - (viewport.y / 2), viewport.x, viewport.y);
         let bodyPos = { x: this.pos.x - center.x, y: this.pos.y - center.y };
         let slope = (this.pos.y - center.y) / (this.pos.x - center.x);
         let angle = Math.abs(Math.atan2(bodyPos.y, bodyPos.x));
-        let x = (center.x - (this.radius + 5) * Math.abs(Math.cos(angle))) * Math.sign(bodyPos.x);
-        let y = (center.y - (this.radius + 5) * Math.sin(angle)) * Math.sign(bodyPos.y);
+        let x = Math.sign(bodyPos.x) * (center.x - (this.radius + 5) * Math.abs(Math.cos(angle)));
+        let y = Math.sign(bodyPos.y) * (center.y - (this.radius + 5) * Math.sin(angle));
         ctx.beginPath();
         ctx.strokeStyle = this.color;
+        ctx.lineWidth = 1 / totalzoom;
         ctx.moveTo(center.x + bodyPos.x, center.y + bodyPos.y);
         Math.abs(Math.abs(bodyPos.x) / canvas.width) > Math.abs(Math.abs(bodyPos.y) / canvas.height)
           ? ctx.lineTo(center.x + x, center.y + slope * x)
           : ctx.lineTo(center.x + y / slope, center.y + y);
-        // : ctx.lineTo(center.x, center.y);
         ctx.closePath();
         ctx.stroke();
       }
     }
+
     update(accel = { x: 0, y: 0 }, drawGravity = true) {
       this.prevPos.x = this.pos.x;
       this.prevPos.y = this.pos.y;
@@ -600,7 +653,7 @@ window.onload = () => {
       if (drawGravity) {
         let mult = 50 * timestep;
         ctx.beginPath();
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1 / totalzoom;
         ctx.strokeStyle = "red";
         ctx.moveTo(this.pos.x, this.pos.y);
         ctx.lineTo(this.pos.x + mult * accel.x, this.pos.y + mult * accel.y);
@@ -670,6 +723,7 @@ window.onload = () => {
             ctx.beginPath();
             ctx.strokeStyle =
               "rgba(" + (255 - 255 * strength) + "," + 255 * strength + ",0 ," + strength + ")";
+            ctx.lineWidth = 1 / totalzoom;
             ctx.moveTo(body.pos.x, body.pos.y);
             ctx.lineTo(currentBody.pos.x, currentBody.pos.y);
             ctx.closePath();
@@ -779,10 +833,10 @@ window.onload = () => {
     }
     if (fade && trace && timestep) {
       ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
     } else if (!trace) {
       ctx.fillStyle = "rgba(0, 0, 0, 1)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
     }
     // draw collision box
     if (collide) {
@@ -792,7 +846,7 @@ window.onload = () => {
       }
       if (trackBody) {
         ctx.fillStyle = "rgba(0, 0, 0, 1)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
       }
       ctx.strokeStyle = "white";
       ctx.strokeRect(
@@ -810,7 +864,7 @@ window.onload = () => {
     });
     if (clearTrails) {
       ctx.fillStyle = "rgba(0, 0, 0, 1)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
       clearTrails = false;
     }
   }
@@ -842,17 +896,5 @@ window.onload = () => {
     }
     pan({ x: -body.vel.x * timestep, y: -body.vel.y * timestep }, false);
     newBody = false;
-  }
-
-  // proper implementation hopefully
-  // add a position offset based on distance from center of the screen
-  // without affecting position used by calcs
-  function zoom(clearTrails = false) {
-    // remove faint trails
-    if (clearTrails) {
-      ctx.fillStyle = "rgba(0, 0, 0, 1)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    ctx.scale(zoomfactor, zoomfactor);
   }
 };
