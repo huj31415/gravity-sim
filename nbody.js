@@ -90,15 +90,15 @@ window.onload = () => {
 
   // interactive variables
   let panOffset = { x: 0, y: 0 };
+  let panSpeed = 8;
   let currentOffset = { x: 0, y: 0 };
   let collideOffset = { x: 0, y: 0 };
-  let panSpeed = 8;
   let trackBody;
   let trackNum = 0;
+  let newBody = false;
   let zoomfactor = 1;
   let totalzoom = 1;
   let viewport = { x: canvas.width, y: canvas.height };
-  let newBody = false;
 
   draw();
 
@@ -283,10 +283,7 @@ window.onload = () => {
 
     window.onkeydown = (event) => {
       const activeElement = document.activeElement;
-      const register =
-        activeElement.tagName !== "INPUT" &&
-        activeElement.tagName !== "SELECT" &&
-        activeElement.tagName !== "BUTTON";
+      const register = activeElement.tagName !== "INPUT";
       console.log(event.code);
       if (register) {
         switch (event.code) {
@@ -312,6 +309,7 @@ window.onload = () => {
             break;
           case "Space":
             event.preventDefault();
+            event.stopPropagation();
             if (trackNum < bodies.length) {
               trackBody = bodies[trackNum++];
               newBody = true;
@@ -368,10 +366,7 @@ window.onload = () => {
                 ? { x: -currentOffset.x + collideOffset.x, y: -currentOffset.y + collideOffset.y }
                 : { x: -currentOffset.x, y: -currentOffset.y }
             );
-            break;
-          case "ShiftLeft":
-            zoomfactor = 1.005;
-            // zoom(true);
+            zoomfactor = 1 / totalzoom;
             ctx.transform(
               zoomfactor,
               0,
@@ -380,32 +375,9 @@ window.onload = () => {
               (-(zoomfactor - 1) * canvas.width) / 2,
               (-(zoomfactor - 1) * canvas.height) / 2
             );
-            totalzoom *= zoomfactor;
-            viewport.x /= zoomfactor;
-            viewport.y /= zoomfactor;
-            ctx.fillStyle = "rgba(0, 0, 0, 1)";
-            ctx.fillRect(
-              center.x - viewport.x / 2,
-              center.y - viewport.y / 2,
-              viewport.x,
-              viewport.y
-            );
-            break;
-          case "ControlLeft":
-            zoomfactor = 1 / 1.005;
-            // zoom(true);
-            ctx.transform(
-              zoomfactor,
-              0,
-              0,
-              zoomfactor,
-              (-(zoomfactor - 1) * canvas.width) / 2,
-              (-(zoomfactor - 1) * canvas.height) / 2
-            );
-            totalzoom *= zoomfactor;
-            viewport.x /= zoomfactor;
-            viewport.y /= zoomfactor;
-
+            totalzoom = 1;
+            viewport.x = canvas.width;
+            viewport.y = canvas.height;
             ctx.fillStyle = "rgba(0, 0, 0, 1)";
             ctx.fillRect(
               center.x - viewport.x / 2,
@@ -446,8 +418,8 @@ window.onload = () => {
         let r = randInt(minSize, maxSize);
         bodies.push(
           new Body(
-            randInt(0 + 2 * r, canvas.width - 2 * r),
-            randInt(0 + 2 * r, canvas.height - 2 * r),
+            randInt(center.x - viewport.x / 2 + 2 * r, center.x + viewport.x / 2 - 2 * r),
+            randInt(center.y - viewport.y / 2 + 2 * r, center.y + viewport.y / 2 - 2 * r),
             (Math.random() - 0.5) * 2 * v,
             (Math.random() - 0.5) * 2 * v,
             r,
@@ -604,23 +576,26 @@ window.onload = () => {
       // offscreen indicators
       // use slope to draw lines pointing toward center
       if (
-        this.pos.x < 0 ||
-        this.pos.x > canvas.width ||
-        this.pos.y < 0 ||
-        this.pos.y > canvas.height ||
-        true
+        this.pos.x < center.x - viewport.x / 2 ||
+        this.pos.x > center.x + viewport.x / 2 ||
+        this.pos.y < center.y - viewport.y / 2 ||
+        this.pos.y > center.y + viewport.y / 2
       ) {
-        // ctx.fillRect(center.x - (viewport.x / 2), center.y - (viewport.y / 2), viewport.x, viewport.y);
+        // top: center.x - (viewport.x / 2)  width: viewport.x
+        // left: center.y - (viewport.y / 2)  height: viewport.y
         let bodyPos = { x: this.pos.x - center.x, y: this.pos.y - center.y };
         let slope = (this.pos.y - center.y) / (this.pos.x - center.x);
         let angle = Math.abs(Math.atan2(bodyPos.y, bodyPos.x));
-        let x = Math.sign(bodyPos.x) * (center.x - (this.radius + 5) * Math.abs(Math.cos(angle)));
-        let y = Math.sign(bodyPos.y) * (center.y - (this.radius + 5) * Math.sin(angle));
+        let x =
+          (Math.sign(bodyPos.x) * (center.x - (this.radius + 5) * Math.abs(Math.cos(angle)))) /
+          totalzoom;
+        let y =
+          (Math.sign(bodyPos.y) * (center.y - (this.radius + 5) * Math.sin(angle))) / totalzoom;
         ctx.beginPath();
         ctx.strokeStyle = this.color;
         ctx.lineWidth = 1 / totalzoom;
         ctx.moveTo(center.x + bodyPos.x, center.y + bodyPos.y);
-        Math.abs(Math.abs(bodyPos.x) / canvas.width) > Math.abs(Math.abs(bodyPos.y) / canvas.height)
+        Math.abs(bodyPos.x / canvas.width) > Math.abs(bodyPos.y / canvas.height)
           ? ctx.lineTo(center.x + x, center.y + slope * x)
           : ctx.lineTo(center.x + y / slope, center.y + y);
         ctx.closePath();
