@@ -1,4 +1,4 @@
-// TODO: zoom, collision particle fx based on relative velocity???
+// TODO: collision particle fx based on relative velocity???
 // eliminate redundant gravity calcs
 //
 window.onload = () => {
@@ -243,8 +243,6 @@ window.onload = () => {
   // interaction event listeners
   {
     canvas.onmousedown = (event) => {
-      event.preventDefault();
-      event.stopPropagation();
       canvas.addEventListener("mousemove", handleMouseMove);
     };
     canvas.onmouseup = () => {
@@ -258,7 +256,7 @@ window.onload = () => {
       panOffset.x = event.movementX / totalzoom;
       panOffset.y = event.movementY / totalzoom;
 
-      setTimeout(mouseStopped, 10);
+      setTimeout(mouseStopped, 50);
     }
     function mouseStopped() {
       panOffset.x = panOffset.y = 0;
@@ -418,8 +416,18 @@ window.onload = () => {
         let r = randInt(minSize, maxSize);
         bodies.push(
           new Body(
-            randInt(center.x - viewport.x / 2 + 2 * r, center.x + viewport.x / 2 - 2 * r),
-            randInt(center.y - viewport.y / 2 + 2 * r, center.y + viewport.y / 2 - 2 * r),
+            collide
+              ? randInt(
+                  -collideOffset.x + currentOffset.x,
+                  -collideOffset.x + currentOffset.x + canvas.width
+                )
+              : randInt(center.x - viewport.x / 2 + 2 * r, center.x + viewport.x / 2 - 2 * r),
+            collide
+              ? randInt(
+                  -collideOffset.y + currentOffset.y,
+                  -collideOffset.y + currentOffset.y + canvas.height
+                )
+              : randInt(center.y - viewport.y / 2 + 2 * r, center.y + viewport.y / 2 - 2 * r),
             (Math.random() - 0.5) * 2 * v,
             (Math.random() - 0.5) * 2 * v,
             r,
@@ -581,8 +589,6 @@ window.onload = () => {
         this.pos.y < center.y - viewport.y / 2 ||
         this.pos.y > center.y + viewport.y / 2
       ) {
-        // top: center.x - (viewport.x / 2)  width: viewport.x
-        // left: center.y - (viewport.y / 2)  height: viewport.y
         let bodyPos = { x: this.pos.x - center.x, y: this.pos.y - center.y };
         let slope = (this.pos.y - center.y) / (this.pos.x - center.x);
         let angle = Math.abs(Math.atan2(bodyPos.y, bodyPos.x));
@@ -602,7 +608,6 @@ window.onload = () => {
         ctx.stroke();
       }
     }
-
     update(accel = { x: 0, y: 0 }, drawGravity = true) {
       this.prevPos.x = this.pos.x;
       this.prevPos.y = this.pos.y;
@@ -744,7 +749,7 @@ window.onload = () => {
     bodies.push(body);
   }
 
-  // canvas rendering
+  // display framerate and number of bodies
   function updateGraphs(interval) {
     // get fps
     frameCount++;
