@@ -96,7 +96,7 @@ window.onload = () => {
   let panSpeed = 8;
   let trackBody;
   let trackNum = 0;
-  let canvasZoom = 1;
+  let zoomfactor = 1;
   let newBody = false;
 
   draw();
@@ -260,7 +260,7 @@ window.onload = () => {
       panOffset.x = event.movementX;
       panOffset.y = event.movementY;
 
-      mouseStop = setTimeout(mouseStopped, 10);
+      setTimeout(mouseStopped, 10);
     }
     function mouseStopped() {
       panOffset.x = panOffset.y = 0;
@@ -271,8 +271,7 @@ window.onload = () => {
       const register =
         activeElement.tagName !== "INPUT" &&
         activeElement.tagName !== "SELECT" &&
-        activeElement.tagName !== "BUTTON" &&
-        !event.ctrlKey;
+        activeElement.tagName !== "BUTTON";
       console.log(event.code);
       if (register) {
         switch (event.code) {
@@ -317,7 +316,7 @@ window.onload = () => {
             ui.toggle.click();
             break;
           case "KeyR":
-            ui.randBtn.click();
+            if (!event.ctrlKey) ui.randBtn.click();
             break;
           case "Backspace":
             ui.clear.click();
@@ -348,16 +347,12 @@ window.onload = () => {
             );
             break;
           case "ShiftLeft":
-            canvasZoom += 0.005;
-            // badzoom();
-            // ctx.fillStyle = "rgba(0, 0, 0, 1)";
-            // ctx.fillRect(0, 0, canvas.width, canvas.height);
+            zoomfactor = 1.01;
+            // zoom(true);
             break;
           case "ControlLeft":
-            canvasZoom -= 0.005;
-            // badzoom();
-            // ctx.fillStyle = "rgba(0, 0, 0, 1)";
-            // ctx.fillRect(0, 0, canvas.width, canvas.height);
+            zoomfactor = 0.99;
+            // zoom(true);
             break;
           default:
             panOffset.x = panOffset.y = 0;
@@ -670,7 +665,7 @@ window.onload = () => {
           angle = Math.atan2(dist.x, dist.y);
           force.x += gForce * Math.sin(angle);
           force.y += gForce * Math.cos(angle);
-          if (drawGravityStrength && timestep) {
+          if (drawGravityStrength) {
             let strength = 1 - 10 / (gForce + 10);
             ctx.beginPath();
             ctx.strokeStyle =
@@ -849,28 +844,15 @@ window.onload = () => {
     newBody = false;
   }
 
-  // zoom by scaling distance, velocity, gravity, etc.
-  // not yet implemented properly
-  function badzoom(clearTrails = false) {
-    // remove faint trails
-    if (clearTrails) {
-      ctx.fillStyle = "rgba(0, 0, 0, 1)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    canvas.style.zoom = canvasZoom * 100 + "%";
-    canvas.height = (1 / canvasZoom) * (window.innerHeight - 25);
-    canvas.width = (1 / canvasZoom) * (window.innerWidth - 350);
-    center.x = canvas.width / 2;
-    center.y = canvas.height / 2;
-  }
   // proper implementation hopefully
   // add a position offset based on distance from center of the screen
   // without affecting position used by calcs
   function zoom(clearTrails = false) {
     // remove faint trails
     if (clearTrails) {
-      continuous = false;
-      clearTrails = true;
+      ctx.fillStyle = "rgba(0, 0, 0, 1)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
+    ctx.scale(zoomfactor, zoomfactor);
   }
 };
