@@ -84,7 +84,7 @@
       </div>
       <div>
         <input type="checkbox" id="trace" name="trace" checked />
-        <label for="trace">Trace paths (t)</label>
+        <label for="trace">Trace paths (may reduce FPS) (t)</label>
       </div>
       <div>
         <input type="checkbox" id="continuous" name="continuous" checked />
@@ -104,7 +104,11 @@
       </div>
       <div>
         <input type="checkbox" id="drawGStrength" name="drawGStrength" checked />
-        <label for="drawGStrength">Draw gravity strength (SLOW)</label>
+        <label for="drawGStrength">Draw gravity strength (slow with trace)</label>
+      </div>
+      <div>
+        <input type="checkbox" id="drawGThreshold" name="drawGThreshold" checked />
+        <label for="drawGThreshold">Gravity draw threshold</label>
       </div>
       <div>
         <input type="checkbox" id="collide" name="collide" />
@@ -122,12 +126,12 @@
       <hr />
       <div>
         Controls<br />
-        U: toggle sidebar<br />
-        Arrows/WASD/Mouse button: pan view<br />
+        U/V: toggle sidebar<br />
+        Arrows/WASD/Mouse: pan view<br />
         Space: cycle tracked body<br />
         Esc: cancel tracking<br />
-        Home: Center viewport<br />
-        Mousewheel: Zoom in/out
+        Home: center viewport<br />
+        Scroll: zoom in/out
       </div>
       <div class="padding"></div>
     </span>

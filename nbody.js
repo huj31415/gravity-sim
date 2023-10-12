@@ -16,6 +16,7 @@ window.onload = () => {
     drawVector: document.getElementById("vectors"),
     drawGravity: document.getElementById("drawG"),
     drawGravityStrength: document.getElementById("drawGStrength"),
+    drawGThreshold: document.getElementById("drawGThreshold"),
     continuous: document.getElementById("continuous"),
     G: document.getElementById("g"),
     GOut: document.getElementById("gOut"),
@@ -52,6 +53,8 @@ window.onload = () => {
     canvas.width = window.innerWidth; // - 350;
     ui.viewport.innerText = canvas.width + " x " + canvas.height;
     center = { x: canvas.width / 2, y: canvas.height / 2 };
+    viewport.x = canvas.width / totalzoom;
+    viewport.y = canvas.height / totalzoom;
   };
 
   // initialize graphs
@@ -75,6 +78,7 @@ window.onload = () => {
     drawVector,
     drawGravity,
     drawGravityStrength,
+    drawGThreshold,
     collide,
     maxSize,
     minSize,
@@ -351,6 +355,7 @@ window.onload = () => {
             ui.fade.click();
             break;
           case "KeyU":
+          case "KeyV":
             ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
             if (ui.panel.classList.contains("hidden")) {
               ui.panel.classList.remove("hidden");
@@ -536,58 +541,13 @@ window.onload = () => {
       return { x: this.vel.x * this.mass, y: this.vel.y * this.mass };
     }
     draw(drawVector = true) {
-      // draw the circle
-      ctx.beginPath();
-      ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2, true);
-      ctx.closePath();
-      ctx.fillStyle = this.color;
-      ctx.fill();
-
-      if (trackBody != this && trace) {
-        // connect to previous
-        if (continuous && trace) {
-          ctx.beginPath();
-          ctx.lineWidth = 2 * this.radius;
-          ctx.strokeStyle = this.color;
-          ctx.moveTo(this.pos.x, this.pos.y);
-          ctx.lineTo(this.prevPos.x, this.prevPos.y);
-          ctx.closePath();
-          ctx.stroke();
-        }
-        ctx.beginPath();
-        ctx.arc(this.prevPos.x, this.prevPos.y, this.radius, 0, Math.PI * 2, true);
-        ctx.closePath();
-        ctx.fillStyle = this.color;
-        ctx.fill();
-      }
-
-      // center
-      ctx.beginPath();
-      ctx.arc(this.pos.x, this.pos.y, this.radius < 1.5 ? this.radius : 1.5, 0, Math.PI * 2, true);
-      ctx.closePath();
-      ctx.fillStyle = this.radius < 3 ? "white" : "black";
-      ctx.fill();
-
-      // motion vector
-      ctx.lineWidth = 1;
-      if (drawVector) {
-        let mult = 10 * timestep;
-        ctx.beginPath();
-        ctx.strokeStyle = "blue";
-        ctx.lineWidth = 1 / totalzoom;
-        ctx.moveTo(this.pos.x, this.pos.y);
-        ctx.lineTo(this.pos.x + mult * this.vel.x, this.pos.y + mult * this.vel.y);
-        ctx.closePath();
-        ctx.stroke();
-      }
-
       // offscreen indicators
       // use slope to draw lines pointing toward center
       if (
-        this.pos.x < center.x - viewport.x / 2 ||
-        this.pos.x > center.x + viewport.x / 2 ||
-        this.pos.y < center.y - viewport.y / 2 ||
-        this.pos.y > center.y + viewport.y / 2
+        this.pos.x < center.x - viewport.x / 2 - this.radius ||
+        this.pos.x > center.x + viewport.x / 2 + this.radius ||
+        this.pos.y < center.y - viewport.y / 2 - this.radius ||
+        this.pos.y > center.y + viewport.y / 2 + this.radius
       ) {
         let bodyPos = { x: this.pos.x - center.x, y: this.pos.y - center.y };
         let slope = (this.pos.y - center.y) / (this.pos.x - center.x);
@@ -606,6 +566,58 @@ window.onload = () => {
           : ctx.lineTo(center.x + y / slope, center.y + y);
         ctx.closePath();
         ctx.stroke();
+      } else {
+        // draw the circle
+        ctx.beginPath();
+        ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2, true);
+        ctx.closePath();
+        ctx.fillStyle = this.color;
+        ctx.fill();
+
+        if (trackBody != this && trace) {
+          // connect to previous
+          if (continuous && trace) {
+            ctx.beginPath();
+            ctx.lineWidth = 2 * this.radius;
+            ctx.strokeStyle = this.color;
+            ctx.moveTo(this.pos.x, this.pos.y);
+            ctx.lineTo(this.prevPos.x, this.prevPos.y);
+            ctx.closePath();
+            ctx.stroke();
+          }
+          ctx.beginPath();
+          ctx.arc(this.prevPos.x, this.prevPos.y, this.radius, 0, Math.PI * 2, true);
+          ctx.closePath();
+          ctx.fillStyle = this.color;
+          ctx.fill();
+        }
+
+        // center
+        ctx.beginPath();
+        ctx.arc(
+          this.pos.x,
+          this.pos.y,
+          this.radius < 1.5 ? this.radius : 1.5,
+          0,
+          Math.PI * 2,
+          true
+        );
+        ctx.closePath();
+        ctx.fillStyle = this.radius < 3 ? "white" : "black";
+        ctx.fill();
+
+        // motion vector
+        ctx.lineWidth = 1;
+        if (drawVector) {
+          let mult = 10 * timestep;
+          ctx.beginPath();
+          ctx.strokeStyle = "blue";
+          ctx.lineWidth = 1 / totalzoom;
+          ctx.moveTo(this.pos.x, this.pos.y);
+          ctx.lineTo(this.pos.x + mult * this.vel.x, this.pos.y + mult * this.vel.y);
+          ctx.closePath();
+          ctx.stroke();
+        }
       }
     }
     update(accel = { x: 0, y: 0 }, drawGravity = true) {
@@ -699,7 +711,7 @@ window.onload = () => {
           force.x += gForce * Math.sin(angle);
           force.y += gForce * Math.cos(angle);
           let strength = 1 - 10 / (gForce + 10);
-          let drawThreshold = trace ? 1e-4 : 1e-2;
+          let drawThreshold = drawGThreshold ? (trace ? 1e-4 : 1e-2) : 0;
           if (drawGravityStrength && strength >= drawThreshold) {
             ctx.beginPath();
             ctx.strokeStyle =
@@ -800,6 +812,7 @@ window.onload = () => {
     fade = trace ? ui.fade.checked : false;
     drawGravity = ui.drawGravity.checked;
     drawGravityStrength = ui.drawGravityStrength.checked;
+    drawGThreshold = ui.drawGThreshold.checked;
     drawVector = ui.drawVector.checked;
     collide = ui.collide.checked;
 
@@ -840,8 +853,8 @@ window.onload = () => {
       collideOffset.x = collideOffset.y = 0;
     }
     bodies.forEach((body, i) => {
-      body.draw(drawVector);
       body.update(gravity(body, i), drawGravity);
+      body.draw(drawVector);
     });
     if (clearTrails) {
       ctx.fillStyle = "rgba(0, 0, 0, 1)";
