@@ -702,7 +702,7 @@ window.onload = () => {
           bodies.includes(currentBody) &&
           bodies.includes(body)
         ) {
-          collision(currentBody, body);
+          if (currentBody.id != body.id) collision(currentBody, body);
         } else {
           // get total gravity
           gForce = (G * (body.mass * currentBody.mass)) / Math.pow(dist.net, 2);
@@ -740,26 +740,24 @@ window.onload = () => {
     // merge masses and calculate corresponding radius and velocity based on momentum
     let mass = body1.mass + body2.mass;
     let larger = body1.mass > body2.mass ? body1 : body2;
+    let smaller = larger === body1 ? body2 : body1;
+    
     let momentum = {
       x: body1.getMomentum().x + body2.getMomentum().x,
       y: body1.getMomentum().y + body2.getMomentum().y,
     };
     let velocity = { x: momentum.x / mass, y: momentum.y / mass };
-    let pos = {
-      x: larger.pos.x,
-      y: larger.pos.y,
-    };
-    let radius = getRadius(mass);
 
-    // create new body
-    let body = new Body(pos.x, pos.y, velocity.x, velocity.y, radius, 0, larger.color);
+    // change larger body properties
+    larger.mass = mass;
+    larger.radius = getRadius(mass);
+    larger.vel.x = velocity.x;
+    larger.vel.y = velocity.y;
 
-    if (trackBody === body1 || trackBody === body2) trackBody = body;
-
-    // remove the collided objects
-    remove(bodies, body1.id);
-    remove(bodies, body2.id);
-    bodies.push(body);
+    // maintain tracking
+    if (trackBody === smaller) trackBody = larger;
+    // remove the smaller object
+    remove(bodies, smaller.id);
   }
 
   // display framerate and number of bodies
