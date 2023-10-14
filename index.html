@@ -15,7 +15,7 @@
       <div>Active bodies: <span id="bodyCount">0</span></div>
       <div>Current FPS: <span id="fps">0</span></div>
       <div>Viewport: <span id="viewport">0 &times; 0</span></div>
-      <div>Viewport offset: X=<span id="offset">0 Y=0</span></div>
+      <div>Offset: X=<span id="offset">0 Y=0</span> | Zoom: <span id="zoom">100</span>%</div>
       <hr />
       <div>
         <button id="rand">Random (r)</button>
@@ -66,7 +66,7 @@
         <label for="timestep">Timestep (<span id="tOut">1</span>)</label>
       </div>
       <div>
-        <input type="range" id="g" name="g" value="0.25" max="2" min="0" step=".01" width="400px" />
+        <input type="range" id="g" name="g" value="0.25" max="2" min="-2" step=".01" width="400px" />
         <label for="g">G constant (<span id="gOut">0.25</span>)</label>
       </div>
       <div>
@@ -104,7 +104,7 @@
       </div>
       <div>
         <input type="checkbox" id="drawGStrength" name="drawGStrength" checked />
-        <label for="drawGStrength">Draw gravity strength (slow with trace)</label>
+        <label for="drawGStrength">Draw gravity strength (slow) (g)</label>
       </div>
       <div>
         <input type="checkbox" id="drawGThreshold" name="drawGThreshold" checked />
@@ -130,7 +130,7 @@
         Arrows/WASD/Mouse: pan view<br />
         Space: cycle tracked body<br />
         Esc: cancel tracking<br />
-        Home: center viewport<br />
+        Home/0: center viewport<br />
         Scroll: zoom in/out
       </div>
       <div class="padding"></div>

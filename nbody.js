@@ -38,6 +38,7 @@ window.onload = () => {
     fps: document.getElementById("fps"),
     offset: document.getElementById("offset"),
     viewport: document.getElementById("viewport"),
+    zoom: document.getElementById("zoom"),
   };
 
   // initialize main canvas
@@ -281,6 +282,7 @@ window.onload = () => {
       viewport.y /= zoomfactor;
       ctx.fillStyle = "rgba(0, 0, 0, 1)";
       ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
+      ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
     };
 
     window.onkeydown = (event) => {
@@ -292,22 +294,22 @@ window.onload = () => {
           case "ArrowLeft":
           case "KeyA":
             event.preventDefault();
-            panOffset.x = panSpeed;
+            panOffset.x = panSpeed / totalzoom;
             break;
           case "ArrowRight":
           case "KeyD":
             event.preventDefault();
-            panOffset.x = -panSpeed;
+            panOffset.x = -panSpeed / totalzoom;
             break;
           case "ArrowUp":
           case "KeyW":
             event.preventDefault();
-            panOffset.y = panSpeed;
+            panOffset.y = panSpeed / totalzoom;
             break;
           case "ArrowDown":
           case "KeyS":
             event.preventDefault();
-            panOffset.y = -panSpeed;
+            panOffset.y = -panSpeed / totalzoom;
             break;
           case "Space":
             event.preventDefault();
@@ -354,6 +356,9 @@ window.onload = () => {
           case "KeyF":
             ui.fade.click();
             break;
+          case "KeyG":
+            ui.drawGravityStrength.click();
+            break;
           case "KeyU":
           case "KeyV":
             ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
@@ -364,6 +369,7 @@ window.onload = () => {
             }
             break;
           case "Home":
+          case "Digit0":
             pan(
               collide
                 ? { x: -currentOffset.x + collideOffset.x, y: -currentOffset.y + collideOffset.y }
@@ -388,6 +394,7 @@ window.onload = () => {
               viewport.x,
               viewport.y
             );
+            ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
             break;
           default:
             panOffset.x = panOffset.y = 0;
@@ -541,14 +548,15 @@ window.onload = () => {
       return { x: this.vel.x * this.mass, y: this.vel.y * this.mass };
     }
     draw(drawVector = true) {
-      // offscreen indicators
-      // use slope to draw lines pointing toward center
+      this.update(drawGravity);
       if (
         this.pos.x < center.x - viewport.x / 2 - this.radius ||
         this.pos.x > center.x + viewport.x / 2 + this.radius ||
         this.pos.y < center.y - viewport.y / 2 - this.radius ||
         this.pos.y > center.y + viewport.y / 2 + this.radius
       ) {
+        // offscreen indicators
+        // use slope to draw lines pointing toward center
         let bodyPos = { x: this.pos.x - center.x, y: this.pos.y - center.y };
         let slope = (this.pos.y - center.y) / (this.pos.x - center.x);
         let angle = Math.abs(Math.atan2(bodyPos.y, bodyPos.x));
@@ -620,7 +628,8 @@ window.onload = () => {
         }
       }
     }
-    update(accel = { x: 0, y: 0 }, drawGravity = true) {
+    update(drawGravity = true) {
+      let accel = gravity(this, bodies.indexOf(this));
       this.prevPos.x = this.pos.x;
       this.prevPos.y = this.pos.y;
       // edge collision - set accel to 0 when colliding to prevent changes in velocity
@@ -685,7 +694,6 @@ window.onload = () => {
     let dist = { net: 0, x: 0, y: 0 };
     let force = { x: 0, y: 0 };
     let accel = { x: 0, y: 0 };
-    let angle;
     let gForce;
 
     bodies.forEach((body, j) => {
@@ -707,10 +715,9 @@ window.onload = () => {
           // get total gravity
           gForce = (G * (body.mass * currentBody.mass)) / Math.pow(dist.net, 2);
           // get the angle between the two bodies
-          angle = Math.atan2(dist.x, dist.y);
-          force.x += gForce * Math.sin(angle);
-          force.y += gForce * Math.cos(angle);
-          let strength = 1 - 10 / (gForce + 10);
+          force.x += gForce * dist.x / dist.net;
+          force.y += gForce * dist.y / dist.net;
+          let strength = Math.abs(1 - 10 / (gForce + 10));
           let drawThreshold = drawGThreshold ? (trace ? 1e-4 : 1e-2) : 0;
           if (drawGravityStrength && strength >= drawThreshold) {
             ctx.beginPath();
@@ -741,7 +748,7 @@ window.onload = () => {
     let mass = body1.mass + body2.mass;
     let larger = body1.mass > body2.mass ? body1 : body2;
     let smaller = larger === body1 ? body2 : body1;
-    
+
     let momentum = {
       x: body1.getMomentum().x + body2.getMomentum().x,
       y: body1.getMomentum().y + body2.getMomentum().y,
@@ -851,7 +858,7 @@ window.onload = () => {
       collideOffset.x = collideOffset.y = 0;
     }
     bodies.forEach((body, i) => {
-      body.update(gravity(body, i), drawGravity);
+      // body.update(gravity(body, i), drawGravity);
       body.draw(drawVector);
     });
     if (clearTrails) {
