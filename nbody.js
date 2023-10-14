@@ -21,10 +21,9 @@ window.onload = () => {
     G: document.getElementById("g"),
     GOut: document.getElementById("gOut"),
     collide: document.getElementById("collide"),
-    maxSize: document.getElementById("maxSize"),
-    minSize: document.getElementById("minSize"),
+    maxMass: document.getElementById("maxSize"),
+    minMass: document.getElementById("minSize"),
     initVel: document.getElementById("initVel"),
-    initVelOut: document.getElementById("initVelOut"),
     randBtn: document.getElementById("rand"),
     loadBtn: document.getElementById("loadPreset"),
     presets: document.getElementById("presets"),
@@ -44,6 +43,12 @@ window.onload = () => {
     vx: document.getElementById("Vx"),
     vy: document.getElementById("Vy"),
   };
+
+  // utilities
+  const getRadius = (mass) => Math.cbrt((mass * (3 / 4)) / Math.PI);
+
+  const randColor = () =>
+    "#" + Math.floor(Math.random() * (16777215 - 5592405) + 5592405).toString(16);
 
   // initialize main canvas
   const canvas = document.getElementById("canvas");
@@ -85,8 +90,8 @@ window.onload = () => {
     drawGravityStrength,
     drawGThreshold,
     collide,
-    maxSize,
-    minSize,
+    maxMass,
+    minMass,
     initVel,
     timestep,
     oldTimestep,
@@ -126,7 +131,7 @@ window.onload = () => {
     ui.randBtn.onclick = () => {
       // form.collide.checked = true;
       initParams();
-      initRandBodies(numBodies, minSize, maxSize, initVel);
+      initRandBodies(numBodies, minMass, maxMass, initVel);
       activeBodies = bodies.length;
       ui.bodyCount.innerText = activeBodies;
     };
@@ -140,10 +145,10 @@ window.onload = () => {
           ui.drawGravity.checked = drawGravity = false;
           ui.timestep.value = ui.tOut.innerText = 0.5;
           ui.numBodies.value = numBodies = 500;
-          ui.maxSize.value = maxSize = 3;
-          ui.minSize.value = minSize = 2;
+          ui.maxMass.value = maxMass = 100;
+          ui.minMass.value = minMass = 50;
           ui.drawGravityStrength.checked = drawGravityStrength = false;
-          initRandBodies(numBodies, minSize, maxSize, initVel);
+          initRandBodies(numBodies, minMass, maxMass, initVel);
           break;
         case "1": // sun and 3 planets
           ui.collide.checked = false;
@@ -177,7 +182,7 @@ window.onload = () => {
       activeBodies += 1;
       ui.bodyCount.innerText = activeBodies;
       initParams();
-      initRandBodies(1, minSize, maxSize, initVel);
+      initRandBodies(1, minMass, maxMass, initVel);
     };
 
     // clear bodies
@@ -196,10 +201,10 @@ window.onload = () => {
       };
       bodies.forEach((body) => {
         if (
-          body.pos.x > offset.x + canvas.width ||
-          body.pos.x < offset.x ||
-          body.pos.y > offset.y + canvas.height ||
-          body.pos.y < offset.y
+          body.pos.x > offset.x + center.x + viewport.x / 2 ||
+          body.pos.x < offset.x + center.x - viewport.x / 2 ||
+          body.pos.y > offset.y + center.y + viewport.y / 2 ||
+          body.pos.y < offset.y + center.y - viewport.y / 2
         ) {
           remove(bodies, body.id);
         }
@@ -221,15 +226,6 @@ window.onload = () => {
       }
     };
 
-    function initParams() {
-      if (!paused) timestep = ui.timestep.value;
-      initVel = ui.initVel.value;
-      G = ui.G.value;
-      numBodies = ui.numBodies.value;
-      maxSize = ui.maxSize.value;
-      minSize = ui.minSize.value;
-    }
-
     ui.timestep.addEventListener("input", (event) => {
       ui.tOut.innerText = event.target.value;
       timestep = event.target.value;
@@ -241,7 +237,6 @@ window.onload = () => {
     });
 
     ui.initVel.addEventListener("input", (event) => {
-      ui.initVelOut.innerText = event.target.value;
       initVel = event.target.value;
     });
 
@@ -443,7 +438,7 @@ window.onload = () => {
     // Randomly generate bodies based on params
     function initRandBodies(num, minSize = 3, maxSize = 5, v = 0, randColors = true) {
       for (let i = 0; i < num; i++) {
-        let r = randInt(minSize, maxSize);
+        let r = getRadius(randInt(minSize, maxSize));
         bodies.push(
           new Body(
             collide
@@ -527,20 +522,14 @@ window.onload = () => {
     }
   }
 
-  // utilities
-  const getRadius = (mass) => Math.cbrt((mass * (3 / 4)) / Math.PI);
-
-  const randColor = () =>
-    "#" + Math.floor(Math.random() * (16777215 - 5592405) + 5592405).toString(16);
-
   // init form inputs
   function initParams() {
     if (!paused) timestep = ui.timestep.value;
     initVel = ui.initVel.value;
     G = ui.G.value;
     numBodies = ui.numBodies.value;
-    maxSize = ui.maxSize.value;
-    minSize = ui.minSize.value;
+    maxMass = ui.maxMass.value;
+    minMass = ui.minMass.value;
   }
 
   // to remove bodies during collision
@@ -678,7 +667,7 @@ window.onload = () => {
           this.pos.x + this.vel.x * timestep <= -collideOffset.x + currentOffset.x + this.radius
         ) {
           this.vel.x = -this.vel.x;
-          accel.x = 0;
+          this.accel.x = 0;
         }
         if (
           this.pos.y + this.vel.y * timestep >=
@@ -686,7 +675,7 @@ window.onload = () => {
           this.pos.y + this.vel.y * timestep <= -collideOffset.y + currentOffset.y + this.radius
         ) {
           this.vel.y = -this.vel.y;
-          accel.y = 0;
+          this.accel.y = 0;
         }
       }
       // implement acceleration
@@ -695,9 +684,6 @@ window.onload = () => {
       // integrate velocity every frame
       this.pos.x += this.vel.x * timestep;
       this.pos.y += this.vel.y * timestep;
-
-      // draw
-      // this.draw(drawVector);
     }
     toString() {
       return (
@@ -731,7 +717,7 @@ window.onload = () => {
         // get distance
         dist.x = body.pos.x - currentBody.pos.x;
         dist.y = body.pos.y - currentBody.pos.y;
-        dist.net = Math.hypot(dist.x, dist.y);
+        dist.net = Math.max(Math.hypot(dist.x, dist.y), 1);
 
         if (
           dist.net <= body.radius + currentBody.radius &&
