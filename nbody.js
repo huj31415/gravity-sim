@@ -39,6 +39,10 @@ window.onload = () => {
     offset: document.getElementById("offset"),
     viewport: document.getElementById("viewport"),
     zoom: document.getElementById("zoom"),
+    mass: document.getElementById("mass"),
+    radius: document.getElementById("radius"),
+    vx: document.getElementById("Vx"),
+    vy: document.getElementById("Vy"),
   };
 
   // initialize main canvas
@@ -105,6 +109,7 @@ window.onload = () => {
   let totalzoom = 1;
   let viewport = { x: canvas.width, y: canvas.height };
 
+  initParams();
   draw();
 
   // form event listeners
@@ -248,7 +253,19 @@ window.onload = () => {
   // interaction event listeners
   {
     canvas.onmousedown = (event) => {
-      canvas.addEventListener("mousemove", handleMouseMove);
+      event.altKey
+        ? bodies.push(
+            new Body(
+              (event.clientX / canvas.width) * viewport.x + center.x - viewport.x / 2,
+              (event.clientY / canvas.height) * viewport.y + center.y - viewport.y / 2,
+              parseInt(ui.vx.value),
+              parseInt(ui.vy.value),
+              parseInt(ui.radius.value ? ui.radius.value : getRadius(ui.mass.value)),
+              parseInt(ui.mass.value),
+              randColor()
+            )
+          )
+        : canvas.addEventListener("mousemove", handleMouseMove);
     };
     canvas.onmouseup = () => {
       canvas.removeEventListener("mousemove", handleMouseMove);
@@ -280,6 +297,7 @@ window.onload = () => {
       totalzoom *= zoomfactor;
       viewport.x /= zoomfactor;
       viewport.y /= zoomfactor;
+      ui.viewport.innerText = Math.round(viewport.x) + " x " + Math.round(viewport.y);
       ctx.fillStyle = "rgba(0, 0, 0, 1)";
       ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
       ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
@@ -444,9 +462,7 @@ window.onload = () => {
             (Math.random() - 0.5) * 2 * v,
             r,
             0,
-            randColors
-              ? "#" + Math.floor(Math.random() * (16777215 - 5592405) + 5592405).toString(16)
-              : "black"
+            randColors ? randColor() : "white"
           )
         );
       }
@@ -511,9 +527,20 @@ window.onload = () => {
     }
   }
 
-  // simulation
-  function getRadius(mass) {
-    return Math.cbrt((mass * (3 / 4)) / Math.PI);
+  // utilities
+  const getRadius = (mass) => Math.cbrt((mass * (3 / 4)) / Math.PI);
+
+  const randColor = () =>
+    "#" + Math.floor(Math.random() * (16777215 - 5592405) + 5592405).toString(16);
+
+  // init form inputs
+  function initParams() {
+    if (!paused) timestep = ui.timestep.value;
+    initVel = ui.initVel.value;
+    G = ui.G.value;
+    numBodies = ui.numBodies.value;
+    maxSize = ui.maxSize.value;
+    minSize = ui.minSize.value;
   }
 
   // to remove bodies during collision
@@ -715,8 +742,8 @@ window.onload = () => {
           // get total gravity
           gForce = (G * (body.mass * currentBody.mass)) / Math.pow(dist.net, 2);
           // get the angle between the two bodies
-          force.x += gForce * dist.x / dist.net;
-          force.y += gForce * dist.y / dist.net;
+          force.x += (gForce * dist.x) / dist.net;
+          force.y += (gForce * dist.y) / dist.net;
           let strength = Math.abs(1 - 10 / (gForce + 10));
           let drawThreshold = drawGThreshold ? (trace ? 1e-4 : 1e-2) : 0;
           if (drawGravityStrength && strength >= drawThreshold) {

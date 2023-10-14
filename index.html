@@ -11,127 +11,163 @@
     <button id="toggleSettings">&gt;</button>
     <span class="right" id="settings">
       <h2>N-body gravity simulator</h2>
-      <div>Collisions: <span id="collisionCount">0</span></div>
-      <div>Active bodies: <span id="bodyCount">0</span></div>
-      <div>Current FPS: <span id="fps">0</span></div>
-      <div>Viewport: <span id="viewport">0 &times; 0</span></div>
-      <div>Offset: X=<span id="offset">0 Y=0</span> | Zoom: <span id="zoom">100</span>%</div>
-      <hr />
-      <div>
-        <button id="rand">Random (r)</button>
-        <button id="add">Add body (enter)</button>
+      <div id="stats">
+        <p>Collisions: <span id="collisionCount">0</span></p>
+        <p>Viewport: <span id="viewport">0 &times; 0</span></p>
+        <p>Offset: X=<span id="offset">0 Y=0</span> | Zoom: <span id="zoom">100</span>%</p>
       </div>
-      <div>
-        <button id="clear">Clear bodies (bksp)</button>
-        <button id="clrOffscreen">Clear offscreen (del)</button>
+      <div id="simcontrols">
+        <hr />
+        <div>
+          <button id="rand">Random (r)</button>
+          <button id="add">Add rand body (enter)</button>
+        </div>
+        <div>
+          <button id="clear">Clear bodies (bksp)</button>
+          <button id="clrOffscreen">Clear offscreen (del)</button>
+        </div>
+        <div>
+          <select id="presets" name="presets">
+            <option value="0">Preset 0</option>
+            <option value="1">Preset 1</option>
+            <option value="2">Preset 2</option>
+            <option value="3">Preset 3</option>
+            <!-- <option value="4">SolarSystem</option> -->
+          </select>
+          <button id="loadPreset">Load preset</button>
+        </div>
+        <div>
+          <button id="toggle" class="fullwidth">Pause / Play (p)</button>
+        </div>
       </div>
-      <div>
-        <select id="presets" name="presets">
-          <option value="0">Preset 0</option>
-          <option value="1">Preset 1</option>
-          <option value="2">Preset 2</option>
-          <option value="3">Preset 3</option>
-          <!-- <option value="4">SolarSystem</option> -->
-        </select>
-        <button id="loadPreset">Load preset</button>
+      <div id="addbody">
+        <hr />
+        <p class="header">Add a body: Alt+click</p>
+        <div>
+          <input type="number" id="mass" name="mass" value="1000" />
+          <label for="mass">Mass</label>
+        </div>
+        <div>
+          <input type="number" id="radius" name="radius" value="0" />
+          <label for="radius">Radius (0=auto)</label>
+        </div>
+        <div>
+          <input type="number" id="Vx" name="Vx" value="0" />
+          <label for="Vx">Vx</label>
+        </div>
+        <div>
+          <input type="number" id="Vy" name="Vy" value="0" />
+          <label for="Vy">Vy</label>
+        </div>
       </div>
-      <div>
-        <button id="toggle" class="fullwidth">Pause / Play (p)</button>
+      <div id="randbodyparams">
+        <hr />
+        <p class="header">Random body generation params</p>
+        <div>
+          <input type="number" id="num" name="num" value="5" width="400px" />
+          <label for="num">Number of objects</label>
+        </div>
+        <div>
+          <input type="number" id="maxSize" name="maxSize" value="10" width="400px" />
+          <label for="maxSize">Max size</label>
+        </div>
+        <div>
+          <input type="number" id="minSize" name="minSize" value="5" width="400px" />
+          <label for="minSize">Min size</label>
+        </div>
+        <div>
+          <input type="number" id="initVel" name="initVel" value="5" min="0" width="400px" />
+          <label for="initVel">Max init speed (<span id="initVelOut">5</span>)</label>
+        </div>
       </div>
-      <hr />
-      <div>
-        <input type="number" id="num" name="num" value="5" width="400px" />
-        <label for="num">Number of objects</label>
+      <div id="simparams">
+        <hr />
+        <p class="header">Simulation params</p>
+        <div>
+          <input
+            type="range"
+            id="timestep"
+            name="timestep"
+            value="1"
+            max="2"
+            min="0"
+            step="0.01"
+            width="400px"
+          />
+          <label for="timestep">Timestep (<span id="tOut">1</span>)</label>
+        </div>
+        <div>
+          <input
+            type="range"
+            id="g"
+            name="g"
+            value="0.25"
+            max="2"
+            min="-2"
+            step=".01"
+            width="400px"
+          />
+          <label for="g">G constant (<span id="gOut">0.25</span>)</label>
+        </div>
+        <div>
+          <input type="checkbox" id="trace" name="trace" checked />
+          <label for="trace">Trace paths (may reduce FPS) (t)</label>
+        </div>
+        <div>
+          <input type="checkbox" id="continuous" name="continuous" checked />
+          <label for="continuous">Continuous paths (c)</label>
+        </div>
+        <div>
+          <input type="checkbox" id="fade" name="fade" checked />
+          <label for="fade">Fade paths (f)</label>
+        </div>
+        <div>
+          <input type="checkbox" id="vectors" name="vectors" checked />
+          <label for="vectors">Draw motion vectors (blue)</label>
+        </div>
+        <div>
+          <input type="checkbox" id="drawG" name="drawG" checked />
+          <label for="drawG">Draw acceleration vectors (red)</label>
+        </div>
+        <div>
+          <input type="checkbox" id="drawGStrength" name="drawGStrength" checked />
+          <label for="drawGStrength">Draw gravity strength (slow) (g)</label>
+        </div>
+        <div>
+          <input type="checkbox" id="drawGThreshold" name="drawGThreshold" checked />
+          <label for="drawGThreshold">Gravity draw threshold</label>
+        </div>
+        <div>
+          <input type="checkbox" id="collide" name="collide" />
+          <label for="collide">Edge collide (e)</label>
+        </div>
       </div>
-      <div>
-        <input type="number" id="maxSize" name="maxSize" value="10" width="400px" />
-        <label for="maxSize">Max size</label>
+      <div id="graphs">
+        <hr />
+        <div id="graphs">
+          <div>
+            <span style="display: inline-block; width: 140px">FPS: <span id="fps">0</span></span>
+            <span style="display: inline-block; width: 140px"
+              >Active bodies: <span id="bodyCount">0</span></span
+            >
+          </div>
+          <div>
+            <canvas width="140" height="100" id="fpsGraph"></canvas>
+            <canvas width="140" height="100" id="bodyGraph"></canvas>
+          </div>
+        </div>
       </div>
-      <div>
-        <input type="number" id="minSize" name="minSize" value="5" width="400px" />
-        <label for="minSize">Min size</label>
-      </div>
-      <hr />
-      <div>
-        <input
-          type="range"
-          id="timestep"
-          name="timestep"
-          value="1"
-          max="2"
-          min="0"
-          step="0.01"
-          width="400px"
-        />
-        <label for="timestep">Timestep (<span id="tOut">1</span>)</label>
-      </div>
-      <div>
-        <input type="range" id="g" name="g" value="0.25" max="2" min="-2" step=".01" width="400px" />
-        <label for="g">G constant (<span id="gOut">0.25</span>)</label>
-      </div>
-      <div>
-        <input
-          type="range"
-          id="initVel"
-          name="initVel"
-          value="5"
-          max="20"
-          min="0"
-          step="0.1"
-          width="400px"
-        />
-        <label for="initVel">Max init speed (<span id="initVelOut">5</span>)</label>
-      </div>
-      <div>
-        <input type="checkbox" id="trace" name="trace" checked />
-        <label for="trace">Trace paths (may reduce FPS) (t)</label>
-      </div>
-      <div>
-        <input type="checkbox" id="continuous" name="continuous" checked />
-        <label for="continuous">Continuous paths (c)</label>
-      </div>
-      <div>
-        <input type="checkbox" id="fade" name="fade" checked />
-        <label for="fade">Fade paths (f)</label>
-      </div>
-      <div>
-        <input type="checkbox" id="vectors" name="vectors" checked />
-        <label for="vectors">Draw motion vectors (blue)</label>
-      </div>
-      <div>
-        <input type="checkbox" id="drawG" name="drawG" checked />
-        <label for="drawG">Draw acceleration vectors (red)</label>
-      </div>
-      <div>
-        <input type="checkbox" id="drawGStrength" name="drawGStrength" checked />
-        <label for="drawGStrength">Draw gravity strength (slow) (g)</label>
-      </div>
-      <div>
-        <input type="checkbox" id="drawGThreshold" name="drawGThreshold" checked />
-        <label for="drawGThreshold">Gravity draw threshold</label>
-      </div>
-      <div>
-        <input type="checkbox" id="collide" name="collide" />
-        <label for="collide">Edge collide (e)</label>
-      </div>
-      <hr />
-      <div>
-        <span style="display: inline-block; width: 140px">FPS</span>
-        <span style="display: inline-block; width: 140px">Active bodies</span>
-      </div>
-      <div>
-        <canvas width="140" height="100" id="fpsGraph"></canvas>
-        <canvas width="140" height="100" id="bodyGraph"></canvas>
-      </div>
-      <hr />
-      <div>
-        Controls<br />
-        U/V: toggle sidebar<br />
-        Arrows/WASD/Mouse: pan view<br />
-        Space: cycle tracked body<br />
-        Esc: cancel tracking<br />
-        Home/0: center viewport<br />
-        Scroll: zoom in/out
+      <div id="controls">
+        <hr />
+        <p>
+          Controls<br />
+          U/V: toggle sidebar<br />
+          Arrows/WASD/Mouse: pan view<br />
+          Space: cycle tracked body<br />
+          Esc: cancel tracking<br />
+          Home/0: center viewport<br />
+          Scroll: zoom in/out
+        </p>
       </div>
       <div class="padding"></div>
     </span>
