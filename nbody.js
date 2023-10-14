@@ -566,6 +566,7 @@ window.onload = () => {
       this.pos = { x: xPos, y: yPos };
       this.vel = { x: xVel, y: yVel };
       this.prevPos = { x: xPos, y: yPos };
+      this.accel = { x: 0, y: 0 };
       this.radius = r ? r : getRadius(mass);
       this.mass = mass ? mass : (4 / 3) * Math.PI * Math.pow(r, 3);
       this.color = color;
@@ -574,8 +575,7 @@ window.onload = () => {
     getMomentum() {
       return { x: this.vel.x * this.mass, y: this.vel.y * this.mass };
     }
-    draw(drawVector = true) {
-      this.update(drawGravity);
+    draw() {
       if (
         this.pos.x < center.x - viewport.x / 2 - this.radius ||
         this.pos.x > center.x + viewport.x / 2 + this.radius ||
@@ -602,13 +602,6 @@ window.onload = () => {
         ctx.closePath();
         ctx.stroke();
       } else {
-        // draw the circle
-        ctx.beginPath();
-        ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2, true);
-        ctx.closePath();
-        ctx.fillStyle = this.color;
-        ctx.fill();
-
         if (trackBody != this && trace) {
           // connect to previous
           if (continuous && trace) {
@@ -627,6 +620,13 @@ window.onload = () => {
           ctx.fill();
         }
 
+        // draw the body
+        ctx.beginPath();
+        ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2, true);
+        ctx.closePath();
+        ctx.fillStyle = this.color;
+        ctx.fill();
+
         // center
         ctx.beginPath();
         ctx.arc(
@@ -642,7 +642,6 @@ window.onload = () => {
         ctx.fill();
 
         // motion vector
-        ctx.lineWidth = 1;
         if (drawVector) {
           let mult = 10 * timestep;
           ctx.beginPath();
@@ -653,10 +652,22 @@ window.onload = () => {
           ctx.closePath();
           ctx.stroke();
         }
+        // acceleration vector
+        if (drawGravity) {
+          let mult = 50 * timestep;
+          ctx.beginPath();
+          ctx.lineWidth = 1 / totalzoom;
+          ctx.strokeStyle = "red";
+          ctx.moveTo(this.pos.x, this.pos.y);
+          ctx.lineTo(this.pos.x + mult * this.accel.x, this.pos.y + mult * this.accel.y);
+          ctx.closePath();
+          ctx.stroke();
+        }
       }
+      this.update();
     }
-    update(drawGravity = true) {
-      let accel = gravity(this, bodies.indexOf(this));
+    update() {
+      this.accel = gravity(this, bodies.indexOf(this));
       this.prevPos.x = this.pos.x;
       this.prevPos.y = this.pos.y;
       // edge collision - set accel to 0 when colliding to prevent changes in velocity
@@ -678,19 +689,9 @@ window.onload = () => {
           accel.y = 0;
         }
       }
-      if (drawGravity) {
-        let mult = 50 * timestep;
-        ctx.beginPath();
-        ctx.lineWidth = 1 / totalzoom;
-        ctx.strokeStyle = "red";
-        ctx.moveTo(this.pos.x, this.pos.y);
-        ctx.lineTo(this.pos.x + mult * accel.x, this.pos.y + mult * accel.y);
-        ctx.closePath();
-        ctx.stroke();
-      }
       // implement acceleration
-      this.vel.x += accel.x * timestep;
-      this.vel.y += accel.y * timestep;
+      this.vel.x += this.accel.x * timestep;
+      this.vel.y += this.accel.y * timestep;
       // integrate velocity every frame
       this.pos.x += this.vel.x * timestep;
       this.pos.y += this.vel.y * timestep;
