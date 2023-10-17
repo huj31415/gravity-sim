@@ -577,10 +577,10 @@ window.onload = () => {
         let slope = (this.pos.y - center.y) / (this.pos.x - center.x);
         let angle = Math.abs(Math.atan2(bodyPos.y, bodyPos.x));
         let x =
-          (Math.sign(bodyPos.x) * (center.x - (this.radius + 5) * Math.abs(Math.cos(angle)))) /
+          (Math.sign(bodyPos.x) * (center.x - (Math.sqrt(this.radius) + 5) * Math.abs(Math.cos(angle)))) /
           totalzoom;
         let y =
-          (Math.sign(bodyPos.y) * (center.y - (this.radius + 5) * Math.sin(angle))) / totalzoom;
+          (Math.sign(bodyPos.y) * (center.y - (Math.sqrt(this.radius) + 5) * Math.sin(angle))) / totalzoom;
         ctx.beginPath();
         ctx.strokeStyle = this.color;
         ctx.lineWidth = 1 / totalzoom;
@@ -727,7 +727,7 @@ window.onload = () => {
           if (currentBody.id != body.id) collision(currentBody, body);
         } else {
           // get total gravity
-          gForce = (G * (body.mass * currentBody.mass)) / Math.pow(dist.net, 2);
+          gForce = (G * (body.mass * currentBody.mass)) / (dist.net * dist.net);
           // get the angle between the two bodies
           force.x += (gForce * dist.x) / dist.net;
           force.y += (gForce * dist.y) / dist.net;
