@@ -862,7 +862,7 @@ function draw() {
   drawVector = ui.drawVector.checked;
   collide = ui.collide.checked;
 
-  debug = true;
+  // debug = true;
   if (debug) {
     // trace=false;
     drawGravity = false;
