@@ -1,3 +1,6 @@
+// todo: optimize gravity by lumping things a certain distance away together as one gravitating body
+// distance from body and lumping radius is proportional
+
 frameByFrame = 0; // Chromebook Simulator (or for debug purposes)
 
 // initialize user interface
@@ -24,7 +27,6 @@ const ui = {
   loadBtn: document.getElementById("loadPreset"),
   presets: document.getElementById("presets"),
   add: document.getElementById("add"),
-  apply: document.getElementById("apply"),
   clear: document.getElementById("clear"),
   toggle: document.getElementById("toggle"),
   clrOffscreen: document.getElementById("clrOffscreen"),
@@ -164,10 +166,33 @@ draw();
         G = 0.25;
         initOrbitBodies3();
         break;
-      case "4": // solar system
-        ui.collide.checked = false;
-        G = Gconst;
-        initSolarSystem();
+      case "4": // galaxies
+        ui.trace.checked = false;
+        ui.drawGravity.checked = false;
+        ui.drawGravityStrength.checked = false;
+        ui.drawVector.checked = false;
+        ui.timestep.value = ui.tOut.innerText = 0.5;
+        generateGalaxy(
+          {
+            x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
+            y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
+          },
+          { x: randInt(-3, 3), y: randInt(-3, 3) },
+          randInt(250, 750),
+          randInt(250, 750),
+          randInt(0, 1)
+        );
+        generateGalaxy(
+          {
+            x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
+            y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
+          },
+          { x: randInt(-3, 3), y: randInt(-3, 3) },
+          randInt(250, 750),
+          randInt(250, 750),
+          randInt(0, 1)
+        );
+        break;
     }
     activeBodies = bodies.length;
     ui.bodyCount.innerText = activeBodies;
@@ -222,23 +247,26 @@ draw();
     }
   };
 
-  ui.timestep.addEventListener("input", (event) => {
-    ui.tOut.innerText = event.target.value;
-    timestep = event.target.value;
-  });
+  // input listeners
+  {
+    ui.timestep.addEventListener("input", (event) => {
+      ui.tOut.innerText = event.target.value;
+      timestep = event.target.value;
+    });
 
-  ui.G.addEventListener("input", (event) => {
-    ui.GOut.innerText = event.target.value;
-    G = event.target.value;
-  });
+    ui.G.addEventListener("input", (event) => {
+      ui.GOut.innerText = event.target.value;
+      G = event.target.value;
+    });
 
-  ui.initVel.addEventListener("input", (event) => {
-    initVel = event.target.value;
-  });
+    ui.initVel.addEventListener("input", (event) => {
+      initVel = event.target.value;
+    });
 
-  ui.collide.addEventListener("input", (event) => {
-    ui.clrOffscreen.click();
-  });
+    ui.collide.addEventListener("input", (event) => {
+      ui.clrOffscreen.click();
+    });
+  }
 }
 
 // interaction event listeners
@@ -459,6 +487,38 @@ draw();
     }
   }
 
+  function generateGalaxy(
+    centerPos = { x: center.x, y: center.y },
+    vel = { x: 0, y: 0 },
+    num = 500,
+    radius = 500,
+    rotDir = 0
+  ) {
+    // center
+    let centerRadius = 10; //getRadius(num * 100);
+    bodies.push(new Body(centerPos.x, centerPos.y, vel.x, vel.y, 0, num * 100));
+    for (let i = 0; i < num; i++) {
+      let mass = randInt(1, 2);
+      let r = getRadius(mass);
+      let angle = randInt(0, 360);
+      let distance = randInt(centerRadius * 2, radius);
+      let ac = (G * num * 100) / (distance * distance);
+      let speed = Math.sqrt(ac * distance);
+      bodies.push(
+        new Body(
+          centerPos.x + distance * Math.cos(angle),
+          centerPos.y + distance * Math.sin(angle),
+          vel.x + speed * Math.sin(-angle) * (rotDir ? 1 : -1),
+          vel.y + speed * Math.cos(-angle) * (rotDir ? 1 : -1),
+          r,
+          0,
+          "white",
+          false
+        )
+      );
+    }
+  }
+
   // Sun and 3 planets
   function initOrbitBodies1() {
     bodies.push(new Body(center.x, center.y, 0, 0, 50, 0, "yellow"));
@@ -480,25 +540,6 @@ draw();
     bodies.push(new Body(center.x, center.y - 170, 11, 0, 1, 0, "white"));
     bodies.push(new Body(center.x, center.y + 400, -8.7, 0, 5, 0, "blue"));
     bodies.push(new Body(center.x, center.y + 430, -6.7, 0, 1, 0, "white"));
-  }
-
-  function initSolarSystem() {
-    const mScale = 1e-26;
-    const dScale = Math.pow(mScale, 1 / 6);
-    // sun
-    bodies.push(new Body(center.x, center.y, 0, 0, 695508 * dScale, 1.9891e30 * mScale, "yellow"));
-    // mercury
-    bodies.push(
-      new Body(center.x - 50e6 * dScale, center.y, 0, 47.4, (4879 / 2) * dScale, 0.33e24 * mScale)
-    );
-    // venus
-    bodies.push(
-      new Body(center.x + 108e6 * dScale, center.y, 0, -35, (12104 / 2) * dScale, 4.87e24 * mScale)
-    );
-    // earth
-    bodies.push(
-      new Body(center.x - 150e6 * dScale, center.y, 0, 29.8, (12756 / 2) * dScale, 5.97e24 * mScale)
-    );
   }
 }
 
@@ -531,7 +572,16 @@ function randInt(min, max) {
 }
 
 class Body {
-  constructor(xPos = 0, yPos = 0, xVel = 0, yVel = 0, r = 5, mass = 0, color = "gray") {
+  constructor(
+    xPos = 0,
+    yPos = 0,
+    xVel = 0,
+    yVel = 0,
+    r = 5,
+    mass = 0,
+    color = "gray",
+    collide = true
+  ) {
     this.pos = { x: xPos, y: yPos };
     this.vel = { x: xVel, y: yVel };
     this.prevPos = { x: xPos, y: yPos };
@@ -540,6 +590,7 @@ class Body {
     this.mass = mass ? mass : (4 / 3) * Math.PI * Math.pow(r, 3);
     this.color = color;
     this.id = bodyCount++;
+    this.collide = collide;
   }
   getMomentum() {
     return { x: this.vel.x * this.mass, y: this.vel.y * this.mass };
@@ -697,9 +748,10 @@ function gravity(currentBody, index) {
       if (
         dist.r <= body.radius + currentBody.radius &&
         bodies.includes(currentBody) &&
-        bodies.includes(body)
+        bodies.includes(body) &&
+        currentBody.id != body.id
       ) {
-        if (currentBody.id != body.id) collision(currentBody, body);
+        if (body.collide && currentBody.collide) collision(currentBody, body);
       } else {
         // get total gravity
         gForce = (G * (body.mass * currentBody.mass)) / (dist.r * dist.r);
@@ -810,6 +862,14 @@ function draw() {
   drawVector = ui.drawVector.checked;
   collide = ui.collide.checked;
 
+  debug = true;
+  if (debug) {
+    // trace=false;
+    drawGravity = false;
+    drawGravityStrength = false;
+    drawVector = false;
+  }
+
   updateGraphs(100);
 
   frameByFrame ? setTimeout(draw, frameByFrame) : requestAnimationFrame(draw);
@@ -837,6 +897,7 @@ function draw() {
       ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
     }
     ctx.strokeStyle = "white";
+    ctx.lineWidth = 1;
     ctx.strokeRect(
       -collideOffset.x + currentOffset.x,
       -collideOffset.y + currentOffset.y,
