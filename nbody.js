@@ -862,13 +862,13 @@ function draw() {
   drawVector = ui.drawVector.checked;
   collide = ui.collide.checked;
 
-  // debug = true;
-  // if (debug) {
-  //   // trace=false;
-  //   drawGravity = false;
-  //   drawGravityStrength = false;
-  //   drawVector = false;
-  // }
+  debug = false;
+  if (debug) {
+    // trace=false;
+    drawGravity = false;
+    drawGravityStrength = false;
+    drawVector = false;
+  }
 
   updateGraphs(100);
 
