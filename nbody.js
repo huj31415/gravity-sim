@@ -863,12 +863,12 @@ function draw() {
   collide = ui.collide.checked;
 
   // debug = true;
-  if (debug) {
-    // trace=false;
-    drawGravity = false;
-    drawGravityStrength = false;
-    drawVector = false;
-  }
+  // if (debug) {
+  //   // trace=false;
+  //   drawGravity = false;
+  //   drawGravityStrength = false;
+  //   drawVector = false;
+  // }
 
   updateGraphs(100);
 
