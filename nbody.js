@@ -172,25 +172,27 @@ draw();
         ui.drawGravityStrength.checked = false;
         ui.drawVector.checked = false;
         ui.timestep.value = ui.tOut.innerText = 0.5;
+        let g1num = randInt(250, 1000);
+        let g2num = randInt(250, 1000);
         generateGalaxy(
           {
             x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
             y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
           },
-          { x: randInt(-3, 3), y: randInt(-3, 3) },
-          randInt(250, 750),
-          randInt(250, 750),
-          randInt(0, 1)
+          { x: randInt(-1, 1), y: randInt(-1, 1) },
+          g1num,
+          g1num / 2,
+          0
         );
         generateGalaxy(
           {
             x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
             y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
           },
-          { x: randInt(-3, 3), y: randInt(-3, 3) },
-          randInt(250, 750),
-          randInt(250, 750),
-          randInt(0, 1)
+          { x: randInt(-1, 1), y: randInt(-1, 1) },
+          g2num,
+          g2num / 2,
+          randInt(0, 2)
         );
         break;
     }
@@ -494,14 +496,17 @@ draw();
     radius = 500,
     rotDir = 0
   ) {
+    Number.prototype.map = function (in_min, in_max, out_min, out_max) {
+      return ((this - in_min) * (out_max - out_min)) / (in_max - in_min) + out_min;
+    };
     // center
-    let centerRadius = 10; //getRadius(num * 100);
+    let centerRadius = getRadius(num * 100);
     bodies.push(new Body(centerPos.x, centerPos.y, vel.x, vel.y, 0, num * 100));
     for (let i = 0; i < num; i++) {
       let mass = randInt(1, 2);
       let r = getRadius(mass);
       let angle = randInt(0, 360);
-      let distance = randInt(centerRadius * 2, radius);
+      let distance = Math.pow(2, -2 * Math.random()).map(0.25, 1, 0, 1) * radius + centerRadius; //randInt(centerRadius * 2, radius)
       let ac = (G * num * 100) / (distance * distance);
       let speed = Math.sqrt(ac * distance);
       bodies.push(
