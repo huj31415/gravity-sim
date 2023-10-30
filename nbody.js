@@ -40,6 +40,7 @@ const ui = {
   radius: document.getElementById("radius"),
   vx: document.getElementById("Vx"),
   vy: document.getElementById("Vy"),
+  heatmap: document.getElementById("heatmap"),
 };
 
 // utilities
@@ -50,11 +51,13 @@ const randColor = () =>
 
 // initialize main canvas
 const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("2d", { alpha: false, willReadFrequently: true });
 canvas.height = window.innerHeight; // - 25;
 canvas.width = window.innerWidth; // - 335;
 ui.viewport.innerText = canvas.width + " x " + canvas.height;
 let center = { x: canvas.width / 2, y: canvas.height / 2 };
+let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
 // ctx.globalAlpha = 0.5;
 window.onresize = () => {
   canvas.height = window.innerHeight; // - 25;
@@ -63,6 +66,7 @@ window.onresize = () => {
   center = { x: canvas.width / 2, y: canvas.height / 2 };
   viewport.x = canvas.width / totalzoom;
   viewport.y = canvas.height / totalzoom;
+  imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 };
 
 // initialize graphs
@@ -111,6 +115,9 @@ let newBody = false;
 let zoomfactor = 1;
 let totalzoom = 1;
 let viewport = { x: canvas.width, y: canvas.height };
+
+// heatmap
+let maxBody, minPotential = 0;
 
 initParams();
 draw();
@@ -267,6 +274,13 @@ draw();
 
     ui.collide.addEventListener("input", (event) => {
       ui.clrOffscreen.click();
+    });
+
+    ui.heatmap.addEventListener("input", (event) => {
+      ui.trace.checked = trace = false;
+      ui.drawGravityStrength.checked = drawGravityStrength = false;
+      ui.drawVector.checked = drawVector = false;
+      ui.drawGravity.checked = drawGravity = false;
     });
   }
 }
@@ -496,9 +510,6 @@ draw();
     radius = 500,
     rotDir = 0
   ) {
-    Number.prototype.map = function (in_min, in_max, out_min, out_max) {
-      return ((this - in_min) * (out_max - out_min)) / (in_max - in_min) + out_min;
-    };
     // center
     let centerRadius = getRadius(num * 100);
     bodies.push(new Body(centerPos.x, centerPos.y, vel.x, vel.y, 0, num * 100));
@@ -575,6 +586,11 @@ function randInt(min, max) {
   max = Math.floor(max);
   return Math.floor(Math.random() * (max - min) + min); // The maximum is exclusive and the minimum is inclusive
 }
+
+// map values from one range to another
+Number.prototype.map = function (in_min, in_max, out_min, out_max) {
+  return ((this - in_min) * (out_max - out_min)) / (in_max - in_min) + out_min;
+};
 
 class Body {
   constructor(
@@ -767,7 +783,7 @@ function gravity(currentBody, index) {
         let drawThreshold = drawGThreshold ? (trace ? 1e-4 : 1e-2) : 0;
         if (drawGravityStrength && strength >= drawThreshold) {
           ctx.beginPath();
-          ctx.strokeStyle =
+          ctx.strokeStyle = //"hsla(" + strength + ", 100, 50, 0)";
             "rgba(" + (255 - 255 * strength) + "," + 255 * strength + ",0 ," + strength + ")";
           ctx.lineWidth = 1 / totalzoom;
           ctx.moveTo(body.pos.x, body.pos.y);
@@ -866,10 +882,11 @@ function draw() {
   drawGThreshold = ui.drawGThreshold.checked;
   drawVector = ui.drawVector.checked;
   collide = ui.collide.checked;
+  drawField = ui.heatmap.checked;
 
   debug = false;
   if (debug) {
-    // trace=false;
+    trace = false;
     drawGravity = false;
     drawGravityStrength = false;
     drawVector = false;
@@ -879,6 +896,8 @@ function draw() {
 
   frameByFrame ? setTimeout(draw, frameByFrame) : requestAnimationFrame(draw);
 
+  maxBody = bodies[0];
+
   if (trackBody) track(trackBody);
   if (panOffset.x != 0 || panOffset.y != 0) {
     pan(panOffset, false);
@@ -887,6 +906,9 @@ function draw() {
   if (fade && trace && timestep) {
     ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
     ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
+  } else if (!trace && drawField && bodies[0] != null) {
+    calcField(imgData.data);
+    ctx.putImageData(imgData, 0, 0);
   } else if (!trace) {
     ctx.fillStyle = "rgba(0, 0, 0, 1)";
     ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
@@ -912,14 +934,48 @@ function draw() {
   } else {
     collideOffset.x = collideOffset.y = 0;
   }
-  bodies.forEach((body, i) => {
-    // body.update(gravity(body, i), drawGravity);
+  bodies.forEach((body) => {
+    if (drawField && body.mass > maxBody.mass) maxBody = body;
     body.draw(drawVector);
   });
   if (clearTrails) {
     ctx.fillStyle = "rgba(0, 0, 0, 1)";
     ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
     clearTrails = false;
+  }
+}
+
+function calcField(data) {
+  let hslToRgb = (
+    h,
+    s,
+    l,
+    a = s * Math.min(l, 1 - l),
+    f = (n, k = (n + h / 30) % 12) => l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1)
+  ) => [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+
+  for (var i = 0; i < data.length; i += 4) {
+    let pixel = Math.floor(i / 4);
+    let xCoord = pixel % canvas.width;
+    let yCoord = Math.floor(pixel / canvas.width);
+    let potential = 0;
+    let maxPotential = Math.sqrt((G * maxBody.mass) / maxBody.radius);
+    bodies.forEach((body) => {
+      let distance = Math.hypot(body.pos.x - xCoord, body.pos.y - yCoord);
+      if (distance >= body.radius - 2) {
+        potential += (G * body.mass) / distance;
+      }
+    });
+    // if (i === 0 || potential < minPotential) minPotential = potential; // adjust minimum
+    let color = hslToRgb(
+      240 - Math.sqrt(potential).map(minPotential, maxPotential, 0, 240),
+      1,
+      Math.sqrt(potential).map(minPotential, maxPotential, 0, 0.5)
+    );
+    data[i] = color[0];
+    data[i + 1] = color[1];
+    data[i + 2] = color[2];
+    data[i + 3] = 255;
   }
 }
 
