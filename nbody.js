@@ -117,7 +117,9 @@ let totalzoom = 1;
 let viewport = { x: canvas.width, y: canvas.height };
 
 // heatmap
-let maxBody, minPotential = 0;
+let maxBody,
+  minPotential = 0;
+let heatmapRes = 4;
 
 initParams();
 draw();
@@ -677,6 +679,21 @@ class Body {
       ctx.fillStyle = this.radius < 3 ? "white" : "black";
       ctx.fill();
 
+      if (drawField) {
+        ctx.strokeStyle = "black";
+        ctx.beginPath();
+        ctx.arc(
+          this.pos.x,
+          this.pos.y,
+          this.radius,
+          0,
+          Math.PI * 2,
+          true
+        );
+        ctx.closePath();
+        ctx.stroke();
+      }
+
       // motion vector
       if (drawVector) {
         let mult = 10 * timestep;
@@ -907,8 +924,10 @@ function draw() {
     ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
     ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
   } else if (!trace && drawField && bodies[0] != null) {
+    ctx.fillStyle = "rgba(0, 0, 0, 1)";
+    ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
     calcField(imgData.data);
-    ctx.putImageData(imgData, 0, 0);
+    // ctx.putImageData(imgData, 0, 0);
   } else if (!trace) {
     ctx.fillStyle = "rgba(0, 0, 0, 1)";
     ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
@@ -954,28 +973,36 @@ function calcField(data) {
     f = (n, k = (n + h / 30) % 12) => l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1)
   ) => [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
 
+  let color = [];
   for (var i = 0; i < data.length; i += 4) {
     let pixel = Math.floor(i / 4);
     let xCoord = pixel % canvas.width;
     let yCoord = Math.floor(pixel / canvas.width);
-    let potential = 0;
-    let maxPotential = Math.sqrt((G * maxBody.mass) / maxBody.radius);
-    bodies.forEach((body) => {
-      let distance = Math.hypot(body.pos.x - xCoord, body.pos.y - yCoord);
-      if (distance >= body.radius - 2) {
-        potential += (G * body.mass) / distance;
+    let x = (1 / totalzoom) * xCoord - ((1 / totalzoom - 1) * canvas.width) / 2;
+    let y = (1 / totalzoom) * yCoord - ((1 / totalzoom - 1) * canvas.height) / 2;
+    let maxPotential = (G * maxBody.mass) / (maxBody.radius - 2) ** 2;
+    if (xCoord % heatmapRes === 0 && yCoord % heatmapRes === 0) {
+      let potential = 0;
+      bodies.forEach((body) => {
+        let distance = Math.hypot(body.pos.x - x - heatmapRes / 2, body.pos.y - y - heatmapRes / 2); // include a sign so that it can cancel out?
+        if (distance >= body.radius - 2) {
+          potential += (G * body.mass) / (distance * distance);
+        }
+      });
+      if (potential >= 0.5) {
+        color = hslToRgb(
+          240 - potential.map(minPotential, maxPotential, 0, 240),
+          1,
+          potential.map(minPotential, maxPotential, 0, 0.5)
+        );
+        ctx.fillStyle = "rgba(" + color[0] + "," + color[1] + "," + color[2] + ", 1)";
+        ctx.fillRect(x, y, heatmapRes / totalzoom, heatmapRes / totalzoom);
       }
-    });
-    // if (i === 0 || potential < minPotential) minPotential = potential; // adjust minimum
-    let color = hslToRgb(
-      240 - Math.sqrt(potential).map(minPotential, maxPotential, 0, 240),
-      1,
-      Math.sqrt(potential).map(minPotential, maxPotential, 0, 0.5)
-    );
-    data[i] = color[0];
-    data[i + 1] = color[1];
-    data[i + 2] = color[2];
-    data[i + 3] = 255;
+    }
+    // data[i] = color[0];
+    // data[i + 1] = color[1];
+    // data[i + 2] = color[2];
+    // data[i + 3] = 255;
   }
 }
 
