@@ -980,12 +980,12 @@ function calcField(data) {
     let yCoord = Math.floor(pixel / canvas.width);
     let x = (1 / totalzoom) * xCoord - ((1 / totalzoom - 1) * canvas.width) / 2;
     let y = (1 / totalzoom) * yCoord - ((1 / totalzoom - 1) * canvas.height) / 2;
-    let maxPotential = (G * maxBody.mass) / (maxBody.radius - 2) ** 2;
+    let maxPotential = (G * maxBody.mass) / (maxBody.radius) ** 2;
     if (xCoord % heatmapRes === 0 && yCoord % heatmapRes === 0) {
       let potential = 0;
       bodies.forEach((body) => {
         let distance = Math.hypot(body.pos.x - x - heatmapRes / 2, body.pos.y - y - heatmapRes / 2); // include a sign so that it can cancel out?
-        if (distance >= body.radius - 2) {
+        if (distance >= body.radius - heatmapRes) {
           potential += (G * body.mass) / (distance * distance);
         }
       });
