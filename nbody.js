@@ -50,23 +50,21 @@ const randColor = () =>
   "#" + Math.floor(Math.random() * (16777215 - 5592405) + 5592405).toString(16);
 
 // initialize main canvas
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d", { alpha: false, willReadFrequently: true });
+const canvas = document.getElementById("canvas", { alpha: false });
+const ctx = canvas.getContext("2d");
 canvas.height = window.innerHeight; // - 25;
 canvas.width = window.innerWidth; // - 335;
 ui.viewport.innerText = canvas.width + " x " + canvas.height;
 let center = { x: canvas.width / 2, y: canvas.height / 2 };
-let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
 // ctx.globalAlpha = 0.5;
 window.onresize = () => {
   canvas.height = window.innerHeight; // - 25;
-  canvas.width = window.innerWidth; // - 350;
+  canvas.width = window.innerWidth; // - 335;
   ui.viewport.innerText = canvas.width + " x " + canvas.height;
   center = { x: canvas.width / 2, y: canvas.height / 2 };
   viewport.x = canvas.width / totalzoom;
   viewport.y = canvas.height / totalzoom;
-  imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 };
 
 // initialize graphs
@@ -290,7 +288,7 @@ draw();
 // interaction event listeners
 {
   canvas.onmousedown = (event) => {
-    event.altKey
+    event.ctrlKey || event.altKey
       ? bodies.push(
           new Body(
             (event.clientX / canvas.width) * viewport.x + center.x - viewport.x / 2,
@@ -322,22 +320,24 @@ draw();
   }
 
   canvas.onwheel = (event) => {
-    zoomfactor = Math.sign(event.deltaY) < 0 ? 1.05 : 1 / 1.05;
-    ctx.transform(
-      zoomfactor,
-      0,
-      0,
-      zoomfactor,
-      (-(zoomfactor - 1) * canvas.width) / 2,
-      (-(zoomfactor - 1) * canvas.height) / 2
-    );
-    totalzoom *= zoomfactor;
-    viewport.x /= zoomfactor;
-    viewport.y /= zoomfactor;
-    ui.viewport.innerText = Math.round(viewport.x) + " x " + Math.round(viewport.y);
-    ctx.fillStyle = "rgba(0, 0, 0, 1)";
-    ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
-    ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
+    if (!event.ctrlKey) {
+      zoomfactor = Math.sign(event.deltaY) < 0 ? 1.05 : 1 / 1.05;
+      ctx.transform(
+        zoomfactor,
+        0,
+        0,
+        zoomfactor,
+        (-(zoomfactor - 1) * canvas.width) / 2,
+        (-(zoomfactor - 1) * canvas.height) / 2
+      );
+      totalzoom *= zoomfactor;
+      viewport.x /= zoomfactor;
+      viewport.y /= zoomfactor;
+      ui.viewport.innerText = Math.round(viewport.x) + " x " + Math.round(viewport.y);
+      ctx.fillStyle = "rgba(0, 0, 0, 1)";
+      ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
+      ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
+    }
   };
 
   window.onkeydown = (event) => {
@@ -451,8 +451,52 @@ draw();
           );
           ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
           break;
-        default:
-          panOffset.x = panOffset.y = 0;
+        case "KeyZ":
+          zoomfactor = 1.05;
+          ctx.transform(
+            zoomfactor,
+            0,
+            0,
+            zoomfactor,
+            (-(zoomfactor - 1) * canvas.width) / 2,
+            (-(zoomfactor - 1) * canvas.height) / 2
+          );
+          totalzoom *= zoomfactor;
+          viewport.x /= zoomfactor;
+          viewport.y /= zoomfactor;
+          ui.viewport.innerText = Math.round(viewport.x) + " x " + Math.round(viewport.y);
+          ctx.fillStyle = "rgba(0, 0, 0, 1)";
+          ctx.fillRect(
+            center.x - viewport.x / 2,
+            center.y - viewport.y / 2,
+            viewport.x,
+            viewport.y
+          );
+          ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
+          break;
+        case "KeyX":
+          zoomfactor = 1 / 1.05;
+          ctx.transform(
+            zoomfactor,
+            0,
+            0,
+            zoomfactor,
+            (-(zoomfactor - 1) * canvas.width) / 2,
+            (-(zoomfactor - 1) * canvas.height) / 2
+          );
+          totalzoom *= zoomfactor;
+          viewport.x /= zoomfactor;
+          viewport.y /= zoomfactor;
+          ui.viewport.innerText = Math.round(viewport.x) + " x " + Math.round(viewport.y);
+          ctx.fillStyle = "rgba(0, 0, 0, 1)";
+          ctx.fillRect(
+            center.x - viewport.x / 2,
+            center.y - viewport.y / 2,
+            viewport.x,
+            viewport.y
+          );
+          ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
+          break;
       }
     }
   };
@@ -682,14 +726,7 @@ class Body {
       if (drawField) {
         ctx.strokeStyle = "black";
         ctx.beginPath();
-        ctx.arc(
-          this.pos.x,
-          this.pos.y,
-          this.radius,
-          0,
-          Math.PI * 2,
-          true
-        );
+        ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2, true);
         ctx.closePath();
         ctx.stroke();
       }
@@ -800,7 +837,7 @@ function gravity(currentBody, index) {
         let drawThreshold = drawGThreshold ? (trace ? 1e-4 : 1e-2) : 0;
         if (drawGravityStrength && strength >= drawThreshold) {
           ctx.beginPath();
-          ctx.strokeStyle = //"hsla(" + strength + ", 100, 50, 0)";
+          ctx.strokeStyle = //"hsl(" + strength + ", 100, 50)";
             "rgba(" + (255 - 255 * strength) + "," + 255 * strength + ",0 ," + strength + ")";
           ctx.lineWidth = 1 / totalzoom;
           ctx.moveTo(body.pos.x, body.pos.y);
@@ -923,11 +960,8 @@ function draw() {
   if (fade && trace && timestep) {
     ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
     ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
-  } else if (!trace && drawField && bodies[0] != null) {
-    ctx.fillStyle = "rgba(0, 0, 0, 1)";
-    ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
-    calcField(imgData.data);
-    // ctx.putImageData(imgData, 0, 0);
+  } else if (!trace && drawField && maxBody != null) {
+    calcField();
   } else if (!trace) {
     ctx.fillStyle = "rgba(0, 0, 0, 1)";
     ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
@@ -964,7 +998,7 @@ function draw() {
   }
 }
 
-function calcField(data) {
+function calcField() {
   let hslToRgb = (
     h,
     s,
@@ -974,35 +1008,37 @@ function calcField(data) {
   ) => [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
 
   let color = [];
-  for (var i = 0; i < data.length; i += 4) {
-    let pixel = Math.floor(i / 4);
-    let xCoord = pixel % canvas.width;
-    let yCoord = Math.floor(pixel / canvas.width);
-    let x = (1 / totalzoom) * xCoord - ((1 / totalzoom - 1) * canvas.width) / 2;
-    let y = (1 / totalzoom) * yCoord - ((1 / totalzoom - 1) * canvas.height) / 2;
-    let maxPotential = (G * maxBody.mass) / (maxBody.radius) ** 2;
-    if (xCoord % heatmapRes === 0 && yCoord % heatmapRes === 0) {
-      let potential = 0;
+  let minL = 0.1;
+  let bgColor = hslToRgb(240, 1, minL);
+  let res = Math.ceil(heatmapRes / totalzoom);
+
+  ctx.fillStyle = "rgba(" + bgColor[0] + "," + bgColor[1] + "," + bgColor[2] + ", 1)";
+  ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
+
+  let maxPotential = (G * maxBody.mass) / maxBody.radius ** 2;
+
+  for (let y = Math.floor(center.y - viewport.y / 2); y <= center.y + viewport.y / 2; y += res) {
+    for (let x = Math.floor(center.x - viewport.x / 2); x <= center.x + viewport.x / 2; x += res) {
+      let xyPotential = { x: 0, y: 0 };
       bodies.forEach((body) => {
-        let distance = Math.hypot(body.pos.x - x - heatmapRes / 2, body.pos.y - y - heatmapRes / 2); // include a sign so that it can cancel out?
-        if (distance >= body.radius - heatmapRes) {
-          potential += (G * body.mass) / (distance * distance);
+        let distance = Math.hypot(body.pos.x - x - res / 2, body.pos.y - y - res / 2);
+        if (distance >= body.radius - res) {
+          let gForce = (G * body.mass) / (distance * distance);
+          xyPotential.x += (gForce * (body.pos.x - x)) / distance;
+          xyPotential.y += (gForce * (body.pos.y - y)) / distance;
         }
       });
-      if (potential >= 0.5) {
+      let potential = Math.hypot(xyPotential.x, xyPotential.y);
+      if (potential >= 0.05) {
         color = hslToRgb(
           240 - potential.map(minPotential, maxPotential, 0, 240),
           1,
-          potential.map(minPotential, maxPotential, 0, 0.5)
+          potential.map(minPotential, maxPotential, minL, 0.5)
         );
         ctx.fillStyle = "rgba(" + color[0] + "," + color[1] + "," + color[2] + ", 1)";
-        ctx.fillRect(x, y, heatmapRes / totalzoom, heatmapRes / totalzoom);
+        ctx.fillRect(x, y, res + 1, res + 1);
       }
     }
-    // data[i] = color[0];
-    // data[i + 1] = color[1];
-    // data[i + 2] = color[2];
-    // data[i + 3] = 255;
   }
 }
 

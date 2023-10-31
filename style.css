@@ -7,6 +7,7 @@ body {
 
 canvas {
   border: 1px solid black;
+  background: black;
   /* width: 100%; */
   zoom: 100%;
 }
@@ -18,7 +19,6 @@ canvas.main {
   padding: 0px;
   left: 0;
   top: 0;
-  background: black;
 }
 
 input[type="range"],
