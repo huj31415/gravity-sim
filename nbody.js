@@ -230,12 +230,7 @@ draw();
       y: collide ? -collideOffset.y + currentOffset.y : 0,
     };
     bodies.forEach((body) => {
-      if (
-        body.pos.x > offset.x + center.x + viewport.x / 2 ||
-        body.pos.x < offset.x + center.x - viewport.x / 2 ||
-        body.pos.y > offset.y + center.y + viewport.y / 2 ||
-        body.pos.y < offset.y + center.y - viewport.y / 2
-      ) {
+      if (!isInView(body)) {
         remove(bodies, body.id);
       }
     });
@@ -258,6 +253,9 @@ draw();
 
   // input listeners
   {
+    ui.trace.addEventListener("input", () => {
+      ui.heatmap.checked = false;
+    });
     ui.timestep.addEventListener("input", (event) => {
       ui.tOut.innerText = event.target.value;
       timestep = event.target.value;
@@ -272,11 +270,11 @@ draw();
       initVel = event.target.value;
     });
 
-    ui.collide.addEventListener("input", (event) => {
+    ui.collide.addEventListener("input", () => {
       ui.clrOffscreen.click();
     });
 
-    ui.heatmap.addEventListener("input", (event) => {
+    ui.heatmap.addEventListener("input", () => {
       ui.trace.checked = trace = false;
       ui.drawGravityStrength.checked = drawGravityStrength = false;
       ui.drawVector.checked = drawVector = false;
@@ -633,6 +631,12 @@ function randInt(min, max) {
   return Math.floor(Math.random() * (max - min) + min); // The maximum is exclusive and the minimum is inclusive
 }
 
+const isInView = (body) =>
+  body.pos.x <= center.x + viewport.x / 2 &&
+  body.pos.x >= center.x - viewport.x / 2 &&
+  body.pos.y <= center.y + viewport.y / 2 &&
+  body.pos.y >= center.y - viewport.y / 2;
+
 // map values from one range to another
 Number.prototype.map = function (in_min, in_max, out_min, out_max) {
   return ((this - in_min) * (out_max - out_min)) / (in_max - in_min) + out_min;
@@ -952,43 +956,46 @@ function draw() {
 
   maxBody = bodies[0];
 
-  if (trackBody) track(trackBody);
-  if (panOffset.x != 0 || panOffset.y != 0) {
-    pan(panOffset, false);
-    trace = false;
-  }
-  if (fade && trace && timestep) {
-    ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
-    ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
-  } else if (!trace && drawField && maxBody != null) {
-    calcField();
-  } else if (!trace) {
-    ctx.fillStyle = "rgba(0, 0, 0, 1)";
-    ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
-  }
-  // draw collision box
-  if (collide) {
-    if (!collideOffset.x && !collideOffset.y) {
-      collideOffset.x = currentOffset.x;
-      collideOffset.y = currentOffset.y;
+  // check draw settings and draw stuff
+  {
+    if (trackBody) track(trackBody);
+    if (panOffset.x != 0 || panOffset.y != 0) {
+      pan(panOffset, false);
+      trace = false;
     }
-    if (trackBody) {
+    if (fade && trace && timestep) {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+      ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
+    } else if (!trace && drawField && maxBody != null) {
+      calcField();
+    } else if (!trace) {
       ctx.fillStyle = "rgba(0, 0, 0, 1)";
       ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
     }
-    ctx.strokeStyle = "white";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(
-      -collideOffset.x + currentOffset.x,
-      -collideOffset.y + currentOffset.y,
-      canvas.width,
-      canvas.height
-    );
-  } else {
-    collideOffset.x = collideOffset.y = 0;
+    // draw collision box
+    if (collide) {
+      if (!collideOffset.x && !collideOffset.y) {
+        collideOffset.x = currentOffset.x;
+        collideOffset.y = currentOffset.y;
+      }
+      if (trackBody) {
+        ctx.fillStyle = "rgba(0, 0, 0, 1)";
+        ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
+      }
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(
+        -collideOffset.x + currentOffset.x,
+        -collideOffset.y + currentOffset.y,
+        canvas.width,
+        canvas.height
+      );
+    } else {
+      collideOffset.x = collideOffset.y = 0;
+    }
   }
   bodies.forEach((body) => {
-    if (drawField && body.mass > maxBody.mass) maxBody = body;
+    if (drawField && body.mass > maxBody.mass && isInView(body)) maxBody = body;
     body.draw(drawVector);
   });
   if (clearTrails) {
@@ -1010,15 +1017,15 @@ function calcField() {
   let color = [];
   let minL = 0.1;
   let bgColor = hslToRgb(240, 1, minL);
-  let res = Math.ceil(heatmapRes / totalzoom);
+  let res = heatmapRes / totalzoom;
 
   ctx.fillStyle = "rgba(" + bgColor[0] + "," + bgColor[1] + "," + bgColor[2] + ", 1)";
   ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
 
-  let maxPotential = (G * maxBody.mass) / maxBody.radius ** 2;
+  let maxPotential = (0.25 * maxBody.mass) / maxBody.radius ** 2;
 
-  for (let y = Math.floor(center.y - viewport.y / 2); y <= center.y + viewport.y / 2; y += res) {
-    for (let x = Math.floor(center.x - viewport.x / 2); x <= center.x + viewport.x / 2; x += res) {
+  for (let y = center.y - viewport.y / 2; y <= center.y + viewport.y / 2; y += res) {
+    for (let x = center.x - viewport.x / 2; x <= center.x + viewport.x / 2; x += res) {
       let xyPotential = { x: 0, y: 0 };
       bodies.forEach((body) => {
         let distance = Math.hypot(body.pos.x - x - res / 2, body.pos.y - y - res / 2);
