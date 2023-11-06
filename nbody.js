@@ -38,6 +38,8 @@ const ui = {
   zoom: document.getElementById("zoom"),
   mass: document.getElementById("mass"),
   radius: document.getElementById("radius"),
+  xp: document.getElementById("xPos"),
+  yp: document.getElementById("yPos"),
   vx: document.getElementById("Vx"),
   vy: document.getElementById("Vy"),
   heatmap: document.getElementById("heatmap"),
@@ -52,15 +54,14 @@ const randColor = () =>
 // initialize main canvas
 const canvas = document.getElementById("canvas", { alpha: false });
 const ctx = canvas.getContext("2d");
-canvas.height = window.innerHeight; // - 25;
-canvas.width = window.innerWidth; // - 335;
+canvas.height = window.innerHeight;
+canvas.width = window.innerWidth;
 ui.viewport.innerText = canvas.width + " x " + canvas.height;
 let center = { x: canvas.width / 2, y: canvas.height / 2 };
 
-// ctx.globalAlpha = 0.5;
 window.onresize = () => {
-  canvas.height = window.innerHeight; // - 25;
-  canvas.width = window.innerWidth; // - 335;
+  canvas.height = window.innerHeight;
+  canvas.width = window.innerWidth;
   ui.viewport.innerText = canvas.width + " x " + canvas.height;
   center = { x: canvas.width / 2, y: canvas.height / 2 };
   viewport.x = canvas.width / totalzoom;
@@ -115,8 +116,8 @@ let totalzoom = 1;
 let viewport = { x: canvas.width, y: canvas.height };
 
 // heatmap
-let maxBody,
-  minPotential = 0;
+let maxBody;
+let minPotential = 0;
 let heatmapRes = 4;
 
 initParams();
@@ -225,10 +226,6 @@ draw();
   };
 
   ui.clrOffscreen.onclick = () => {
-    let offset = {
-      x: collide ? -collideOffset.x + currentOffset.x : 0,
-      y: collide ? -collideOffset.y + currentOffset.y : 0,
-    };
     bodies.forEach((body) => {
       if (!isInView(body)) {
         remove(bodies, body.id);
@@ -289,8 +286,8 @@ draw();
     event.ctrlKey || event.altKey
       ? bodies.push(
           new Body(
-            (event.clientX / canvas.width) * viewport.x + center.x - viewport.x / 2,
-            (event.clientY / canvas.height) * viewport.y + center.y - viewport.y / 2,
+            ui.xp.value ? parseInt(ui.xp.value) : (event.clientX / canvas.width) * viewport.x + center.x - viewport.x / 2,
+            ui.yp.value ? parseInt(ui.yp.value) : (event.clientY / canvas.height) * viewport.y + center.y - viewport.y / 2,
             parseInt(ui.vx.value),
             parseInt(ui.vy.value),
             parseInt(ui.radius.value ? ui.radius.value : getRadius(ui.mass.value)),
@@ -619,7 +616,7 @@ function remove(arr, id) {
   if (index !== -1) {
     arr.splice(index, 1);
   } else {
-    console.error("did not remove", id);
+    console.error("Could not remove ", id);
   }
   return arr;
 }
@@ -632,14 +629,17 @@ function randInt(min, max) {
 }
 
 const isInView = (body) =>
-  body.pos.x <= center.x + viewport.x / 2 &&
-  body.pos.x >= center.x - viewport.x / 2 &&
-  body.pos.y <= center.y + viewport.y / 2 &&
-  body.pos.y >= center.y - viewport.y / 2;
+  body.pos.x <= center.x + viewport.x / 2 + body.radius &&
+  body.pos.x >= center.x - viewport.x / 2 - body.radius&&
+  body.pos.y <= center.y + viewport.y / 2 + body.radius &&
+  body.pos.y >= center.y - viewport.y / 2 - body.radius;
 
 // map values from one range to another
-Number.prototype.map = function (in_min, in_max, out_min, out_max) {
-  return ((this - in_min) * (out_max - out_min)) / (in_max - in_min) + out_min;
+Number.prototype.map = function (in_min, in_max, out_min, out_max, clampMax = false, clampMin = false) {
+  let mapped = ((this - in_min) * (out_max - out_min)) / (in_max - in_min) + out_min;
+  mapped = mapped <= out_max || !clampMax ? mapped : out_max;
+  mapped = mapped >= out_min || !clampMin ? mapped : out_min;
+  return mapped;
 };
 
 class Body {
@@ -667,12 +667,7 @@ class Body {
     return { x: this.vel.x * this.mass, y: this.vel.y * this.mass };
   }
   draw() {
-    if (
-      this.pos.x < center.x - viewport.x / 2 - this.radius ||
-      this.pos.x > center.x + viewport.x / 2 + this.radius ||
-      this.pos.y < center.y - viewport.y / 2 - this.radius ||
-      this.pos.y > center.y + viewport.y / 2 + this.radius
-    ) {
+    if (!isInView(this)) {
       // offscreen indicators
       // use slope to draw lines pointing toward center
       let bodyPos = { x: this.pos.x - center.x, y: this.pos.y - center.y };
@@ -834,6 +829,7 @@ function gravity(currentBody, index) {
       } else {
         // get total gravity
         gForce = (G * (body.mass * currentBody.mass)) / (dist.r * dist.r);
+
         // get the angle between the two bodies
         force.x += (gForce * dist.x) / dist.r;
         force.y += (gForce * dist.y) / dist.r;
@@ -841,7 +837,7 @@ function gravity(currentBody, index) {
         let drawThreshold = drawGThreshold ? (trace ? 1e-4 : 1e-2) : 0;
         if (drawGravityStrength && strength >= drawThreshold) {
           ctx.beginPath();
-          ctx.strokeStyle = //"hsl(" + strength + ", 100, 50)";
+          ctx.strokeStyle =
             "rgba(" + (255 - 255 * strength) + "," + 255 * strength + ",0 ," + strength + ")";
           ctx.lineWidth = 1 / totalzoom;
           ctx.moveTo(body.pos.x, body.pos.y);
@@ -966,7 +962,7 @@ function draw() {
     if (fade && trace && timestep) {
       ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
       ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
-    } else if (!trace && drawField && maxBody != null) {
+    } else if (!trace && drawField && maxBody != null && G) {
       calcField();
     } else if (!trace) {
       ctx.fillStyle = "rgba(0, 0, 0, 1)";
@@ -994,9 +990,10 @@ function draw() {
       collideOffset.x = collideOffset.y = 0;
     }
   }
+  // loop through bodies, draw and update
   bodies.forEach((body) => {
-    if (drawField && body.mass > maxBody.mass && isInView(body)) maxBody = body;
-    body.draw(drawVector);
+    if (drawField && body.mass > maxBody.mass) maxBody = body;
+    body.draw();
   });
   if (clearTrails) {
     ctx.fillStyle = "rgba(0, 0, 0, 1)";
@@ -1006,20 +1003,10 @@ function draw() {
 }
 
 function calcField() {
-  let hslToRgb = (
-    h,
-    s,
-    l,
-    a = s * Math.min(l, 1 - l),
-    f = (n, k = (n + h / 30) % 12) => l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1)
-  ) => [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
-
-  let color = [];
   let minL = 0.1;
-  let bgColor = hslToRgb(240, 1, minL);
   let res = heatmapRes / totalzoom;
 
-  ctx.fillStyle = "rgba(" + bgColor[0] + "," + bgColor[1] + "," + bgColor[2] + ", 1)";
+  ctx.fillStyle = "hsl(240, 100%, " + (minL * 100) + "%)";
   ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
 
   let maxPotential = (0.25 * maxBody.mass) / maxBody.radius ** 2;
@@ -1037,13 +1024,11 @@ function calcField() {
       });
       let potential = Math.hypot(xyPotential.x, xyPotential.y);
       if (potential >= 0.05) {
-        color = hslToRgb(
-          240 - potential.map(minPotential, maxPotential, 0, 240),
-          1,
-          potential.map(minPotential, maxPotential, minL, 0.5)
-        );
-        ctx.fillStyle = "rgba(" + color[0] + "," + color[1] + "," + color[2] + ", 1)";
-        ctx.fillRect(x, y, res + 1, res + 1);
+        ctx.fillStyle = "hsl("
+        + (240 - potential.map(minPotential, maxPotential, 0, 240))
+        + ", 100%, "
+        + potential.map(minPotential, maxPotential, minL * 100, 50) + "%)";
+        ctx.fillRect(x, y, res, res);
       }
     }
   }
