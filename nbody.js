@@ -236,6 +236,7 @@ try {
           0,
           true
         );
+        break;
       case "6":
         ui.trace.checked = false;
         ui.drawGravity.checked = false;
@@ -243,6 +244,7 @@ try {
         ui.drawVector.checked = false;
         ui.timestep.value = ui.tOut.innerText = 0.5;
         generateSolarSystem({ x: center.x, y: center.y }, { x: 0, y: 0 });
+        break;
     }
     activeBodies = bodies.length;
     ui.bodyCount.innerText = activeBodies;
