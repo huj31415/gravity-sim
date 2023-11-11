@@ -43,6 +43,8 @@ const ui = {
   vx: document.getElementById("Vx"),
   vy: document.getElementById("Vy"),
   heatmap: document.getElementById("heatmap"),
+  drawCoM: document.getElementById("drawCoM"),
+  trackCoM: document.getElementById("trackCoM"),
 };
 
 // utilities
@@ -96,7 +98,10 @@ let numBodies,
   initVel,
   timestep,
   oldTimestep,
-  continuous;
+  continuous,
+  drawCoM,
+  CoM,
+  trackCoM;
 
 // tracking variables
 let collisionCount = (frameCount = bodyCount = activeBodies = 0);
@@ -120,9 +125,12 @@ let maxBody;
 let minPotential = 0;
 let heatmapRes = 4;
 
-initParams();
-draw();
-
+try {
+  initParams();
+  draw();
+} catch (e) {
+  alert(e);
+}
 // form event listeners
 {
   ui.collapse.onclick = () => {
@@ -162,7 +170,7 @@ draw();
         G = 0.15;
         initOrbitBodies1();
         break;
-      case "2": // two equal bodies
+      case "2": // two body system
         ui.collide.checked = false;
         ui.G.value = ui.GOut.innerText = 0.15;
         G = 0.15;
@@ -189,8 +197,11 @@ draw();
           },
           { x: randInt(-1, 1), y: randInt(-1, 1) },
           g1num,
+          1,
+          2,
           g1num / 2,
-          0
+          0,
+          false
         );
         generateGalaxy(
           {
@@ -199,10 +210,39 @@ draw();
           },
           { x: randInt(-1, 1), y: randInt(-1, 1) },
           g2num,
+          1,
+          2,
           g2num / 2,
-          randInt(0, 2)
+          randInt(0, 2),
+          false
         );
         break;
+      case "5": // solar system formation
+        ui.trace.checked = false;
+        ui.drawGravity.checked = false;
+        ui.drawGravityStrength.checked = false;
+        ui.drawVector.checked = false;
+        ui.timestep.value = ui.tOut.innerText = 0.5;
+        generateGalaxy(
+          {
+            x: center.x,
+            y: center.y,
+          },
+          { x: 0, y: 0 },
+          1000,
+          5,
+          10,
+          1000,
+          0,
+          true
+        );
+      case "6":
+        ui.trace.checked = false;
+        ui.drawGravity.checked = false;
+        ui.drawGravityStrength.checked = false;
+        ui.drawVector.checked = false;
+        ui.timestep.value = ui.tOut.innerText = 0.5;
+        generateSolarSystem({ x: center.x, y: center.y }, { x: 0, y: 0 });
     }
     activeBodies = bodies.length;
     ui.bodyCount.innerText = activeBodies;
@@ -226,8 +266,12 @@ draw();
   };
 
   ui.clrOffscreen.onclick = () => {
+    let offset = {
+      x: collide ? -collideOffset.x + currentOffset.x : 0,
+      y: collide ? -collideOffset.y + currentOffset.y : 0,
+    };
     bodies.forEach((body) => {
-      if (!isInView(body)) {
+      if (!isInView(body, offset)) {
         remove(bodies, body.id);
       }
     });
@@ -277,6 +321,11 @@ draw();
       ui.drawVector.checked = drawVector = false;
       ui.drawGravity.checked = drawGravity = false;
     });
+
+    ui.trackCoM.addEventListener("input", () => {
+      ui.drawCoM.checked = true;
+      trackCoM = ui.trackCoM.checked;
+    });
   }
 }
 
@@ -286,8 +335,12 @@ draw();
     event.ctrlKey || event.altKey
       ? bodies.push(
           new Body(
-            ui.xp.value ? parseInt(ui.xp.value) : (event.clientX / canvas.width) * viewport.x + center.x - viewport.x / 2,
-            ui.yp.value ? parseInt(ui.yp.value) : (event.clientY / canvas.height) * viewport.y + center.y - viewport.y / 2,
+            ui.xp.value
+              ? parseInt(ui.xp.value)
+              : (event.clientX / canvas.width) * viewport.x + center.x - viewport.x / 2,
+            ui.yp.value
+              ? parseInt(ui.yp.value)
+              : (event.clientY / canvas.height) * viewport.y + center.y - viewport.y / 2,
             parseInt(ui.vx.value),
             parseInt(ui.vy.value),
             parseInt(ui.radius.value ? ui.radius.value : getRadius(ui.mass.value)),
@@ -492,6 +545,18 @@ draw();
           );
           ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
           break;
+        case "Digit1":
+          ui.drawVector.click();
+          break;
+        case "Digit2":
+          ui.drawGravity.click();
+          break;
+        case "Digit3":
+          ui.drawCoM.click();
+          break;
+        case "Digit4":
+          ui.trackCoM.click();
+          break;
       }
     }
   };
@@ -548,18 +613,22 @@ draw();
     centerPos = { x: center.x, y: center.y },
     vel = { x: 0, y: 0 },
     num = 500,
+    minMass = 1,
+    maxMass = 2,
     radius = 500,
-    rotDir = 0
+    rotDir = 0,
+    bodyCollide = false
   ) {
     // center
+    let centerMass = num * 100;
     let centerRadius = getRadius(num * 100);
-    bodies.push(new Body(centerPos.x, centerPos.y, vel.x, vel.y, 0, num * 100));
+    bodies.push(new Body(centerPos.x, centerPos.y, vel.x, vel.y, 0, centerMass));
     for (let i = 0; i < num; i++) {
-      let mass = randInt(1, 2);
+      let mass = randInt(minMass, maxMass);
       let r = getRadius(mass);
       let angle = randInt(0, 360);
       let distance = Math.pow(2, -2 * Math.random()).map(0.25, 1, 0, 1) * radius + centerRadius; //randInt(centerRadius * 2, radius)
-      let ac = (G * num * 100) / (distance * distance);
+      let ac = (G * centerMass) / (distance * distance);
       let speed = Math.sqrt(ac * distance);
       bodies.push(
         new Body(
@@ -570,7 +639,43 @@ draw();
           r,
           0,
           "white",
-          false
+          bodyCollide
+        )
+      );
+    }
+  }
+
+  function generateSolarSystem(
+    centerPos = { x: center.x, y: center.y },
+    vel = { x: 0, y: 0 },
+    num = 8,
+    minMass = 10000,
+    maxMass = 100000,
+    radius = 10000,
+    rotDir = 0,
+    bodyCollide = true
+  ) {
+    // center
+    let centerMass = maxMass * 100
+    let centerRadius = getRadius(maxMass * 10000);
+    bodies.push(new Body(centerPos.x, centerPos.y, vel.x, vel.y, 0, centerMass));
+    for (let i = 0; i < num; i++) {
+      let mass = randInt(minMass, maxMass);
+      let r = getRadius(mass);
+      let angle = randInt(0, 360);
+      let distance = randInt(centerRadius * 2, radius);
+      let ac = (G * centerMass) / (distance * distance);
+      let speed = Math.sqrt(ac * distance);
+      bodies.push(
+        new Body(
+          centerPos.x + distance * Math.cos(angle),
+          centerPos.y + distance * Math.sin(angle),
+          vel.x + speed * Math.sin(-angle) * (rotDir ? 1 : -1),
+          vel.y + speed * Math.cos(-angle) * (rotDir ? 1 : -1),
+          r,
+          0,
+          "white",
+          bodyCollide
         )
       );
     }
@@ -628,14 +733,21 @@ function randInt(min, max) {
   return Math.floor(Math.random() * (max - min) + min); // The maximum is exclusive and the minimum is inclusive
 }
 
-const isInView = (body) =>
-  body.pos.x <= center.x + viewport.x / 2 + body.radius &&
-  body.pos.x >= center.x - viewport.x / 2 - body.radius&&
-  body.pos.y <= center.y + viewport.y / 2 + body.radius &&
-  body.pos.y >= center.y - viewport.y / 2 - body.radius;
+const isInView = (body, offset = { x: 0, y: 0 }) =>
+  body.pos.x <= offset.x + center.x + viewport.x / 2 + body.radius &&
+  body.pos.x >= offset.x + center.x - viewport.x / 2 - body.radius &&
+  body.pos.y <= offset.x + center.y + viewport.y / 2 + body.radius &&
+  body.pos.y >= offset.x + center.y - viewport.y / 2 - body.radius;
 
 // map values from one range to another
-Number.prototype.map = function (in_min, in_max, out_min, out_max, clampMax = false, clampMin = false) {
+Number.prototype.map = function (
+  in_min,
+  in_max,
+  out_min,
+  out_max,
+  clampMax = false,
+  clampMin = false
+) {
   let mapped = ((this - in_min) * (out_max - out_min)) / (in_max - in_min) + out_min;
   mapped = mapped <= out_max || !clampMax ? mapped : out_max;
   mapped = mapped >= out_min || !clampMin ? mapped : out_min;
@@ -853,7 +965,7 @@ function gravity(currentBody, index) {
   return accel;
 }
 
-// calculate collisions, create new body
+// calculate collisions and merge smaller body into larger
 function collision(body1, body2) {
   collisionCount += 1;
   ui.collisionCount.innerText = collisionCount;
@@ -869,14 +981,13 @@ function collision(body1, body2) {
     x: body1.getMomentum().x + body2.getMomentum().x,
     y: body1.getMomentum().y + body2.getMomentum().y,
   };
-  let velocity = { x: momentum.x / mass, y: momentum.y / mass };
 
   // change larger body properties
+  larger.pos.x = (body1.pos.x * body1.mass + body2.pos.x * body2.mass) / mass;
+  larger.pos.y = (body1.pos.y * body1.mass + body2.pos.y * body2.mass) / mass;
   larger.mass = mass;
   larger.radius = getRadius(mass);
-  larger.vel.x = velocity.x;
-  larger.vel.y = velocity.y;
-
+  larger.vel = { x: momentum.x / mass, y: momentum.y / mass };
   // maintain tracking
   if (trackBody === smaller) trackBody = larger;
   // remove the smaller object
@@ -937,6 +1048,8 @@ function draw() {
   drawVector = ui.drawVector.checked;
   collide = ui.collide.checked;
   drawField = ui.heatmap.checked;
+  drawCoM = ui.drawCoM.checked;
+  trackCoM = ui.trackCoM.checked;
 
   debug = false;
   if (debug) {
@@ -995,6 +1108,17 @@ function draw() {
     if (drawField && body.mass > maxBody.mass) maxBody = body;
     body.draw();
   });
+  if (bodies[0] != null && drawCoM) {
+    CoM = calcCoM();
+    ctx.beginPath();
+    ctx.arc(CoM.x, CoM.y, 2 / totalzoom, 0, Math.PI * 2, true);
+    ctx.closePath();
+    ctx.fillStyle = "white";
+    ctx.fill();
+    if (trackCoM) {
+      pan({ x: center.x - CoM.x, y: center.y - CoM.y }, false);
+    }
+  }
   if (clearTrails) {
     ctx.fillStyle = "rgba(0, 0, 0, 1)";
     ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
@@ -1006,7 +1130,7 @@ function calcField() {
   let minL = 0.1;
   let res = heatmapRes / totalzoom;
 
-  ctx.fillStyle = "hsl(240, 100%, " + (minL * 100) + "%)";
+  ctx.fillStyle = "hsl(240, 100%, " + minL * 100 + "%)";
   ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
 
   let maxPotential = (0.25 * maxBody.mass) / maxBody.radius ** 2;
@@ -1024,14 +1148,30 @@ function calcField() {
       });
       let potential = Math.hypot(xyPotential.x, xyPotential.y);
       if (potential >= 0.05) {
-        ctx.fillStyle = "hsl("
-        + (240 - potential.map(minPotential, maxPotential, 0, 240))
-        + ", 100%, "
-        + potential.map(minPotential, maxPotential, minL * 100, 50) + "%)";
+        ctx.fillStyle =
+          "hsl(" +
+          (240 - potential.map(minPotential, maxPotential, 0, 240)) +
+          ", 100%, " +
+          potential.map(minPotential, maxPotential, minL * 100, 50) +
+          "%)";
         ctx.fillRect(x, y, res, res);
       }
     }
   }
+}
+
+function calcCoM() {
+  // calc x and y CoM using m1x1+m2x2... / m1+m2...
+  let CoM = { x: 0, y: 0 };
+  let mass = 0;
+  bodies.forEach((body) => {
+    CoM.x += body.pos.x * body.mass;
+    CoM.y += body.pos.y * body.mass;
+    mass += body.mass;
+  });
+  CoM.x /= mass;
+  CoM.y /= mass;
+  return CoM;
 }
 
 // pan by adjusting positions of all bodies
