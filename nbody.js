@@ -339,20 +339,20 @@ draw();
   canvas.onmousedown = (event) => {
     event.ctrlKey || event.altKey
       ? bodies.push(
-        new Body(
-          ui.xp.value
-            ? parseInt(ui.xp.value)
-            : (event.clientX / canvas.width) * viewport.x + center.x - viewport.x / 2,
-          ui.yp.value
-            ? parseInt(ui.yp.value)
-            : (event.clientY / canvas.height) * viewport.y + center.y - viewport.y / 2,
-          parseInt(ui.vx.value),
-          parseInt(ui.vy.value),
-          parseInt(ui.radius.value ? ui.radius.value : getRadius(ui.mass.value)),
-          parseInt(ui.mass.value),
-          randColor()
+          new Body(
+            ui.xp.value
+              ? parseInt(ui.xp.value)
+              : (event.clientX / canvas.width) * viewport.x + center.x - viewport.x / 2,
+            ui.yp.value
+              ? parseInt(ui.yp.value)
+              : (event.clientY / canvas.height) * viewport.y + center.y - viewport.y / 2,
+            parseInt(ui.vx.value),
+            parseInt(ui.vy.value),
+            parseInt(ui.radius.value ? ui.radius.value : getRadius(ui.mass.value)),
+            parseInt(ui.mass.value),
+            randColor()
+          )
         )
-      )
       : canvas.addEventListener("mousemove", handleMouseMove);
   };
   canvas.onmouseup = () => {
@@ -586,14 +586,14 @@ draw();
 
 // body presets
 {
-  /** 
+  /**
    * Randomly generate bodies based on params
    * @param {Number} num number of random bodies to generate
    * @param {Number} minSize minimum mass
    * @param {Number} maxSize maximum mass
    * @param {Number} v maximum initial velocity
    * @param {Boolean} randColors whether or not to randomly color the bodies
-  */
+   */
   function initRandBodies(num, minSize = 3, maxSize = 5, v = 0, randColors = true) {
     for (let i = 0; i < num; i++) {
       let r = getRadius(randInt(minSize, maxSize));
@@ -601,15 +601,15 @@ draw();
         new Body(
           collide
             ? randInt(
-              -collideOffset.x + currentOffset.x + 2 * r,
-              -collideOffset.x + currentOffset.x + canvas.width - 2 * r
-            )
+                -collideOffset.x + currentOffset.x + 2 * r,
+                -collideOffset.x + currentOffset.x + canvas.width - 2 * r
+              )
             : randInt(center.x - viewport.x / 2 + 2 * r, center.x + viewport.x / 2 - 2 * r),
           collide
             ? randInt(
-              -collideOffset.y + currentOffset.y + 2 * r,
-              -collideOffset.y + currentOffset.y + canvas.height - 2 * r
-            )
+                -collideOffset.y + currentOffset.y + 2 * r,
+                -collideOffset.y + currentOffset.y + canvas.height - 2 * r
+              )
             : randInt(center.y - viewport.y / 2 + 2 * r, center.y + viewport.y / 2 - 2 * r),
           (Math.random() - 0.5) * 2 * v,
           (Math.random() - 0.5) * 2 * v,
@@ -621,7 +621,7 @@ draw();
     }
   }
 
-  /** 
+  /**
    * Generates a galaxy
    * @param {Object} centerPos the position of the center
    * @param {Object} vel initial velocity of the galaxy
@@ -644,8 +644,8 @@ draw();
   ) {
     // center
     let centerMass = num * 100;
-    let centerRadius = getRadius(num * 100);
-    bodies.push(new Body(centerPos.x, centerPos.y, vel.x, vel.y, 0, centerMass));
+    let centerRadius = 10; //getRadius(num * 100);
+    bodies.push(new Body(centerPos.x, centerPos.y, vel.x, vel.y, 10, centerMass));
     for (let i = 0; i < num; i++) {
       let mass = randInt(minMass, maxMass);
       let r = getRadius(mass);
@@ -668,7 +668,7 @@ draw();
     }
   }
 
-  /** 
+  /**
    * Generates a solar system
    * @param {Object} centerPos the position of the center
    * @param {Object} vel initial velocity of the system
@@ -690,7 +690,7 @@ draw();
     bodyCollide = true
   ) {
     // center
-    let centerMass = maxMass * 100
+    let centerMass = maxMass * 100;
     let centerRadius = getRadius(maxMass * 10000);
     bodies.push(new Body(centerPos.x, centerPos.y, vel.x, vel.y, 0, centerMass));
     for (let i = 0; i < num; i++) {
@@ -750,7 +750,7 @@ function initParams() {
 }
 
 /**
- * Removes bodies during collision 
+ * Removes bodies during collision
  * @param {Array} arr input array
  * @param {Number} id id of the value to remove
  * @returns the input array without the removed body
@@ -765,7 +765,7 @@ function remove(arr, id) {
   return arr;
 }
 
-/** 
+/**
  * Generates random integers
  * @param {Number} min minimum inclusive
  * @param {Number} max maximum exclusive
@@ -776,7 +776,7 @@ function randInt(min, max) {
   return Math.floor(Math.random() * (max - min) + min); // The maximum is exclusive and the minimum is inclusive
 }
 
-/** 
+/**
  * Check if the body is in view
  * @param {Body} body the body to check
  * @param {Object} offset viewport offset
@@ -787,7 +787,7 @@ const isInView = (body, offset = { x: 0, y: 0 }) =>
   body.pos.y <= offset.x + center.y + viewport.y / 2 + body.radius &&
   body.pos.y >= offset.x + center.y - viewport.y / 2 - body.radius;
 
-/** 
+/**
  * Map values from one range to another
  * @param {Number} in_min minimum input value
  * @param {Number} in_max maximum input value
@@ -824,6 +824,7 @@ class Body {
     this.pos = { x: xPos, y: yPos };
     this.vel = { x: xVel, y: yVel };
     this.prevPos = { x: xPos, y: yPos };
+    this.force = { x: 0, y: 0 };
     this.accel = { x: 0, y: 0 };
     this.radius = r ? r : getRadius(mass);
     this.mass = mass ? mass : (4 / 3) * Math.PI * Math.pow(r, 3);
@@ -836,9 +837,12 @@ class Body {
   }
   draw() {
     let speed = colorByVel ? Math.hypot(this.vel.x, this.vel.y) : 0;
-    let hue = colorByVel ? Math.max(240 - 20 * speed, 0) : 0;
+    let hue = colorByVel
+      ? /*bodyCount < 1000 ? 1200 / (speed + 5) :*/ Math.max(240 - 20 * speed, 0)
+      : 0; // Math.max(240 - 20 * speed, 0) or 1200 / (speed + 5)
     let drawColor = colorByVel ? "hsl(" + hue + ", 100%, 50%)" : this.color;
 
+    // Draw the body
     if (!isInView(this)) {
       // offscreen indicators
       // use slope to draw lines pointing toward center
@@ -846,12 +850,10 @@ class Body {
       let slope = (this.pos.y - center.y) / (this.pos.x - center.x);
       let angle = Math.abs(Math.atan2(bodyPos.y, bodyPos.x));
       let x =
-        (Math.sign(bodyPos.x) *
-          (center.x - ((this.radius / 2) + 5) * Math.abs(Math.cos(angle)))) /
+        (Math.sign(bodyPos.x) * (center.x - (this.radius / 2 + 5) * Math.abs(Math.cos(angle)))) /
         totalzoom;
       let y =
-        (Math.sign(bodyPos.y) * (center.y - ((this.radius / 2) + 5) * Math.sin(angle))) /
-        totalzoom;
+        (Math.sign(bodyPos.y) * (center.y - (this.radius / 2 + 5) * Math.sin(angle))) / totalzoom;
       ctx.beginPath();
       ctx.strokeStyle = drawColor;
       ctx.lineWidth = 1 / totalzoom;
@@ -890,7 +892,14 @@ class Body {
       // center
       if (this.radius > 3) {
         ctx.beginPath();
-        ctx.arc(this.pos.x, this.pos.y, this.radius < 1.5 ? this.radius : 1.5, 0, Math.PI * 2, true);
+        ctx.arc(
+          this.pos.x,
+          this.pos.y,
+          this.radius < 1.5 ? this.radius : 1.5,
+          0,
+          Math.PI * 2,
+          true
+        );
         ctx.closePath();
         ctx.fillStyle = "black";
         ctx.fill();
@@ -930,22 +939,22 @@ class Body {
 
     // Update the position of the body
     {
-      this.accel = gravity(this, bodies.indexOf(this));
+      // this.accel = gravity(this, bodies.indexOf(this));
+      this.accel.x = this.force.x / this.mass;
+      this.accel.y = this.force.y / this.mass;
       this.prevPos.x = this.pos.x;
       this.prevPos.y = this.pos.y;
       // edge collision - set accel to 0 when colliding to prevent changes in velocity
       if (collide) {
         if (
-          this.pos.x >=
-          -collideOffset.x + currentOffset.x + canvas.width - this.radius ||
+          this.pos.x >= -collideOffset.x + currentOffset.x + canvas.width - this.radius ||
           this.pos.x <= -collideOffset.x + currentOffset.x + this.radius
         ) {
           this.vel.x = -this.vel.x;
           this.accel.x = 0;
         }
         if (
-          this.pos.y >=
-          -collideOffset.y + currentOffset.y + canvas.height - this.radius ||
+          this.pos.y >= -collideOffset.y + currentOffset.y + canvas.height - this.radius ||
           this.pos.y <= -collideOffset.y + currentOffset.y + this.radius
         ) {
           this.vel.y = -this.vel.y;
@@ -958,11 +967,13 @@ class Body {
       // integrate velocity every frame
       this.pos.x += this.vel.x * timestep;
       this.pos.y += this.vel.y * timestep;
+      // reset forces
+      this.force.x = this.force.y = 0;
     }
   }
 }
 
-/** 
+/**
  * Calculate gravitational forces between each body
  * @param {Body} currentBody the body to calculate forces for
  * @param {Number} index current body index in the array used to check for duplicate calcs
@@ -977,10 +988,10 @@ function gravity(currentBody, index) {
     if (index != j) {
       // get distance
       const distance = {
-        x: (body.pos.x - currentBody.pos.x),
-        y: (body.pos.y - currentBody.pos.y),
+        x: body.pos.x - currentBody.pos.x,
+        y: body.pos.y - currentBody.pos.y,
       };
-      distance.sqr = Math.max((distance.x * distance.x + distance.y * distance.y), 1); // Most Time Consuming
+      distance.sqr = Math.max(distance.x * distance.x + distance.y * distance.y, 1); // Most Time Consuming
 
       let distThreshSqr = (body.radius + currentBody.radius) * (body.radius + currentBody.radius);
 
@@ -994,7 +1005,7 @@ function gravity(currentBody, index) {
       } else {
         // get total gravity
         let distRecip = 1 / distance.sqr;
-        const gForce = (G * (body.mass * currentBody.mass)) * distRecip; // Most Time Consuming
+        const gForce = G * (body.mass * currentBody.mass) * distRecip; // Most Time Consuming
 
         // get the components of the force
         let dist = Math.sqrt(distance.sqr);
@@ -1020,6 +1031,64 @@ function gravity(currentBody, index) {
   return accel;
 }
 
+// Calculate gravitational forces between each body (more efficient - does each calc once)
+function calcNBodyGravity() {
+  // iterate through all combinations of bodies and add force to body total
+  if (bodies.length > 1) {
+    bodies.forEach((body1, index) => {
+      for (let i = index + 1; i < bodies.length; i++) {
+        // calc gravity between body and bodies[i], then add forces
+
+        let body2 = bodies[i];
+        // get distance
+        const distance = {
+          x: body2.pos.x - body1.pos.x,
+          y: body2.pos.y - body1.pos.y,
+        };
+        let force = { x: 0, y: 0 };
+        distance.sqr = Math.max(distance.x * distance.x + distance.y * distance.y, 1); // Most Time Consuming
+
+        let distThreshSqr = (body2.radius + body1.radius) * (body2.radius + body1.radius);
+
+        if (
+          distance.sqr <= distThreshSqr &&
+          bodies.includes(body1) &&
+          bodies.includes(body2) &&
+          body1.id != body2.id
+        ) {
+          // don't skip a body after removing it
+          if (body2.collide && body1.collide && collision(body1, body2) < i) i--;
+        } else {
+          // get total gravity
+          let distRecip = 1 / distance.sqr;
+          const gForce = G * (body2.mass * body1.mass) * distRecip; // Most Time Consuming
+
+          // get the components of the force
+          let dist = Math.sqrt(distance.sqr);
+          force.x += (gForce * distance.x) / dist;
+          force.y += (gForce * distance.y) / dist;
+          let strength = Math.abs(1 - 10 / (gForce + 10));
+          let drawThreshold = drawGThreshold ? (trace ? 1e-4 : 1e-2) : 0;
+          if (drawGravityStrength && strength >= drawThreshold) {
+            ctx.beginPath();
+            ctx.strokeStyle =
+              "rgba(" + (255 - 255 * strength) + ", " + 255 * strength + ",0 ," + strength + ")";
+            ctx.lineWidth = 1 / totalzoom;
+            ctx.moveTo(body2.pos.x, body2.pos.y);
+            ctx.lineTo(body1.pos.x, body1.pos.y);
+            ctx.closePath();
+            ctx.stroke();
+          }
+        }
+        body1.force.x += force.x;
+        body1.force.y += force.y;
+        body2.force.x -= force.x;
+        body2.force.y -= force.y;
+      }
+    });
+  }
+}
+
 /**
  * Calculate collisions and merge smaller body into larger
  * @param {Body} body1 the first body
@@ -1035,6 +1104,7 @@ function collision(body1, body2) {
   let mass = body1.mass + body2.mass;
   let larger = body1.mass > body2.mass ? body1 : body2;
   let smaller = larger === body1 ? body2 : body1;
+  let smallerIndex = bodies.indexOf(smaller);
 
   let momentum = {
     x: body1.getMomentum().x + body2.getMomentum().x,
@@ -1044,63 +1114,104 @@ function collision(body1, body2) {
   // change larger body properties
   larger.pos.x = (body1.pos.x * body1.mass + body2.pos.x * body2.mass) / mass;
   larger.pos.y = (body1.pos.y * body1.mass + body2.pos.y * body2.mass) / mass;
+  if (Math.abs(larger.radius - getRadius(larger.mass)) < 0.1) larger.radius = getRadius(mass);
   larger.mass = mass;
-  larger.radius = getRadius(mass);
   larger.vel = { x: momentum.x / mass, y: momentum.y / mass };
   // maintain tracking
   if (trackBody === smaller) trackBody = larger;
   // remove the smaller object
   remove(bodies, smaller.id);
+  return smallerIndex;
+}
+
+// calculate gravitational field
+function calcField() {
+  let res = heatmapRes / totalzoom;
+
+  ctx.fillStyle = "hsl(240, 100%, " + minL * 100 + "%)";
+  ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
+
+  let maxPotential = (0.25 * maxBody.mass) / maxBody.radius ** 2;
+
+  for (let y = center.y - viewport.y / 2; y <= center.y + viewport.y / 2; y += res) {
+    for (let x = center.x - viewport.x / 2; x <= center.x + viewport.x / 2; x += res) {
+      let xyPotential = { x: 0, y: 0 };
+      bodies.forEach((body) => {
+        let distance = Math.hypot(body.pos.x - x - res / 2, body.pos.y - y - res / 2);
+        if (distance >= body.radius - res) {
+          let gForce = (G * body.mass) / (distance * distance);
+          xyPotential.x += (gForce * (body.pos.x - x)) / distance;
+          xyPotential.y += (gForce * (body.pos.y - y)) / distance;
+        }
+      });
+      let potential = Math.hypot(xyPotential.x, xyPotential.y);
+      if (potential >= 0.05) {
+        ctx.fillStyle =
+          "hsl(" +
+          (240 - potential.map(minPotential, maxPotential, 0, 240)) +
+          ", 100%, " +
+          potential.map(minPotential, maxPotential, minL * 100, 50) +
+          "%)";
+        ctx.fillRect(x, y, res, res);
+      }
+    }
+  }
+}
+
+// calculate center of mass of the system
+function calcCoM() {
+  // calc x and y CoM using (m1x1+m2x2...) / (m1+m2...)
+  let CoM = { x: 0, y: 0 };
+  let mass = 0;
+  bodies.forEach((body) => {
+    CoM.x += body.pos.x * body.mass;
+    CoM.y += body.pos.y * body.mass;
+    mass += body.mass;
+  });
+  CoM.x /= mass;
+  CoM.y /= mass;
+  return CoM;
 }
 
 /**
- * Display framerate and number of bodies
- * @param {Number} interval interval to measure and display values
+ * Pan by adjusting positions of all bodies
+ * @param {Object} offset
+ * @param {Boolean} clrTrails
  */
-function updateGraphs(interval) {
-  // get fps
-  frameCount++;
-
-  const currentTime = performance.now();
-  const elapsedTime = currentTime - lastTime;
-
-  if (elapsedTime >= interval) {
-    // Update 10 times per second
-    const fps = frameCount / (elapsedTime / 1000);
-    ui.fps.innerText = Math.round(fps * 100) / 100;
-
-    //let xCoord = (currentTime / 500 * 3) % fpsGraph.width;
-    xCoord += 2;
-    fpsCtx.beginPath();
-    fpsCtx.strokeStyle = fps >= 15 ? (fps >= 30 ? "lightgreen" : "orange") : "red"; //"white";
-    fpsCtx.lineWidth = 1;
-    fpsCtx.moveTo(xCoord % fpsGraph.width, fpsGraph.height);
-    fpsCtx.lineTo(xCoord % fpsGraph.width, fpsGraph.height - fps);
-    fpsCtx.closePath();
-    fpsCtx.stroke();
-    fpsCtx.fillStyle = "rgba(0, 0, 0, 0.02)";
-    fpsCtx.fillRect(0, 0, (xCoord % fpsGraph.width) - 2, fpsGraph.height);
-    fpsCtx.fillRect((xCoord % fpsGraph.width) + 2, 0, fpsGraph.width, fpsGraph.height);
-
-    frameCount = 0;
-    lastTime = currentTime;
-
-    bodyCtx.beginPath();
-    bodyCtx.strokeStyle =
-      activeBodies >= 500 ? "red" : activeBodies >= 200 ? "orange" : "lightgreen";
-    bodyCtx.lineWidth = 1;
-    bodyCtx.moveTo(xCoord % bodyGraph.width, bodyGraph.height);
-    bodyCtx.lineTo(xCoord % bodyGraph.width, bodyGraph.height - activeBodies / 8);
-    bodyCtx.closePath();
-    bodyCtx.stroke();
-    bodyCtx.fillStyle = "rgba(0, 0, 0, 0.02)";
-    bodyCtx.fillRect(0, 0, (xCoord % bodyGraph.width) - 2, bodyGraph.height);
-    bodyCtx.fillRect((xCoord % bodyGraph.width) + 2, 0, bodyGraph.width, bodyGraph.height);
+function pan(offset = { x: 0, y: 0 }, clrTrails = true) {
+  // remove faint trails
+  if (clrTrails) {
+    continuous = false;
+    clearTrails = true;
   }
+  currentOffset.x += offset.x;
+  currentOffset.y += offset.y;
+  bodies.forEach((body) => {
+    body.pos.x += offset.x;
+    body.pos.y += offset.y;
+  });
+  ui.offset.innerText = Math.round(currentOffset.x) + " Y=" + Math.round(currentOffset.y);
+}
+
+/**
+ * Track body by panning and zeroing velocity
+ * @param {Body} body the body to track
+ */
+function track(body) {
+  if (newBody) {
+    pan({ x: -currentOffset.x, y: -currentOffset.y });
+    pan({
+      x: center.x - body.pos.x - currentOffset.x,
+      y: center.y - body.pos.y - currentOffset.y,
+    });
+  }
+  pan({ x: -body.vel.x * timestep, y: -body.vel.y * timestep }, false);
+  newBody = false;
 }
 
 // draw and animate
 function draw() {
+  // update with user input
   colorByVel = ui.colorByVel.checked;
   trace = ui.trace.checked;
   fade = ui.fade.checked;
@@ -1112,6 +1223,8 @@ function draw() {
   drawField = ui.heatmap.checked;
   drawCoM = ui.drawCoM.checked;
   trackCoM = ui.trackCoM.checked;
+
+  continuous = true;
 
   debug = false;
   if (debug) {
@@ -1166,11 +1279,12 @@ function draw() {
     }
   }
   // loop through bodies, draw and update
+  calcNBodyGravity();
   bodies.forEach((body) => {
     if (drawField && body.mass > maxBody.mass) maxBody = body;
     body.draw();
   });
-  if (bodies[0] != null && drawCoM) {
+  if (bodies.length && drawCoM) {
     CoM = calcCoM();
     ctx.beginPath();
     ctx.arc(CoM.x, CoM.y, 2 / totalzoom, 0, Math.PI * 2, true);
@@ -1188,87 +1302,48 @@ function draw() {
   }
 }
 
-// calculate gravitational field
-function calcField() {
-  let res = heatmapRes / totalzoom;
-
-  ctx.fillStyle = "hsl(240, 100%, " + minL * 100 + "%)";
-  ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
-
-  let maxPotential = (0.25 * maxBody.mass) / maxBody.radius ** 2;
-
-  for (let y = center.y - viewport.y / 2; y <= center.y + viewport.y / 2; y += res) {
-    for (let x = center.x - viewport.x / 2; x <= center.x + viewport.x / 2; x += res) {
-      let xyPotential = { x: 0, y: 0 };
-      bodies.forEach((body) => {
-        let distance = Math.hypot(body.pos.x - x - res / 2, body.pos.y - y - res / 2);
-        if (distance >= body.radius - res) {
-          let gForce = (G * body.mass) / (distance * distance);
-          xyPotential.x += (gForce * (body.pos.x - x)) / distance;
-          xyPotential.y += (gForce * (body.pos.y - y)) / distance;
-        }
-      });
-      let potential = Math.hypot(xyPotential.x, xyPotential.y);
-      if (potential >= 0.05) {
-        ctx.fillStyle =
-          "hsl(" +
-          (240 - potential.map(minPotential, maxPotential, 0, 240)) +
-          ", 100%, " +
-          potential.map(minPotential, maxPotential, minL * 100, 50) +
-          "%)";
-        ctx.fillRect(x, y, res, res);
-      }
-    }
-  }
-}
-
-// calculate center of mass of the system
-function calcCoM() {
-  // calc x and y CoM using (m1x1+m2x2...) / (m1+m2...)
-  let CoM = { x: 0, y: 0 };
-  let mass = 0;
-  bodies.forEach((body) => {
-    CoM.x += body.pos.x * body.mass;
-    CoM.y += body.pos.y * body.mass;
-    mass += body.mass;
-  });
-  CoM.x /= mass;
-  CoM.y /= mass;
-  return CoM;
-}
-
 /**
- * Pan by adjusting positions of all bodies
- * @param {Object} offset 
- * @param {Boolean} clrTrails 
+ * Display framerate and number of bodies
+ * @param {Number} interval interval to measure and display values
  */
-function pan(offset = { x: 0, y: 0 }, clrTrails = true) {
-  // remove faint trails
-  if (clrTrails) {
-    continuous = false;
-    clearTrails = true;
-  }
-  currentOffset.x += offset.x;
-  currentOffset.y += offset.y;
-  bodies.forEach((body) => {
-    body.pos.x += offset.x;
-    body.pos.y += offset.y;
-  });
-  ui.offset.innerText = Math.round(currentOffset.x) + " Y=" + Math.round(currentOffset.y);
-}
+function updateGraphs(interval) {
+  // get fps
+  frameCount++;
 
-/**
- * Track body by panning and zeroing velocity
- * @param {Body} body the body to track
- */
-function track(body) {
-  if (newBody) {
-    pan({ x: -currentOffset.x, y: -currentOffset.y });
-    pan({
-      x: center.x - body.pos.x - currentOffset.x,
-      y: center.y - body.pos.y - currentOffset.y,
-    });
+  const currentTime = performance.now();
+  const elapsedTime = currentTime - lastTime;
+
+  if (elapsedTime >= interval) {
+    // Update 10 times per second
+    const fps = frameCount / (elapsedTime / 1000);
+    ui.fps.innerText = Math.round(fps * 100) / 100;
+
+    //let xCoord = (currentTime / 500 * 3) % fpsGraph.width;
+    xCoord += 2;
+    fpsCtx.beginPath();
+    fpsCtx.strokeStyle = fps >= 15 ? (fps >= 30 ? "lightgreen" : "orange") : "red"; //"white";
+    fpsCtx.lineWidth = 1;
+    fpsCtx.moveTo(xCoord % fpsGraph.width, fpsGraph.height);
+    fpsCtx.lineTo(xCoord % fpsGraph.width, fpsGraph.height - fps);
+    fpsCtx.closePath();
+    fpsCtx.stroke();
+    fpsCtx.fillStyle = "rgba(0, 0, 0, 0.02)";
+    fpsCtx.fillRect(0, 0, (xCoord % fpsGraph.width) - 2, fpsGraph.height);
+    fpsCtx.fillRect((xCoord % fpsGraph.width) + 2, 0, fpsGraph.width, fpsGraph.height);
+
+    frameCount = 0;
+    lastTime = currentTime;
+
+    bodyCtx.beginPath();
+    bodyCtx.strokeStyle =
+      activeBodies >= 500 ? "red" : activeBodies >= 200 ? "orange" : "lightgreen";
+    bodyCtx.lineWidth = 1;
+    bodyCtx.moveTo(xCoord % bodyGraph.width, bodyGraph.height);
+    bodyCtx.lineTo(xCoord % bodyGraph.width, bodyGraph.height - activeBodies / 8);
+    bodyCtx.closePath();
+    bodyCtx.stroke();
+    bodyCtx.fillStyle = "rgba(0, 0, 0, 0.02)";
+    bodyCtx.fillRect(0, 0, (xCoord % bodyGraph.width) - 2, bodyGraph.height);
+    bodyCtx.fillRect((xCoord % bodyGraph.width) + 2, 0, bodyGraph.width, bodyGraph.height);
   }
-  pan({ x: -body.vel.x * timestep, y: -body.vel.y * timestep }, false);
-  newBody = false;
 }

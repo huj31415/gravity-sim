@@ -6,9 +6,6 @@
   <title>N body gravity simulation</title>
   <link rel="stylesheet" href="style.css" />
   <script src="./nbody.js" defer></script>
-  <meta http-equiv='cache-control' content='no-cache'>
-  <meta http-equiv='expires' content='0'>
-  <meta http-equiv='pragma' content='no-cache'>
 </head>
 
 <body>
@@ -23,7 +20,7 @@
     </div>
     <div id="graphs">
       <hr />
-      <div id="graphs">
+      <div>
         <div>
           <span style="display: inline-block; width: 140px">FPS: <span id="fps">0</span></span>
           <span style="display: inline-block; width: 140px">Active bodies: <span id="bodyCount">0</span></span>
@@ -152,7 +149,7 @@
         <label for="drawGStrength">Draw gravity strength (slow) (g)</label>
       </div>
       <div>
-        <input type="checkbox" id="drawGThreshold" name="drawGThreshold" />
+        <input type="checkbox" id="drawGThreshold" name="drawGThreshold" checked/>
         <label for="drawGThreshold">Gravity draw threshold</label>
       </div>
       <div>
