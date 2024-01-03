@@ -128,12 +128,6 @@ let heatmapRes = 4;
 let minL = 0.1;
 let colorByVel;
 
-// coordinate
-function coord(x, y) {
-  this.x = x;
-  this.y = y;
-}
-
 initParams();
 draw();
 
