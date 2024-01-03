@@ -99,10 +99,10 @@ let numBodies,
   initVel,
   timestep,
   oldTimestep,
-  continuous,
   drawCoM,
   CoM,
   trackCoM;
+let continuous = true;
 
 // tracking variables
 let collisionCount = (frameCount = bodyCount = activeBodies = 0);
@@ -128,12 +128,14 @@ let heatmapRes = 4;
 let minL = 0.1;
 let colorByVel;
 
-try {
-  initParams();
-  draw();
-} catch (e) {
-  alert(e);
+// coordinate
+function coord(x, y) {
+  this.x = x;
+  this.y = y;
 }
+
+initParams();
+draw();
 
 // form event listeners
 {
@@ -463,7 +465,7 @@ try {
           ui.trace.click();
           break;
         case "KeyC":
-          ui.continuous.click();
+          ui.colorByVel.click();
           break;
         case "KeyF":
           ui.fade.click();
@@ -840,9 +842,8 @@ class Body {
   }
   draw() {
     let speed = colorByVel ? Math.hypot(this.vel.x, this.vel.y) : 0;
-    let hue = colorByVel ? Math.max(240 - 50 * speed, 0) : 0; //100 / (Math.hypot(this.vel.x, this.vel.y) + 0.417)
-    let brightness = colorByVel ? Math.min(speed + 40, 50) : 0;
-    let drawColor = colorByVel ? "hsl(" + hue + ", 100%," + brightness + "%)" : this.color;
+    let hue = colorByVel ? Math.max(240 - 20 * speed, 0) : 0;
+    let drawColor = colorByVel ? "hsl(" + hue + ", 100%, 50%)" : this.color;
 
     if (!isInView(this)) {
       // offscreen indicators
@@ -852,13 +853,13 @@ class Body {
       let angle = Math.abs(Math.atan2(bodyPos.y, bodyPos.x));
       let x =
         (Math.sign(bodyPos.x) *
-          (center.x - (Math.sqrt(this.radius) + 5) * Math.abs(Math.cos(angle)))) /
+          (center.x - ((this.radius / 2) + 5) * Math.abs(Math.cos(angle)))) /
         totalzoom;
       let y =
-        (Math.sign(bodyPos.y) * (center.y - (Math.sqrt(this.radius) + 5) * Math.sin(angle))) /
+        (Math.sign(bodyPos.y) * (center.y - ((this.radius / 2) + 5) * Math.sin(angle))) /
         totalzoom;
       ctx.beginPath();
-      ctx.strokeStyle = this.color;
+      ctx.strokeStyle = drawColor;
       ctx.lineWidth = 1 / totalzoom;
       ctx.moveTo(center.x + bodyPos.x, center.y + bodyPos.y);
       Math.abs(bodyPos.x / canvas.width) > Math.abs(bodyPos.y / canvas.height)
@@ -893,11 +894,13 @@ class Body {
       ctx.fill();
 
       // center
-      ctx.beginPath();
-      ctx.arc(this.pos.x, this.pos.y, this.radius < 1.5 ? this.radius : 1.5, 0, Math.PI * 2, true);
-      ctx.closePath();
-      ctx.fillStyle = this.radius < 3 ? "white" : "black";
-      ctx.fill();
+      if (this.radius > 3) {
+        ctx.beginPath();
+        ctx.arc(this.pos.x, this.pos.y, this.radius < 1.5 ? this.radius : 1.5, 0, Math.PI * 2, true);
+        ctx.closePath();
+        ctx.fillStyle = "black";
+        ctx.fill();
+      }
 
       if (drawField) {
         ctx.strokeStyle = "black";
@@ -930,53 +933,38 @@ class Body {
         ctx.stroke();
       }
     }
-    this.update();
-  }
-  update() {
-    this.accel = gravity(this, bodies.indexOf(this));
-    this.prevPos.x = this.pos.x;
-    this.prevPos.y = this.pos.y;
-    // edge collision - set accel to 0 when colliding to prevent changes in velocity
-    if (collide) {
-      if (
-        this.pos.x >=
-        -collideOffset.x + currentOffset.x + canvas.width - this.radius ||
-        this.pos.x <= -collideOffset.x + currentOffset.x + this.radius
-      ) {
-        this.vel.x = -this.vel.x;
-        this.accel.x = 0;
+
+    // Update the position of the body
+    {
+      this.accel = gravity(this, bodies.indexOf(this));
+      this.prevPos.x = this.pos.x;
+      this.prevPos.y = this.pos.y;
+      // edge collision - set accel to 0 when colliding to prevent changes in velocity
+      if (collide) {
+        if (
+          this.pos.x >=
+          -collideOffset.x + currentOffset.x + canvas.width - this.radius ||
+          this.pos.x <= -collideOffset.x + currentOffset.x + this.radius
+        ) {
+          this.vel.x = -this.vel.x;
+          this.accel.x = 0;
+        }
+        if (
+          this.pos.y >=
+          -collideOffset.y + currentOffset.y + canvas.height - this.radius ||
+          this.pos.y <= -collideOffset.y + currentOffset.y + this.radius
+        ) {
+          this.vel.y = -this.vel.y;
+          this.accel.y = 0;
+        }
       }
-      if (
-        this.pos.y >=
-        -collideOffset.y + currentOffset.y + canvas.height - this.radius ||
-        this.pos.y <= -collideOffset.y + currentOffset.y + this.radius
-      ) {
-        this.vel.y = -this.vel.y;
-        this.accel.y = 0;
-      }
+      // implement acceleration
+      this.vel.x += this.accel.x * timestep;
+      this.vel.y += this.accel.y * timestep;
+      // integrate velocity every frame
+      this.pos.x += this.vel.x * timestep;
+      this.pos.y += this.vel.y * timestep;
     }
-    // implement acceleration
-    this.vel.x += this.accel.x * timestep;
-    this.vel.y += this.accel.y * timestep;
-    // integrate velocity every frame
-    this.pos.x += this.vel.x * timestep;
-    this.pos.y += this.vel.y * timestep;
-  }
-  toString() {
-    return (
-      "Body " +
-      this.id +
-      ": Mass " +
-      this.mass +
-      "; CurrentPos " +
-      this.pos.x +
-      ", " +
-      this.pos.y +
-      "; CurrentVel " +
-      this.vel.x +
-      ", " +
-      this.vel.y
-    );
   }
 }
 
@@ -997,7 +985,7 @@ function gravity(currentBody, index) {
       const distance = {
         x: (body.pos.x - currentBody.pos.x),
         y: (body.pos.y - currentBody.pos.y),
-      }
+      };
       distance.sqr = Math.max((distance.x * distance.x + distance.y * distance.y), 1); // Most Time Consuming
 
       let distThreshSqr = (body.radius + currentBody.radius) * (body.radius + currentBody.radius);
@@ -1120,7 +1108,6 @@ function updateGraphs(interval) {
 // draw and animate
 function draw() {
   colorByVel = ui.colorByVel.checked;
-  continuous = ui.continuous.checked;
   trace = ui.trace.checked;
   fade = ui.fade.checked;
   drawGravity = ui.drawGravity.checked;
