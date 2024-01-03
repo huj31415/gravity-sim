@@ -1,201 +1,187 @@
 <!DOCTYPE html>
 
 <html lang="en-us">
-  <head>
-    <title>N body gravity simulation</title>
-    <link rel="stylesheet" href="style.css" />
-    <script src="./nbody.js" defer></script>
-  </head>
-  <body>
-    <canvas id="canvas" class="main"></canvas>
-    <button id="toggleSettings">&gt;</button>
-    <span class="right" id="settings">
-      <h2>N-body gravity simulator</h2>
-      <div id="stats">
-        <p>Collisions: <span id="collisionCount">0</span></p>
-        <p>Viewport: <span id="viewport">0 &times; 0</span></p>
-        <p>Offset: X=<span id="offset">0 Y=0</span> | Zoom: <span id="zoom">100</span>%</p>
-      </div>
-      <div id="simcontrols">
-        <hr />
-        <div>
-          <button id="rand">Random (r)</button>
-          <button id="add">Add rand body (enter)</button>
-        </div>
-        <div>
-          <button id="clear">Clear bodies (bksp)</button>
-          <button id="clrOffscreen">Clear offscreen (del)</button>
-        </div>
-        <div>
-          <select id="presets" name="presets">
-            <option value="0">500 body chaos</option>
-            <option value="1">3 planets + sun</option>
-            <option value="2">2 body</option>
-            <option value="3">Planets + moons</option>
-            <option value="4">Galaxies</option>
-            <option value="5">Solar system formation</option>
-            <option value="6">Random solar system</option>
-          </select>
-          <button id="loadPreset">Load preset</button>
-        </div>
-        <div>
-          <button id="toggle" class="fullwidth">Pause / Play (p)</button>
-        </div>
-      </div>
-      <div id="addbodyparams">
-        <hr />
-        <p class="header">Add a body: Ctrl+click / Alt+click</p>
-        <div>
-          <input type="number" id="mass" name="mass" value="1000" />
-          <label for="mass">Mass</label>
-        </div>
-        <div>
-          <input type="number" id="radius" name="radius" value="0" />
-          <label for="radius">Radius (0=auto)</label>
-        </div>
-        <div>
-          <input type="number" id="xPos" name="xPos" value="" />
-          <label for="xPos">X (blank for mouse)</label>
-        </div>
-        <div>
-          <input type="number" id="yPos" name="yPos" value="" />
-          <label for="yPos">Y (blank for mouse)</label>
-        </div>
-        <div>
-          <input type="number" id="Vx" name="Vx" value="0" />
-          <label for="Vx">Vx</label>
-        </div>
-        <div>
-          <input type="number" id="Vy" name="Vy" value="0" />
-          <label for="Vy">Vy</label>
-        </div>
-      </div>
-      <div id="randbodyparams">
-        <hr />
-        <p class="header">Random body generation params</p>
-        <div>
-          <input type="number" id="num" name="num" value="5" width="400px" />
-          <label for="num">Number of objects</label>
-        </div>
-        <div>
-          <input type="number" id="maxSize" name="maxSize" value="5000" width="400px" />
-          <label for="maxSize">Max mass</label>
-        </div>
-        <div>
-          <input type="number" id="minSize" name="minSize" value="1000" width="400px" />
-          <label for="minSize">Min mass</label>
-        </div>
-        <div>
-          <input type="number" id="initVel" name="initVel" value="5" min="0" width="400px" />
-          <label for="initVel">Max init speed</label>
-        </div>
-      </div>
-      <div id="simparams">
-        <hr />
-        <p class="header">Simulation params</p>
-        <div>
-          <input
-            type="range"
-            id="timestep"
-            name="timestep"
-            value="1"
-            max="2"
-            min="0"
-            step="0.01"
-            width="400px"
-          />
-          <label for="timestep">Timestep (<span id="tOut">1</span>)</label>
-        </div>
-        <div>
-          <input
-            type="range"
-            id="g"
-            name="g"
-            value="0.25"
-            max="2"
-            min="-2"
-            step=".01"
-            width="400px"
-          />
-          <label for="g">G constant (<span id="gOut">0.25</span>)</label>
-        </div>
-        <div>
-          <input type="checkbox" id="collide" name="collide" />
-          <label for="collide">Edge collide (e)</label>
-        </div>
-      </div>
-      <div id="drawparams">
-        <hr />
-        <p class="header">Draw params</p>
-        <div>
-          <input type="checkbox" id="colorByVel" name="colorByVel" />
-          <label for="colorByVel">Color bodies by speed (c)</label>
-        </div>
-        <div>
-          <input type="checkbox" id="trace" name="trace" />
-          <label for="trace">Trace paths (may reduce FPS) (t)</label>
-        </div>
-        <div>
-          <input type="checkbox" id="fade" name="fade" />
-          <label for="fade">Fade paths (f)</label>
-        </div>
-        <div>
-          <input type="checkbox" id="vectors" name="vectors" />
-          <label for="vectors">Draw motion vectors (blue) (1)</label>
-        </div>
-        <div>
-          <input type="checkbox" id="drawG" name="drawG" />
-          <label for="drawG">Draw acceleration vectors (red) (2)</label>
-        </div>
-        <div>
-          <input type="checkbox" id="drawGStrength" name="drawGStrength" />
-          <label for="drawGStrength">Draw gravity strength (slow) (g)</label>
-        </div>
-        <div>
-          <input type="checkbox" id="drawGThreshold" name="drawGThreshold" />
-          <label for="drawGThreshold">Gravity draw threshold</label>
-        </div>
-        <div>
-          <input type="checkbox" id="heatmap" name="heatmap" />
-          <label for="heatmap">Show gravitational field (SLOW)</label>
-        </div>
-        <div>
-          <input type="checkbox" id="drawCoM" name="drawCoM" />
-          <label for="drawCoM">Draw CoM (3)</label>
-        </div>
-        <div>
-          <input type="checkbox" id="trackCoM" name="trackCoM" />
-          <label for="trackCoM">Track CoM (4)</label>
-        </div>
-      </div>
+
+<head>
+  <title>N body gravity simulation</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="./nbody.js" defer></script>
+  <meta http-equiv='cache-control' content='no-cache'>
+  <meta http-equiv='expires' content='0'>
+  <meta http-equiv='pragma' content='no-cache'>
+</head>
+
+<body>
+  <canvas id="canvas" class="main"></canvas>
+  <button id="toggleSettings">&gt;</button>
+  <span class="right" id="settings">
+    <h2>N-body gravity simulator</h2>
+    <div id="stats">
+      <p>Collisions: <span id="collisionCount">0</span></p>
+      <p>Viewport: <span id="viewport">0 &times; 0</span></p>
+      <p>Offset: X=<span id="offset">0 Y=0</span> | Zoom: <span id="zoom">100</span>%</p>
+    </div>
+    <div id="graphs">
+      <hr />
       <div id="graphs">
-        <hr />
-        <div id="graphs">
-          <div>
-            <span style="display: inline-block; width: 140px">FPS: <span id="fps">0</span></span>
-            <span style="display: inline-block; width: 140px"
-              >Active bodies: <span id="bodyCount">0</span></span
-            >
-          </div>
-          <div>
-            <canvas width="140" height="100" id="fpsGraph"></canvas>
-            <canvas width="140" height="100" id="bodyGraph"></canvas>
-          </div>
+        <div>
+          <span style="display: inline-block; width: 140px">FPS: <span id="fps">0</span></span>
+          <span style="display: inline-block; width: 140px">Active bodies: <span id="bodyCount">0</span></span>
+        </div>
+        <div>
+          <canvas width="140" height="100" id="fpsGraph"></canvas>
+          <canvas width="140" height="100" id="bodyGraph"></canvas>
         </div>
       </div>
-      <div id="controls">
-        <hr />
-        <p>
-          Controls<br />
-          U/V: toggle sidebar<br />
-          Arrows/WASD/Mouse: pan view<br />
-          Space: cycle tracked body<br />
-          Esc: cancel tracking<br />
-          Home/0: center viewport<br />
-          Scroll/Z/X: zoom in/out
-        </p>
+    </div>
+    <div id="simcontrols">
+      <hr />
+      <div>
+        <button id="rand">Random (r)</button>
+        <button id="add">Add rand body (enter)</button>
       </div>
-      <div class="padding"></div>
-    </span>
-  </body>
+      <div>
+        <button id="clear">Clear bodies (bksp)</button>
+        <button id="clrOffscreen">Clear offscreen (del)</button>
+      </div>
+      <div>
+        <select id="presets" name="presets">
+          <option value="0">500 body chaos</option>
+          <option value="1">3 planets + sun</option>
+          <option value="2">2 body</option>
+          <option value="3">Planets + moons</option>
+          <option value="4">Galaxies</option>
+          <option value="5">Solar system formation</option>
+          <option value="6">Random solar system</option>
+        </select>
+        <button id="loadPreset">Load preset</button>
+      </div>
+      <div>
+        <button id="toggle" class="fullwidth">Pause / Play (p)</button>
+      </div>
+    </div>
+    <div id="addbodyparams">
+      <hr />
+      <p class="header">Add a body: Ctrl+click / Alt+click</p>
+      <div>
+        <input type="number" id="mass" name="mass" value="1000" />
+        <label for="mass">Mass</label>
+      </div>
+      <div>
+        <input type="number" id="radius" name="radius" value="0" />
+        <label for="radius">Radius (0=auto)</label>
+      </div>
+      <div>
+        <input type="number" id="xPos" name="xPos" value="" />
+        <label for="xPos">X (blank for mouse)</label>
+      </div>
+      <div>
+        <input type="number" id="yPos" name="yPos" value="" />
+        <label for="yPos">Y (blank for mouse)</label>
+      </div>
+      <div>
+        <input type="number" id="Vx" name="Vx" value="0" />
+        <label for="Vx">Vx</label>
+      </div>
+      <div>
+        <input type="number" id="Vy" name="Vy" value="0" />
+        <label for="Vy">Vy</label>
+      </div>
+    </div>
+    <div id="randbodyparams">
+      <hr />
+      <p class="header">Random body generation params</p>
+      <div>
+        <input type="number" id="num" name="num" value="5" width="400px" />
+        <label for="num">Number of objects</label>
+      </div>
+      <div>
+        <input type="number" id="maxSize" name="maxSize" value="5000" width="400px" />
+        <label for="maxSize">Max mass</label>
+      </div>
+      <div>
+        <input type="number" id="minSize" name="minSize" value="1000" width="400px" />
+        <label for="minSize">Min mass</label>
+      </div>
+      <div>
+        <input type="number" id="initVel" name="initVel" value="5" min="0" width="400px" />
+        <label for="initVel">Max init speed</label>
+      </div>
+    </div>
+    <div id="simparams">
+      <hr />
+      <p class="header">Simulation params</p>
+      <div>
+        <input type="range" id="timestep" name="timestep" value="1" max="2" min="0" step="0.01" width="400px" />
+        <label for="timestep">Timestep (<span id="tOut">1</span>)</label>
+      </div>
+      <div>
+        <input type="range" id="g" name="g" value="0.25" max="2" min="-2" step=".01" width="400px" />
+        <label for="g">G constant (<span id="gOut">0.25</span>)</label>
+      </div>
+      <div>
+        <input type="checkbox" id="collide" name="collide" />
+        <label for="collide">Edge collide (e)</label>
+      </div>
+    </div>
+    <div id="drawparams">
+      <hr />
+      <p class="header">Draw params</p>
+      <div>
+        <input type="checkbox" id="colorByVel" name="colorByVel" />
+        <label for="colorByVel">Color bodies by speed (c)</label>
+      </div>
+      <div>
+        <input type="checkbox" id="trace" name="trace" />
+        <label for="trace">Trace paths (may reduce FPS) (t)</label>
+      </div>
+      <div>
+        <input type="checkbox" id="fade" name="fade" />
+        <label for="fade">Fade paths (f)</label>
+      </div>
+      <div>
+        <input type="checkbox" id="vectors" name="vectors" />
+        <label for="vectors">Draw motion vectors (blue) (1)</label>
+      </div>
+      <div>
+        <input type="checkbox" id="drawG" name="drawG" />
+        <label for="drawG">Draw acceleration vectors (red) (2)</label>
+      </div>
+      <div>
+        <input type="checkbox" id="drawGStrength" name="drawGStrength" />
+        <label for="drawGStrength">Draw gravity strength (slow) (g)</label>
+      </div>
+      <div>
+        <input type="checkbox" id="drawGThreshold" name="drawGThreshold" />
+        <label for="drawGThreshold">Gravity draw threshold</label>
+      </div>
+      <div>
+        <input type="checkbox" id="heatmap" name="heatmap" />
+        <label for="heatmap">Show gravitational field (SLOW)</label>
+      </div>
+      <div>
+        <input type="checkbox" id="drawCoM" name="drawCoM" />
+        <label for="drawCoM">Draw CoM (3)</label>
+      </div>
+      <div>
+        <input type="checkbox" id="trackCoM" name="trackCoM" />
+        <label for="trackCoM">Track CoM (4)</label>
+      </div>
+    </div>
+    <div id="controls">
+      <hr />
+      <p>
+        Controls<br />
+        U/V: toggle sidebar<br />
+        Arrows/WASD/Mouse: pan view<br />
+        Space: cycle tracked body<br />
+        Esc: cancel tracking<br />
+        Home/0: center viewport<br />
+        Scroll/Z/X: zoom in/out
+      </p>
+    </div>
+    <div class="padding"></div>
+  </span>
+</body>
+
 </html>
