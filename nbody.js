@@ -46,6 +46,7 @@ const ui = {
   drawCoM: document.getElementById("drawCoM"),
   trackCoM: document.getElementById("trackCoM"),
   colorByVel: document.getElementById("colorByVel"),
+  globalCollide: document.getElementById("globalCollide"),
 };
 
 // utilities
@@ -101,7 +102,8 @@ let numBodies,
   oldTimestep,
   drawCoM,
   CoM,
-  trackCoM;
+  trackCoM,
+  globalCollide;
 let continuous = true;
 
 // tracking variables
@@ -230,7 +232,7 @@ draw();
             y: center.y,
           },
           { x: 0, y: 0 },
-          1000,
+          1500,
           5,
           10,
           1000,
@@ -336,9 +338,11 @@ draw();
 
 // interaction event listeners
 {
-  canvas.onmousedown = (event) => {
-    event.ctrlKey || event.altKey
-      ? bodies.push(
+  // mouse events
+  {
+    canvas.onmousedown = (event) => {
+      event.ctrlKey || event.altKey
+        ? bodies.push(
           new Body(
             ui.xp.value
               ? parseInt(ui.xp.value)
@@ -353,45 +357,48 @@ draw();
             randColor()
           )
         )
-      : canvas.addEventListener("mousemove", handleMouseMove);
-  };
-  canvas.onmouseup = () => {
-    canvas.removeEventListener("mousemove", handleMouseMove);
-    panOffset = { x: 0, y: 0 };
-  };
-  function handleMouseMove(event) {
-    event.preventDefault();
-    event.stopPropagation();
+        : canvas.addEventListener("mousemove", handleMouseMove);
+        activeBodies += 1;
+        ui.bodyCount.innerText = activeBodies;
+    };
+    canvas.onmouseup = () => {
+      canvas.removeEventListener("mousemove", handleMouseMove);
+      panOffset = { x: 0, y: 0 };
+    };
+    function handleMouseMove(event) {
+      event.preventDefault();
+      event.stopPropagation();
 
-    panOffset.x = event.movementX / totalzoom;
-    panOffset.y = event.movementY / totalzoom;
+      panOffset.x = event.movementX / totalzoom;
+      panOffset.y = event.movementY / totalzoom;
 
-    setTimeout(mouseStopped, 50);
-  }
-  function mouseStopped() {
-    panOffset.x = panOffset.y = 0;
-  }
-
-  canvas.onwheel = (event) => {
-    if (!event.ctrlKey) {
-      zoomfactor = Math.sign(event.deltaY) < 0 ? 1.05 : 1 / 1.05;
-      ctx.transform(
-        zoomfactor,
-        0,
-        0,
-        zoomfactor,
-        (-(zoomfactor - 1) * canvas.width) / 2,
-        (-(zoomfactor - 1) * canvas.height) / 2
-      );
-      totalzoom *= zoomfactor;
-      viewport.x /= zoomfactor;
-      viewport.y /= zoomfactor;
-      ui.viewport.innerText = Math.round(viewport.x) + " x " + Math.round(viewport.y);
-      ctx.fillStyle = "rgba(0, 0, 0, 1)";
-      ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
-      ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
+      setTimeout(mouseStopped, 50);
     }
-  };
+    function mouseStopped() {
+      panOffset.x = panOffset.y = 0;
+    }
+
+    canvas.onwheel = (event) => {
+      if (!event.ctrlKey) {
+        zoomfactor = Math.sign(event.deltaY) < 0 ? 1.05 : 1 / 1.05;
+        ctx.transform(
+          zoomfactor,
+          0,
+          0,
+          zoomfactor,
+          (-(zoomfactor - 1) * canvas.width) / 2,
+          (-(zoomfactor - 1) * canvas.height) / 2
+        );
+        totalzoom *= zoomfactor;
+        viewport.x /= zoomfactor;
+        viewport.y /= zoomfactor;
+        ui.viewport.innerText = Math.round(viewport.x) + " x " + Math.round(viewport.y);
+        ctx.fillStyle = "rgba(0, 0, 0, 1)";
+        ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
+        ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
+      }
+    };
+  }
 
   window.onkeydown = (event) => {
     const activeElement = document.activeElement;
@@ -601,15 +608,15 @@ draw();
         new Body(
           collide
             ? randInt(
-                -collideOffset.x + currentOffset.x + 2 * r,
-                -collideOffset.x + currentOffset.x + canvas.width - 2 * r
-              )
+              -collideOffset.x + currentOffset.x + 2 * r,
+              -collideOffset.x + currentOffset.x + canvas.width - 2 * r
+            )
             : randInt(center.x - viewport.x / 2 + 2 * r, center.x + viewport.x / 2 - 2 * r),
           collide
             ? randInt(
-                -collideOffset.y + currentOffset.y + 2 * r,
-                -collideOffset.y + currentOffset.y + canvas.height - 2 * r
-              )
+              -collideOffset.y + currentOffset.y + 2 * r,
+              -collideOffset.y + currentOffset.y + canvas.height - 2 * r
+            )
             : randInt(center.y - viewport.y / 2 + 2 * r, center.y + viewport.y / 2 - 2 * r),
           (Math.random() - 0.5) * 2 * v,
           (Math.random() - 0.5) * 2 * v,
@@ -843,97 +850,99 @@ class Body {
     let drawColor = colorByVel ? "hsl(" + hue + ", 100%, 50%)" : this.color;
 
     // Draw the body
-    if (!isInView(this)) {
-      // offscreen indicators
-      // use slope to draw lines pointing toward center
-      let bodyPos = { x: this.pos.x - center.x, y: this.pos.y - center.y };
-      let slope = (this.pos.y - center.y) / (this.pos.x - center.x);
-      let angle = Math.abs(Math.atan2(bodyPos.y, bodyPos.x));
-      let x =
-        (Math.sign(bodyPos.x) * (center.x - (this.radius / 2 + 5) * Math.abs(Math.cos(angle)))) /
-        totalzoom;
-      let y =
-        (Math.sign(bodyPos.y) * (center.y - (this.radius / 2 + 5) * Math.sin(angle))) / totalzoom;
-      ctx.beginPath();
-      ctx.strokeStyle = drawColor;
-      ctx.lineWidth = 1 / totalzoom;
-      ctx.moveTo(center.x + bodyPos.x, center.y + bodyPos.y);
-      Math.abs(bodyPos.x / canvas.width) > Math.abs(bodyPos.y / canvas.height)
-        ? ctx.lineTo(center.x + x, center.y + slope * x)
-        : ctx.lineTo(center.x + y / slope, center.y + y);
-      ctx.closePath();
-      ctx.stroke();
-    } else {
-      if (trackBody != this && trace) {
-        // connect to previous
-        if (continuous && trace) {
+    {
+      if (!isInView(this)) {
+        // offscreen indicators
+        // use slope to draw lines pointing toward center
+        let bodyPos = { x: this.pos.x - center.x, y: this.pos.y - center.y };
+        let slope = (this.pos.y - center.y) / (this.pos.x - center.x);
+        let angle = Math.abs(Math.atan2(bodyPos.y, bodyPos.x));
+        let x =
+          (Math.sign(bodyPos.x) * (center.x - (this.radius / 2 + 5) * Math.abs(Math.cos(angle)))) /
+          totalzoom;
+        let y =
+          (Math.sign(bodyPos.y) * (center.y - (this.radius / 2 + 5) * Math.sin(angle))) / totalzoom;
+        ctx.beginPath();
+        ctx.strokeStyle = drawColor;
+        ctx.lineWidth = 1 / totalzoom;
+        ctx.moveTo(center.x + bodyPos.x, center.y + bodyPos.y);
+        Math.abs(bodyPos.x / canvas.width) > Math.abs(bodyPos.y / canvas.height)
+          ? ctx.lineTo(center.x + x, center.y + slope * x)
+          : ctx.lineTo(center.x + y / slope, center.y + y);
+        ctx.closePath();
+        ctx.stroke();
+      } else {
+        if (trackBody != this && trace) {
+          // connect to previous
+          if (continuous && trace) {
+            ctx.beginPath();
+            ctx.lineWidth = 2 * this.radius;
+            ctx.strokeStyle = drawColor;
+            ctx.moveTo(this.pos.x, this.pos.y);
+            ctx.lineTo(this.prevPos.x, this.prevPos.y);
+            ctx.closePath();
+            ctx.stroke();
+          }
           ctx.beginPath();
-          ctx.lineWidth = 2 * this.radius;
-          ctx.strokeStyle = drawColor;
-          ctx.moveTo(this.pos.x, this.pos.y);
-          ctx.lineTo(this.prevPos.x, this.prevPos.y);
+          ctx.arc(this.prevPos.x, this.prevPos.y, this.radius, 0, Math.PI * 2, true);
           ctx.closePath();
-          ctx.stroke();
+          ctx.fillStyle = drawColor;
+          ctx.fill();
         }
-        ctx.beginPath();
-        ctx.arc(this.prevPos.x, this.prevPos.y, this.radius, 0, Math.PI * 2, true);
-        ctx.closePath();
-        ctx.fillStyle = drawColor;
-        ctx.fill();
-      }
 
-      // draw the body
-      ctx.beginPath();
-      ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2, true);
-      ctx.closePath();
-      ctx.fillStyle = drawColor;
-      ctx.fill();
-
-      // center
-      if (this.radius > 3) {
-        ctx.beginPath();
-        ctx.arc(
-          this.pos.x,
-          this.pos.y,
-          this.radius < 1.5 ? this.radius : 1.5,
-          0,
-          Math.PI * 2,
-          true
-        );
-        ctx.closePath();
-        ctx.fillStyle = "black";
-        ctx.fill();
-      }
-
-      if (drawField) {
-        ctx.strokeStyle = "black";
+        // draw the body
         ctx.beginPath();
         ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2, true);
         ctx.closePath();
-        ctx.stroke();
-      }
+        ctx.fillStyle = drawColor;
+        ctx.fill();
 
-      // motion vector
-      if (drawVector) {
-        let mult = 10 * timestep;
-        ctx.beginPath();
-        ctx.strokeStyle = "blue";
-        ctx.lineWidth = 1 / totalzoom;
-        ctx.moveTo(this.pos.x, this.pos.y);
-        ctx.lineTo(this.pos.x + mult * this.vel.x, this.pos.y + mult * this.vel.y);
-        ctx.closePath();
-        ctx.stroke();
-      }
-      // acceleration vector
-      if (drawGravity) {
-        let mult = 50 * timestep;
-        ctx.beginPath();
-        ctx.lineWidth = 1 / totalzoom;
-        ctx.strokeStyle = "red";
-        ctx.moveTo(this.pos.x, this.pos.y);
-        ctx.lineTo(this.pos.x + mult * this.accel.x, this.pos.y + mult * this.accel.y);
-        ctx.closePath();
-        ctx.stroke();
+        // center
+        if (this.radius > 3) {
+          ctx.beginPath();
+          ctx.arc(
+            this.pos.x,
+            this.pos.y,
+            this.radius < 1.5 ? this.radius : 1.5,
+            0,
+            Math.PI * 2,
+            true
+          );
+          ctx.closePath();
+          ctx.fillStyle = "black";
+          ctx.fill();
+        }
+
+        if (drawField) {
+          ctx.strokeStyle = "black";
+          ctx.beginPath();
+          ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2, true);
+          ctx.closePath();
+          ctx.stroke();
+        }
+
+        // motion vector
+        if (drawVector) {
+          let mult = 10 * timestep;
+          ctx.beginPath();
+          ctx.strokeStyle = "blue";
+          ctx.lineWidth = 1 / totalzoom;
+          ctx.moveTo(this.pos.x, this.pos.y);
+          ctx.lineTo(this.pos.x + mult * this.vel.x, this.pos.y + mult * this.vel.y);
+          ctx.closePath();
+          ctx.stroke();
+        }
+        // acceleration vector
+        if (drawGravity) {
+          let mult = 50 * timestep;
+          ctx.beginPath();
+          ctx.lineWidth = 1 / totalzoom;
+          ctx.strokeStyle = "red";
+          ctx.moveTo(this.pos.x, this.pos.y);
+          ctx.lineTo(this.pos.x + mult * this.accel.x, this.pos.y + mult * this.accel.y);
+          ctx.closePath();
+          ctx.stroke();
+        }
       }
     }
 
@@ -973,69 +982,11 @@ class Body {
   }
 }
 
-/**
- * Calculate gravitational forces between each body
- * @param {Body} currentBody the body to calculate forces for
- * @param {Number} index current body index in the array used to check for duplicate calcs
- */
-function gravity(currentBody, index) {
-  let force = { x: 0, y: 0 };
-  let accel = { x: 0, y: 0 };
-
-  bodies.forEach((body, j) => {
-    // sum forces in X and Y for each using Fg = G(m1*m2)/r^2
-    // then get accel by dividing by mass
-    if (index != j) {
-      // get distance
-      const distance = {
-        x: body.pos.x - currentBody.pos.x,
-        y: body.pos.y - currentBody.pos.y,
-      };
-      distance.sqr = Math.max(distance.x * distance.x + distance.y * distance.y, 1); // Most Time Consuming
-
-      let distThreshSqr = (body.radius + currentBody.radius) * (body.radius + currentBody.radius);
-
-      if (
-        distance.sqr <= distThreshSqr &&
-        bodies.includes(currentBody) &&
-        bodies.includes(body) &&
-        currentBody.id != body.id
-      ) {
-        if (body.collide && currentBody.collide) collision(currentBody, body);
-      } else {
-        // get total gravity
-        let distRecip = 1 / distance.sqr;
-        const gForce = G * (body.mass * currentBody.mass) * distRecip; // Most Time Consuming
-
-        // get the components of the force
-        let dist = Math.sqrt(distance.sqr);
-        force.x += (gForce * distance.x) / dist;
-        force.y += (gForce * distance.y) / dist;
-        let strength = Math.abs(1 - 10 / (gForce + 10));
-        let drawThreshold = drawGThreshold ? (trace ? 1e-4 : 1e-2) : 0;
-        if (drawGravityStrength && strength >= drawThreshold) {
-          ctx.beginPath();
-          ctx.strokeStyle =
-            "rgba(" + (255 - 255 * strength) + ", " + 255 * strength + ",0 ," + strength + ")";
-          ctx.lineWidth = 1 / totalzoom;
-          ctx.moveTo(body.pos.x, body.pos.y);
-          ctx.lineTo(currentBody.pos.x, currentBody.pos.y);
-          ctx.closePath();
-          ctx.stroke();
-        }
-      }
-    }
-  });
-  accel.x = force.x / currentBody.mass;
-  accel.y = force.y / currentBody.mass;
-  return accel;
-}
-
-// Calculate gravitational forces between each body (more efficient - does each calc once)
-function calcNBodyGravity() {
+// Calculate gravitational forces between each body (more efficient - does each calc once) then draw
+function runSim() {
   // iterate through all combinations of bodies and add force to body total
-  if (bodies.length > 1) {
-    bodies.forEach((body1, index) => {
+  bodies.forEach((body1, index) => {
+    if (bodies.length > 1) {
       for (let i = index + 1; i < bodies.length; i++) {
         // calc gravity between body and bodies[i], then add forces
 
@@ -1057,7 +1008,7 @@ function calcNBodyGravity() {
           body1.id != body2.id
         ) {
           // don't skip a body after removing it
-          if (body2.collide && body1.collide && collision(body1, body2) < i) i--;
+          if (globalCollide && body2.collide && body1.collide && collision(body1, body2) < i) i--;
         } else {
           // get total gravity
           let distRecip = 1 / distance.sqr;
@@ -1085,8 +1036,9 @@ function calcNBodyGravity() {
         body2.force.x -= force.x;
         body2.force.y -= force.y;
       }
-    });
-  }
+    }
+    body1.draw();
+  });
 }
 
 /**
@@ -1223,6 +1175,7 @@ function draw() {
   drawField = ui.heatmap.checked;
   drawCoM = ui.drawCoM.checked;
   trackCoM = ui.trackCoM.checked;
+  globalCollide = ui.globalCollide.checked;
 
   continuous = true;
 
@@ -1279,11 +1232,8 @@ function draw() {
     }
   }
   // loop through bodies, draw and update
-  calcNBodyGravity();
-  bodies.forEach((body) => {
-    if (drawField && body.mass > maxBody.mass) maxBody = body;
-    body.draw();
-  });
+  runSim();
+
   if (bodies.length && drawCoM) {
     CoM = calcCoM();
     ctx.beginPath();
