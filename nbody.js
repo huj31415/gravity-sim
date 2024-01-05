@@ -135,167 +135,170 @@ draw();
 
 // form event listeners
 {
-  ui.collapse.onclick = () => {
-    ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
-    if (ui.panel.classList.contains("hidden")) {
-      ui.panel.classList.remove("hidden");
-    } else {
-      ui.panel.classList.add("hidden");
-    }
-  };
-  // begin the simulation
-  ui.randBtn.onclick = () => {
-    // form.collide.checked = true;
-    initParams();
-    initRandBodies(numBodies, minMass, maxMass, initVel);
-    activeBodies = bodies.length;
-    ui.bodyCount.innerText = activeBodies;
-  };
-
-  // load a preset
-  ui.loadBtn.onclick = () => {
-    initParams();
-    switch (ui.presets.value) {
-      case "0": // 500 body chaos
-        ui.G.value = ui.GOut.innerText = 1;
-        ui.drawVector.checked = drawVector = false;
-        ui.drawGravity.checked = drawGravity = false;
-        ui.timestep.value = ui.tOut.innerText = 0.5;
-        ui.numBodies.value = numBodies = 500;
-        ui.maxMass.value = maxMass = 100;
-        ui.minMass.value = minMass = 50;
-        ui.drawGravityStrength.checked = drawGravityStrength = false;
-        initRandBodies(numBodies, minMass, maxMass, initVel);
-        break;
-      case "1": // sun and 3 planets
-        ui.collide.checked = false;
-        ui.G.value = ui.GOut.innerText = 0.15;
-        G = 0.15;
-        initOrbitBodies1();
-        break;
-      case "2": // two body system
-        ui.collide.checked = false;
-        ui.G.value = ui.GOut.innerText = 0.15;
-        G = 0.15;
-        initOrbitBodies2();
-        break;
-      case "3": // sun planets and moon
-        ui.collide.checked = false;
-        ui.G.value = ui.GOut.innerText = 0.25;
-        G = 0.25;
-        initOrbitBodies3();
-        break;
-      case "4": // galaxies
-        ui.trace.checked = false;
-        ui.drawGravity.checked = false;
-        ui.drawGravityStrength.checked = false;
-        ui.drawVector.checked = false;
-        ui.timestep.value = ui.tOut.innerText = 0.5;
-        let g1num = randInt(250, 1000);
-        let g2num = randInt(250, 1000);
-        generateGalaxy(
-          {
-            x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
-            y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
-          },
-          { x: randInt(-1, 1), y: randInt(-1, 1) },
-          g1num,
-          1,
-          2,
-          g1num / 2,
-          0,
-          false
-        );
-        generateGalaxy(
-          {
-            x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
-            y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
-          },
-          { x: randInt(-1, 1), y: randInt(-1, 1) },
-          g2num,
-          1,
-          2,
-          g2num / 2,
-          randInt(0, 2),
-          false
-        );
-        break;
-      case "5": // solar system formation
-        ui.trace.checked = false;
-        ui.drawGravity.checked = false;
-        ui.drawGravityStrength.checked = false;
-        ui.drawVector.checked = false;
-        ui.timestep.value = ui.tOut.innerText = 0.5;
-        generateGalaxy(
-          {
-            x: center.x,
-            y: center.y,
-          },
-          { x: 0, y: 0 },
-          1500,
-          5,
-          10,
-          1000,
-          0,
-          true
-        );
-        break;
-      case "6":
-        ui.trace.checked = false;
-        ui.drawGravity.checked = false;
-        ui.drawGravityStrength.checked = false;
-        ui.drawVector.checked = false;
-        ui.timestep.value = ui.tOut.innerText = 0.5;
-        generateSolarSystem({ x: center.x, y: center.y }, { x: 0, y: 0 });
-        break;
-    }
-    activeBodies = bodies.length;
-    ui.bodyCount.innerText = activeBodies;
-  };
-
-  // add a body
-  ui.add.onclick = () => {
-    activeBodies += 1;
-    ui.bodyCount.innerText = activeBodies;
-    initParams();
-    initRandBodies(1, minMass, maxMass, initVel);
-  };
-
-  // clear bodies
-  ui.clear.onclick = () => {
-    bodies = [];
-    ctx.fillStyle = "rgba(0, 0, 0, 1)";
-    ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
-    activeBodies = bodies.length;
-    ui.bodyCount.innerText = activeBodies;
-  };
-
-  ui.clrOffscreen.onclick = () => {
-    let offset = {
-      x: collide ? -collideOffset.x + currentOffset.x : 0,
-      y: collide ? -collideOffset.y + currentOffset.y : 0,
-    };
-    bodies.forEach((body) => {
-      if (!isInView(body, offset)) {
-        remove(bodies, body.id);
+  // button listeners
+  {
+    ui.collapse.onclick = () => {
+      ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
+      if (ui.panel.classList.contains("hidden")) {
+        ui.panel.classList.remove("hidden");
+      } else {
+        ui.panel.classList.add("hidden");
       }
-    });
-    activeBodies = bodies.length;
-    ui.bodyCount.innerText = activeBodies;
-  };
+    };
+    // begin the simulation
+    ui.randBtn.onclick = () => {
+      // form.collide.checked = true;
+      initParams();
+      initRandBodies(numBodies, minMass, maxMass, initVel);
+      activeBodies = bodies.length;
+      ui.bodyCount.innerText = activeBodies;
+    };
 
-  // pause/play sim
-  ui.toggle.onclick = () => {
-    paused = !paused;
-    if (timestep) {
-      oldTimestep = timestep;
-      timestep = 0;
-      ui.timestep.value = 0;
-    } else {
-      timestep = oldTimestep;
-      ui.timestep.value = timestep;
-    }
-  };
+    // load a preset
+    ui.loadBtn.onclick = () => {
+      initParams();
+      switch (ui.presets.value) {
+        case "0": // 500 body chaos
+          ui.G.value = ui.GOut.innerText = 1;
+          ui.drawVector.checked = drawVector = false;
+          ui.drawGravity.checked = drawGravity = false;
+          ui.timestep.value = ui.tOut.innerText = 0.5;
+          ui.numBodies.value = numBodies = 500;
+          ui.maxMass.value = maxMass = 100;
+          ui.minMass.value = minMass = 50;
+          ui.drawGravityStrength.checked = drawGravityStrength = false;
+          initRandBodies(numBodies, minMass, maxMass, initVel);
+          break;
+        case "1": // sun and 3 planets
+          ui.collide.checked = false;
+          ui.G.value = ui.GOut.innerText = 0.15;
+          G = 0.15;
+          initOrbitBodies1();
+          break;
+        case "2": // two body system
+          ui.collide.checked = false;
+          ui.G.value = ui.GOut.innerText = 0.15;
+          G = 0.15;
+          initOrbitBodies2();
+          break;
+        case "3": // sun planets and moon
+          ui.collide.checked = false;
+          ui.G.value = ui.GOut.innerText = 0.25;
+          G = 0.25;
+          initOrbitBodies3();
+          break;
+        case "4": // galaxies
+          ui.trace.checked = false;
+          ui.drawGravity.checked = false;
+          ui.drawGravityStrength.checked = false;
+          ui.drawVector.checked = false;
+          ui.timestep.value = ui.tOut.innerText = 0.25;
+          let g1num = randInt(250, 1000);
+          let g2num = randInt(250, 1000);
+          generateGalaxy(
+            {
+              x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
+              y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
+            },
+            { x: randInt(-1, 1), y: randInt(-1, 1) },
+            g1num,
+            1,
+            2,
+            g1num / 2,
+            0,
+            false
+          );
+          generateGalaxy(
+            {
+              x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
+              y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
+            },
+            { x: randInt(-1, 1), y: randInt(-1, 1) },
+            g2num,
+            1,
+            2,
+            g2num / 2,
+            randInt(0, 2),
+            false
+          );
+          break;
+        case "5": // solar system formation
+          ui.trace.checked = false;
+          ui.drawGravity.checked = false;
+          ui.drawGravityStrength.checked = false;
+          ui.drawVector.checked = false;
+          ui.timestep.value = ui.tOut.innerText = 0.5;
+          generateGalaxy(
+            {
+              x: center.x,
+              y: center.y,
+            },
+            { x: 0, y: 0 },
+            1500,
+            5,
+            10,
+            1000,
+            0,
+            true
+          );
+          break;
+        case "6":
+          ui.trace.checked = false;
+          ui.drawGravity.checked = false;
+          ui.drawGravityStrength.checked = false;
+          ui.drawVector.checked = false;
+          ui.timestep.value = ui.tOut.innerText = 0.5;
+          generateSolarSystem({ x: center.x, y: center.y }, { x: 0, y: 0 });
+          break;
+      }
+      activeBodies = bodies.length;
+      ui.bodyCount.innerText = activeBodies;
+    };
+
+    // add a body
+    ui.add.onclick = () => {
+      activeBodies += 1;
+      ui.bodyCount.innerText = activeBodies;
+      initParams();
+      initRandBodies(1, minMass, maxMass, initVel);
+    };
+
+    // clear bodies
+    ui.clear.onclick = () => {
+      bodies = [];
+      ctx.fillStyle = "rgba(0, 0, 0, 1)";
+      ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
+      activeBodies = bodies.length;
+      ui.bodyCount.innerText = activeBodies;
+    };
+
+    ui.clrOffscreen.onclick = () => {
+      let offset = {
+        x: collide ? -collideOffset.x + currentOffset.x : 0,
+        y: collide ? -collideOffset.y + currentOffset.y : 0,
+      };
+      bodies.forEach((body) => {
+        if (!isInView(body, offset)) {
+          remove(bodies, body.id);
+        }
+      });
+      activeBodies = bodies.length;
+      ui.bodyCount.innerText = activeBodies;
+    };
+
+    // pause/play sim
+    ui.toggle.onclick = () => {
+      paused = !paused;
+      if (timestep) {
+        oldTimestep = timestep;
+        timestep = 0;
+        ui.timestep.value = 0;
+      } else {
+        timestep = oldTimestep;
+        ui.timestep.value = timestep;
+      }
+    };
+  }
 
   // input listeners
   {
@@ -341,8 +344,8 @@ draw();
   // mouse events
   {
     canvas.onmousedown = (event) => {
-      event.ctrlKey || event.altKey
-        ? bodies.push(
+      if (event.ctrlKey || event.altKey) {
+        bodies.push(
           new Body(
             ui.xp.value
               ? parseInt(ui.xp.value)
@@ -356,10 +359,13 @@ draw();
             parseInt(ui.mass.value),
             randColor()
           )
-        )
-        : canvas.addEventListener("mousemove", handleMouseMove);
+        );
+
         activeBodies += 1;
         ui.bodyCount.innerText = activeBodies;
+      } else {
+        canvas.addEventListener("mousemove", handleMouseMove);
+      }
     };
     canvas.onmouseup = () => {
       canvas.removeEventListener("mousemove", handleMouseMove);
@@ -400,195 +406,198 @@ draw();
     };
   }
 
-  window.onkeydown = (event) => {
-    const activeElement = document.activeElement;
-    const register = activeElement.tagName !== "INPUT";
-    console.log(event.code);
-    if (register) {
-      switch (event.code) {
-        case "ArrowLeft":
-        case "KeyA":
-          event.preventDefault();
-          panOffset.x = panSpeed / totalzoom;
-          break;
-        case "ArrowRight":
-        case "KeyD":
-          event.preventDefault();
-          panOffset.x = -panSpeed / totalzoom;
-          break;
-        case "ArrowUp":
-        case "KeyW":
-          event.preventDefault();
-          panOffset.y = panSpeed / totalzoom;
-          break;
-        case "ArrowDown":
-        case "KeyS":
-          event.preventDefault();
-          panOffset.y = -panSpeed / totalzoom;
-          break;
-        case "Space":
-          event.preventDefault();
-          event.stopPropagation();
-          if (trackNum < bodies.length) {
-            trackBody = bodies[trackNum++];
-            newBody = true;
-          } else {
+  // key events
+  {
+    window.onkeydown = (event) => {
+      const activeElement = document.activeElement;
+      const register = activeElement.tagName !== "INPUT";
+      console.log(event.code);
+      if (register) {
+        switch (event.code) {
+          case "ArrowLeft":
+          case "KeyA":
+            event.preventDefault();
+            panOffset.x = panSpeed / totalzoom;
+            break;
+          case "ArrowRight":
+          case "KeyD":
+            event.preventDefault();
+            panOffset.x = -panSpeed / totalzoom;
+            break;
+          case "ArrowUp":
+          case "KeyW":
+            event.preventDefault();
+            panOffset.y = panSpeed / totalzoom;
+            break;
+          case "ArrowDown":
+          case "KeyS":
+            event.preventDefault();
+            panOffset.y = -panSpeed / totalzoom;
+            break;
+          case "Space":
+            event.preventDefault();
+            event.stopPropagation();
+            if (trackNum < bodies.length) {
+              trackBody = bodies[trackNum++];
+              newBody = true;
+            } else {
+              trackBody = null;
+              trackNum = 0;
+              newBody = false;
+            }
+            break;
+          case "Escape":
+            event.preventDefault();
             trackBody = null;
             trackNum = 0;
             newBody = false;
-          }
-          break;
-        case "Escape":
-          event.preventDefault();
-          trackBody = null;
-          trackNum = 0;
-          newBody = false;
-          break;
-        case "KeyP":
-          ui.toggle.click();
-          break;
-        case "KeyR":
-          if (!event.ctrlKey) ui.randBtn.click();
-          break;
-        case "Backspace":
-          ui.clear.click();
-          break;
-        case "Delete":
-          ui.clrOffscreen.click();
-          break;
-        case "Enter":
-          ui.add.click();
-          break;
-        case "KeyE":
-          ui.collide.click();
-          break;
-        case "KeyT":
-          ui.trace.click();
-          break;
-        case "KeyC":
-          ui.colorByVel.click();
-          break;
-        case "KeyF":
-          ui.fade.click();
-          break;
-        case "KeyG":
-          ui.drawGravityStrength.click();
-          break;
-        case "KeyU":
-        case "KeyV":
-          ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
-          if (ui.panel.classList.contains("hidden")) {
-            ui.panel.classList.remove("hidden");
-          } else {
-            ui.panel.classList.add("hidden");
-          }
-          break;
-        case "Home":
-        case "Digit0":
-          pan(
-            collide
-              ? { x: -currentOffset.x + collideOffset.x, y: -currentOffset.y + collideOffset.y }
-              : { x: -currentOffset.x, y: -currentOffset.y }
-          );
-          zoomfactor = 1 / totalzoom;
-          ctx.transform(
-            zoomfactor,
-            0,
-            0,
-            zoomfactor,
-            (-(zoomfactor - 1) * canvas.width) / 2,
-            (-(zoomfactor - 1) * canvas.height) / 2
-          );
-          totalzoom = 1;
-          viewport.x = canvas.width;
-          viewport.y = canvas.height;
-          ctx.fillStyle = "rgba(0, 0, 0, 1)";
-          ctx.fillRect(
-            center.x - viewport.x / 2,
-            center.y - viewport.y / 2,
-            viewport.x,
-            viewport.y
-          );
-          ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
-          break;
-        case "KeyZ":
-          zoomfactor = 1.05;
-          ctx.transform(
-            zoomfactor,
-            0,
-            0,
-            zoomfactor,
-            (-(zoomfactor - 1) * canvas.width) / 2,
-            (-(zoomfactor - 1) * canvas.height) / 2
-          );
-          totalzoom *= zoomfactor;
-          viewport.x /= zoomfactor;
-          viewport.y /= zoomfactor;
-          ui.viewport.innerText = Math.round(viewport.x) + " x " + Math.round(viewport.y);
-          ctx.fillStyle = "rgba(0, 0, 0, 1)";
-          ctx.fillRect(
-            center.x - viewport.x / 2,
-            center.y - viewport.y / 2,
-            viewport.x,
-            viewport.y
-          );
-          ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
-          break;
-        case "KeyX":
-          zoomfactor = 1 / 1.05;
-          ctx.transform(
-            zoomfactor,
-            0,
-            0,
-            zoomfactor,
-            (-(zoomfactor - 1) * canvas.width) / 2,
-            (-(zoomfactor - 1) * canvas.height) / 2
-          );
-          totalzoom *= zoomfactor;
-          viewport.x /= zoomfactor;
-          viewport.y /= zoomfactor;
-          ui.viewport.innerText = Math.round(viewport.x) + " x " + Math.round(viewport.y);
-          ctx.fillStyle = "rgba(0, 0, 0, 1)";
-          ctx.fillRect(
-            center.x - viewport.x / 2,
-            center.y - viewport.y / 2,
-            viewport.x,
-            viewport.y
-          );
-          ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
-          break;
-        case "Digit1":
-          ui.drawVector.click();
-          break;
-        case "Digit2":
-          ui.drawGravity.click();
-          break;
-        case "Digit3":
-          ui.drawCoM.click();
-          break;
-        case "Digit4":
-          ui.trackCoM.click();
-          break;
+            break;
+          case "KeyP":
+            ui.toggle.click();
+            break;
+          case "KeyR":
+            if (!event.ctrlKey) ui.randBtn.click();
+            break;
+          case "Backspace":
+            ui.clear.click();
+            break;
+          case "Delete":
+            ui.clrOffscreen.click();
+            break;
+          case "Enter":
+            ui.add.click();
+            break;
+          case "KeyE":
+            ui.collide.click();
+            break;
+          case "KeyT":
+            ui.trace.click();
+            break;
+          case "KeyC":
+            ui.colorByVel.click();
+            break;
+          case "KeyF":
+            ui.fade.click();
+            break;
+          case "KeyG":
+            ui.drawGravityStrength.click();
+            break;
+          case "KeyU":
+          case "KeyV":
+            ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
+            if (ui.panel.classList.contains("hidden")) {
+              ui.panel.classList.remove("hidden");
+            } else {
+              ui.panel.classList.add("hidden");
+            }
+            break;
+          case "Home":
+          case "Digit0":
+            pan(
+              collide
+                ? { x: -currentOffset.x + collideOffset.x, y: -currentOffset.y + collideOffset.y }
+                : { x: -currentOffset.x, y: -currentOffset.y }
+            );
+            zoomfactor = 1 / totalzoom;
+            ctx.transform(
+              zoomfactor,
+              0,
+              0,
+              zoomfactor,
+              (-(zoomfactor - 1) * canvas.width) / 2,
+              (-(zoomfactor - 1) * canvas.height) / 2
+            );
+            totalzoom = 1;
+            viewport.x = canvas.width;
+            viewport.y = canvas.height;
+            ctx.fillStyle = "rgba(0, 0, 0, 1)";
+            ctx.fillRect(
+              center.x - viewport.x / 2,
+              center.y - viewport.y / 2,
+              viewport.x,
+              viewport.y
+            );
+            ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
+            break;
+          case "KeyZ":
+            zoomfactor = 1.05;
+            ctx.transform(
+              zoomfactor,
+              0,
+              0,
+              zoomfactor,
+              (-(zoomfactor - 1) * canvas.width) / 2,
+              (-(zoomfactor - 1) * canvas.height) / 2
+            );
+            totalzoom *= zoomfactor;
+            viewport.x /= zoomfactor;
+            viewport.y /= zoomfactor;
+            ui.viewport.innerText = Math.round(viewport.x) + " x " + Math.round(viewport.y);
+            ctx.fillStyle = "rgba(0, 0, 0, 1)";
+            ctx.fillRect(
+              center.x - viewport.x / 2,
+              center.y - viewport.y / 2,
+              viewport.x,
+              viewport.y
+            );
+            ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
+            break;
+          case "KeyX":
+            zoomfactor = 1 / 1.05;
+            ctx.transform(
+              zoomfactor,
+              0,
+              0,
+              zoomfactor,
+              (-(zoomfactor - 1) * canvas.width) / 2,
+              (-(zoomfactor - 1) * canvas.height) / 2
+            );
+            totalzoom *= zoomfactor;
+            viewport.x /= zoomfactor;
+            viewport.y /= zoomfactor;
+            ui.viewport.innerText = Math.round(viewport.x) + " x " + Math.round(viewport.y);
+            ctx.fillStyle = "rgba(0, 0, 0, 1)";
+            ctx.fillRect(
+              center.x - viewport.x / 2,
+              center.y - viewport.y / 2,
+              viewport.x,
+              viewport.y
+            );
+            ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
+            break;
+          case "Digit1":
+            ui.drawVector.click();
+            break;
+          case "Digit2":
+            ui.drawGravity.click();
+            break;
+          case "Digit3":
+            ui.drawCoM.click();
+            break;
+          case "Digit4":
+            ui.trackCoM.click();
+            break;
+        }
       }
-    }
-  };
-  window.onkeyup = (event) => {
-    if (
-      event.code === "ArrowLeft" ||
-      event.code === "ArrowRight" ||
-      event.code === "KeyA" ||
-      event.code === "KeyD"
-    ) {
-      panOffset.x = 0;
-    } else if (
-      event.code === "ArrowUp" ||
-      event.code === "ArrowDown" ||
-      event.code === "KeyW" ||
-      event.code === "KeyS"
-    ) {
-      panOffset.y = 0;
-    }
-  };
+    };
+    window.onkeyup = (event) => {
+      if (
+        event.code === "ArrowLeft" ||
+        event.code === "ArrowRight" ||
+        event.code === "KeyA" ||
+        event.code === "KeyD"
+      ) {
+        panOffset.x = 0;
+      } else if (
+        event.code === "ArrowUp" ||
+        event.code === "ArrowDown" ||
+        event.code === "KeyW" ||
+        event.code === "KeyS"
+      ) {
+        panOffset.y = 0;
+      }
+    };
+  }
 }
 
 // body presets
@@ -608,15 +617,15 @@ draw();
         new Body(
           collide
             ? randInt(
-              -collideOffset.x + currentOffset.x + 2 * r,
-              -collideOffset.x + currentOffset.x + canvas.width - 2 * r
-            )
+                -collideOffset.x + currentOffset.x + 2 * r,
+                -collideOffset.x + currentOffset.x + canvas.width - 2 * r
+              )
             : randInt(center.x - viewport.x / 2 + 2 * r, center.x + viewport.x / 2 - 2 * r),
           collide
             ? randInt(
-              -collideOffset.y + currentOffset.y + 2 * r,
-              -collideOffset.y + currentOffset.y + canvas.height - 2 * r
-            )
+                -collideOffset.y + currentOffset.y + 2 * r,
+                -collideOffset.y + currentOffset.y + canvas.height - 2 * r
+              )
             : randInt(center.y - viewport.y / 2 + 2 * r, center.y + viewport.y / 2 - 2 * r),
           (Math.random() - 0.5) * 2 * v,
           (Math.random() - 0.5) * 2 * v,
@@ -845,7 +854,7 @@ class Body {
   draw() {
     let speed = colorByVel ? Math.hypot(this.vel.x, this.vel.y) : 0;
     let hue = colorByVel
-      ? /*bodyCount < 1000 ? 1200 / (speed + 5) :*/ Math.max(240 - 20 * speed, 0)
+      ? /*bodyCount < 1000 ? 1200 / (speed + 5) :*/ Math.max(240 - 10 * speed, 0)
       : 0; // Math.max(240 - 20 * speed, 0) or 1200 / (speed + 5)
     let drawColor = colorByVel ? "hsl(" + hue + ", 100%, 50%)" : this.color;
 
@@ -913,6 +922,7 @@ class Body {
           ctx.fill();
         }
 
+        // black outline for field visualization
         if (drawField) {
           ctx.strokeStyle = "black";
           ctx.beginPath();
@@ -986,7 +996,7 @@ class Body {
 function runSim() {
   // iterate through all combinations of bodies and add force to body total
   bodies.forEach((body1, index) => {
-    if (bodies.length > 1) {
+    if (bodies.length > 1 && timestep) {
       for (let i = index + 1; i < bodies.length; i++) {
         // calc gravity between body and bodies[i], then add forces
 
@@ -1116,8 +1126,8 @@ function calcCoM() {
   let CoM = { x: 0, y: 0 };
   let mass = 0;
   bodies.forEach((body) => {
-    CoM.x += body.pos.x * body.mass;
-    CoM.y += body.pos.y * body.mass;
+    CoM.x += body.prevPos.x * body.mass; // use prevpos to align with draw
+    CoM.y += body.prevPos.y * body.mass;
     mass += body.mass;
   });
   CoM.x /= mass;
