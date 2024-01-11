@@ -3,7 +3,7 @@
 <html lang="en-us">
 
 <head>
-  <title>N body gravity simulation</title>
+  <title>2D n-body gravity simulation</title>
   <link rel="stylesheet" href="style.css" />
   <script src="./nbody.js" defer></script>
 </head>
@@ -21,14 +21,12 @@
     <div id="graphs">
       <hr />
       <div>
-        <div>
-          <span style="display: inline-block; width: 140px">FPS: <span id="fps">0</span></span>
-          <span style="display: inline-block; width: 140px">Active bodies: <span id="bodyCount">0</span></span>
-        </div>
-        <div>
-          <canvas width="140" height="100" id="fpsGraph"></canvas>
-          <canvas width="140" height="100" id="bodyGraph"></canvas>
-        </div>
+        <span style="display: inline-block; width: 140px">FPS: <span id="fps">0</span></span>
+        <span style="display: inline-block; width: 140px">Active bodies: <span id="bodyCount">0</span></span>
+      </div>
+      <div>
+        <canvas width="140" height="100" id="fpsGraph"></canvas>
+        <canvas width="140" height="100" id="bodyGraph"></canvas>
       </div>
     </div>
     <div id="simcontrols">
@@ -129,6 +127,10 @@
       <hr />
       <p class="header">Draw params</p>
       <div>
+        <input type="checkbox" id="drawOffscreen" name="drawOffscreen" checked />
+        <label for="drawOffscreen">Draw offscreen indicators</label>
+      </div>
+      <div>
         <input type="checkbox" id="colorByVel" name="colorByVel" />
         <label for="colorByVel">Color bodies by speed (c)</label>
       </div>
@@ -153,7 +155,7 @@
         <label for="drawGStrength">Draw gravity strength (slow) (g)</label>
       </div>
       <div>
-        <input type="checkbox" id="drawGThreshold" name="drawGThreshold" checked/>
+        <input type="checkbox" id="drawGThreshold" name="drawGThreshold" checked />
         <label for="drawGThreshold">Gravity draw threshold</label>
       </div>
       <div>

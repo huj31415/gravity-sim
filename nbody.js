@@ -47,6 +47,7 @@ const ui = {
   trackCoM: document.getElementById("trackCoM"),
   colorByVel: document.getElementById("colorByVel"),
   globalCollide: document.getElementById("globalCollide"),
+  drawOffscreen: document.getElementById("drawOffscreen"),
 };
 
 // utilities
@@ -103,7 +104,8 @@ let numBodies,
   drawCoM,
   CoM,
   trackCoM,
-  globalCollide;
+  globalCollide,
+  drawOffscreen;
 let continuous = true;
 
 // tracking variables
@@ -137,165 +139,158 @@ draw();
 {
   // button listeners
   {
+    ui.panel.onclick = (event) => {
+      switch (event.target) {
+        case ui.randBtn: // generate random
+          initParams();
+          initRandBodies(numBodies, minMass, maxMass, initVel);
+          activeBodies = bodies.length;
+          ui.bodyCount.innerText = activeBodies;
+          break;
+        case ui.loadBtn: // load preset
+          initParams();
+          switch (ui.presets.value) {
+            case "0": // 500 body chaos
+              ui.G.value = ui.GOut.innerText = 1;
+              ui.drawVector.checked = drawVector = false;
+              ui.drawGravity.checked = drawGravity = false;
+              ui.timestep.value = ui.tOut.innerText = 0.5;
+              ui.numBodies.value = numBodies = 500;
+              ui.maxMass.value = maxMass = 100;
+              ui.minMass.value = minMass = 50;
+              ui.drawGravityStrength.checked = drawGravityStrength = false;
+              initRandBodies(numBodies, minMass, maxMass, initVel);
+              break;
+            case "1": // sun and 3 planets
+              ui.collide.checked = false;
+              ui.G.value = ui.GOut.innerText = 0.15;
+              G = 0.15;
+              initOrbitBodies1();
+              break;
+            case "2": // two body system
+              ui.collide.checked = false;
+              ui.G.value = ui.GOut.innerText = 0.15;
+              G = 0.15;
+              initOrbitBodies2();
+              break;
+            case "3": // sun planets and moon
+              ui.collide.checked = false;
+              ui.G.value = ui.GOut.innerText = 0.25;
+              G = 0.25;
+              initOrbitBodies3();
+              break;
+            case "4": // galaxies
+              ui.trace.checked = false;
+              ui.drawGravity.checked = false;
+              ui.drawGravityStrength.checked = false;
+              ui.drawVector.checked = false;
+              ui.timestep.value = ui.tOut.innerText = timestep = 0.25;
+              let g1num = randInt(250, 1000);
+              let g2num = randInt(250, 1000);
+              generateGalaxy(
+                {
+                  x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
+                  y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
+                },
+                { x: randInt(-1, 1), y: randInt(-1, 1) },
+                g1num,
+                1,
+                2,
+                g1num / 2,
+                0,
+                false
+              );
+              generateGalaxy(
+                {
+                  x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
+                  y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
+                },
+                { x: randInt(-1, 1), y: randInt(-1, 1) },
+                g2num,
+                1,
+                2,
+                g2num / 2,
+                randInt(0, 2),
+                false
+              );
+              break;
+            case "5": // solar system formation
+              ui.trace.checked = false;
+              ui.drawGravity.checked = false;
+              ui.drawGravityStrength.checked = false;
+              ui.drawVector.checked = false;
+              ui.timestep.value = ui.tOut.innerText = 0.5;
+              generateGalaxy(
+                {
+                  x: center.x,
+                  y: center.y,
+                },
+                { x: 0, y: 0 },
+                1500,
+                5,
+                10,
+                1000,
+                0,
+                true
+              );
+              break;
+            case "6":
+              ui.trace.checked = false;
+              ui.drawGravity.checked = false;
+              ui.drawGravityStrength.checked = false;
+              ui.drawVector.checked = false;
+              ui.timestep.value = ui.tOut.innerText = 0.5;
+              generateSolarSystem({ x: center.x, y: center.y }, { x: 0, y: 0 });
+              break;
+          }
+          activeBodies = bodies.length;
+          ui.bodyCount.innerText = activeBodies;
+          break;
+        case ui.add:
+          activeBodies += 1;
+          ui.bodyCount.innerText = activeBodies;
+          initParams();
+          initRandBodies(1, minMass, maxMass, initVel);
+          break;
+        case ui.clear:
+          bodies = [];
+          ctx.fillStyle = "rgba(0, 0, 0, 1)";
+          ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
+          activeBodies = bodies.length;
+          ui.bodyCount.innerText = activeBodies;
+          break;
+        case ui.clrOffscreen:
+          let offset = {
+            x: collide ? -collideOffset.x + currentOffset.x : 0,
+            y: collide ? -collideOffset.y + currentOffset.y : 0,
+          };
+          bodies.forEach((body) => {
+            if (!isInView(body, offset)) {
+              remove(bodies, body.id);
+            }
+          });
+          activeBodies = bodies.length;
+          ui.bodyCount.innerText = activeBodies;
+          break;
+        case ui.toggle:
+          paused = !paused;
+          if (timestep) {
+            oldTimestep = timestep;
+            timestep = 0;
+            ui.timestep.value = 0;
+          } else {
+            timestep = oldTimestep;
+            ui.timestep.value = timestep;
+          }
+          break;
+      }
+    }
     ui.collapse.onclick = () => {
       ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
       if (ui.panel.classList.contains("hidden")) {
         ui.panel.classList.remove("hidden");
       } else {
         ui.panel.classList.add("hidden");
-      }
-    };
-    // begin the simulation
-    ui.randBtn.onclick = () => {
-      // form.collide.checked = true;
-      initParams();
-      initRandBodies(numBodies, minMass, maxMass, initVel);
-      activeBodies = bodies.length;
-      ui.bodyCount.innerText = activeBodies;
-    };
-
-    // load a preset
-    ui.loadBtn.onclick = () => {
-      initParams();
-      switch (ui.presets.value) {
-        case "0": // 500 body chaos
-          ui.G.value = ui.GOut.innerText = 1;
-          ui.drawVector.checked = drawVector = false;
-          ui.drawGravity.checked = drawGravity = false;
-          ui.timestep.value = ui.tOut.innerText = 0.5;
-          ui.numBodies.value = numBodies = 500;
-          ui.maxMass.value = maxMass = 100;
-          ui.minMass.value = minMass = 50;
-          ui.drawGravityStrength.checked = drawGravityStrength = false;
-          initRandBodies(numBodies, minMass, maxMass, initVel);
-          break;
-        case "1": // sun and 3 planets
-          ui.collide.checked = false;
-          ui.G.value = ui.GOut.innerText = 0.15;
-          G = 0.15;
-          initOrbitBodies1();
-          break;
-        case "2": // two body system
-          ui.collide.checked = false;
-          ui.G.value = ui.GOut.innerText = 0.15;
-          G = 0.15;
-          initOrbitBodies2();
-          break;
-        case "3": // sun planets and moon
-          ui.collide.checked = false;
-          ui.G.value = ui.GOut.innerText = 0.25;
-          G = 0.25;
-          initOrbitBodies3();
-          break;
-        case "4": // galaxies
-          ui.trace.checked = false;
-          ui.drawGravity.checked = false;
-          ui.drawGravityStrength.checked = false;
-          ui.drawVector.checked = false;
-          ui.timestep.value = ui.tOut.innerText = 0.25;
-          let g1num = randInt(250, 1000);
-          let g2num = randInt(250, 1000);
-          generateGalaxy(
-            {
-              x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
-              y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
-            },
-            { x: randInt(-1, 1), y: randInt(-1, 1) },
-            g1num,
-            1,
-            2,
-            g1num / 2,
-            0,
-            false
-          );
-          generateGalaxy(
-            {
-              x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
-              y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
-            },
-            { x: randInt(-1, 1), y: randInt(-1, 1) },
-            g2num,
-            1,
-            2,
-            g2num / 2,
-            randInt(0, 2),
-            false
-          );
-          break;
-        case "5": // solar system formation
-          ui.trace.checked = false;
-          ui.drawGravity.checked = false;
-          ui.drawGravityStrength.checked = false;
-          ui.drawVector.checked = false;
-          ui.timestep.value = ui.tOut.innerText = 0.5;
-          generateGalaxy(
-            {
-              x: center.x,
-              y: center.y,
-            },
-            { x: 0, y: 0 },
-            1500,
-            5,
-            10,
-            1000,
-            0,
-            true
-          );
-          break;
-        case "6":
-          ui.trace.checked = false;
-          ui.drawGravity.checked = false;
-          ui.drawGravityStrength.checked = false;
-          ui.drawVector.checked = false;
-          ui.timestep.value = ui.tOut.innerText = 0.5;
-          generateSolarSystem({ x: center.x, y: center.y }, { x: 0, y: 0 });
-          break;
-      }
-      activeBodies = bodies.length;
-      ui.bodyCount.innerText = activeBodies;
-    };
-
-    // add a body
-    ui.add.onclick = () => {
-      activeBodies += 1;
-      ui.bodyCount.innerText = activeBodies;
-      initParams();
-      initRandBodies(1, minMass, maxMass, initVel);
-    };
-
-    // clear bodies
-    ui.clear.onclick = () => {
-      bodies = [];
-      ctx.fillStyle = "rgba(0, 0, 0, 1)";
-      ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
-      activeBodies = bodies.length;
-      ui.bodyCount.innerText = activeBodies;
-    };
-
-    ui.clrOffscreen.onclick = () => {
-      let offset = {
-        x: collide ? -collideOffset.x + currentOffset.x : 0,
-        y: collide ? -collideOffset.y + currentOffset.y : 0,
-      };
-      bodies.forEach((body) => {
-        if (!isInView(body, offset)) {
-          remove(bodies, body.id);
-        }
-      });
-      activeBodies = bodies.length;
-      ui.bodyCount.innerText = activeBodies;
-    };
-
-    // pause/play sim
-    ui.toggle.onclick = () => {
-      paused = !paused;
-      if (timestep) {
-        oldTimestep = timestep;
-        timestep = 0;
-        ui.timestep.value = 0;
-      } else {
-        timestep = oldTimestep;
-        ui.timestep.value = timestep;
       }
     };
   }
@@ -617,15 +612,15 @@ draw();
         new Body(
           collide
             ? randInt(
-                -collideOffset.x + currentOffset.x + 2 * r,
-                -collideOffset.x + currentOffset.x + canvas.width - 2 * r
-              )
+              -collideOffset.x + currentOffset.x + 2 * r,
+              -collideOffset.x + currentOffset.x + canvas.width - 2 * r
+            )
             : randInt(center.x - viewport.x / 2 + 2 * r, center.x + viewport.x / 2 - 2 * r),
           collide
             ? randInt(
-                -collideOffset.y + currentOffset.y + 2 * r,
-                -collideOffset.y + currentOffset.y + canvas.height - 2 * r
-              )
+              -collideOffset.y + currentOffset.y + 2 * r,
+              -collideOffset.y + currentOffset.y + canvas.height - 2 * r
+            )
             : randInt(center.y - viewport.y / 2 + 2 * r, center.y + viewport.y / 2 - 2 * r),
           (Math.random() - 0.5) * 2 * v,
           (Math.random() - 0.5) * 2 * v,
@@ -788,7 +783,7 @@ function remove(arr, id) {
  */
 function randInt(min, max) {
   min = Math.ceil(min);
-  max = Math.floor(max);
+  max = ~~(max);
   return Math.floor(Math.random() * (max - min) + min); // The maximum is exclusive and the minimum is inclusive
 }
 
@@ -798,10 +793,10 @@ function randInt(min, max) {
  * @param {Object} offset viewport offset
  */
 const isInView = (body, offset = { x: 0, y: 0 }) =>
-  body.pos.x <= offset.x + center.x + viewport.x / 2 + body.radius &&
-  body.pos.x >= offset.x + center.x - viewport.x / 2 - body.radius &&
-  body.pos.y <= offset.x + center.y + viewport.y / 2 + body.radius &&
-  body.pos.y >= offset.x + center.y - viewport.y / 2 - body.radius;
+  body.xPos <= offset.x + center.x + viewport.x / 2 + body.radius &&
+  body.xPos >= offset.x + center.x - viewport.x / 2 - body.radius &&
+  body.yPos <= offset.x + center.y + viewport.y / 2 + body.radius &&
+  body.yPos >= offset.x + center.y - viewport.y / 2 - body.radius;
 
 /**
  * Map values from one range to another
@@ -837,11 +832,21 @@ class Body {
     color = "gray",
     collide = true
   ) {
-    this.pos = { x: xPos, y: yPos };
-    this.vel = { x: xVel, y: yVel };
-    this.prevPos = { x: xPos, y: yPos };
-    this.force = { x: 0, y: 0 };
-    this.accel = { x: 0, y: 0 };
+    // this.pos = { x: xPos, y: yPos };
+    this.xPos = xPos;
+    this.yPos = yPos;
+    // this.vel = { x: xVel, y: yVel };
+    this.xVel = xVel;
+    this.yVel = yVel;
+    // this.prevPos = { x: xPos, y: yPos };
+    this.xPrev = xPos;
+    this.yPrev = yPos;
+    // this.force = { x: 0, y: 0 };
+    this.xForce = 0;
+    this.yForce = 0;
+    // this.accel = { x: 0, y: 0 };
+    this.xAccel = 0;
+    this.yAccel = 0;
     this.radius = r ? r : getRadius(mass);
     this.mass = mass ? mass : (4 / 3) * Math.PI * Math.pow(r, 3);
     this.color = color;
@@ -849,22 +854,20 @@ class Body {
     this.collide = collide;
   }
   getMomentum() {
-    return { x: this.vel.x * this.mass, y: this.vel.y * this.mass };
+    return { x: this.xVel * this.mass, y: this.yVel * this.mass };
   }
   draw() {
-    let speed = colorByVel ? Math.hypot(this.vel.x, this.vel.y) : 0;
-    let hue = colorByVel
-      ? /*bodyCount < 1000 ? 1200 / (speed + 5) :*/ Math.max(240 - 10 * speed, 0)
-      : 0; // Math.max(240 - 20 * speed, 0) or 1200 / (speed + 5)
+    let speed = colorByVel ? Math.hypot(this.xVel, this.yVel) : 0;
+    let hue = colorByVel ? Math.max(240 - 10 * speed, 0) : 0;
     let drawColor = colorByVel ? "hsl(" + hue + ", 100%, 50%)" : this.color;
 
     // Draw the body
     {
-      if (!isInView(this)) {
+      if (!isInView(this) && drawOffscreen) {
         // offscreen indicators
         // use slope to draw lines pointing toward center
-        let bodyPos = { x: this.pos.x - center.x, y: this.pos.y - center.y };
-        let slope = (this.pos.y - center.y) / (this.pos.x - center.x);
+        let bodyPos = { x: this.xPos - center.x, y: this.yPos - center.y };
+        let slope = (this.yPos - center.y) / (this.xPos - center.x);
         let angle = Math.abs(Math.atan2(bodyPos.y, bodyPos.x));
         let x =
           (Math.sign(bodyPos.x) * (center.x - (this.radius / 2 + 5) * Math.abs(Math.cos(angle)))) /
@@ -887,13 +890,13 @@ class Body {
             ctx.beginPath();
             ctx.lineWidth = 2 * this.radius;
             ctx.strokeStyle = drawColor;
-            ctx.moveTo(this.pos.x, this.pos.y);
-            ctx.lineTo(this.prevPos.x, this.prevPos.y);
+            ctx.moveTo(this.xPos, this.yPos);
+            ctx.lineTo(this.xPrev, this.yPrev);
             ctx.closePath();
             ctx.stroke();
           }
           ctx.beginPath();
-          ctx.arc(this.prevPos.x, this.prevPos.y, this.radius, 0, Math.PI * 2, true);
+          ctx.arc(this.xPrev, this.yPrev, this.radius, 0, Math.PI * 2, true);
           ctx.closePath();
           ctx.fillStyle = drawColor;
           ctx.fill();
@@ -901,7 +904,7 @@ class Body {
 
         // draw the body
         ctx.beginPath();
-        ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2, true);
+        ctx.arc(this.xPos, this.yPos, this.radius, 0, Math.PI * 2, true);
         ctx.closePath();
         ctx.fillStyle = drawColor;
         ctx.fill();
@@ -910,8 +913,8 @@ class Body {
         if (this.radius > 3) {
           ctx.beginPath();
           ctx.arc(
-            this.pos.x,
-            this.pos.y,
+            this.xPos,
+            this.yPos,
             this.radius < 1.5 ? this.radius : 1.5,
             0,
             Math.PI * 2,
@@ -926,7 +929,7 @@ class Body {
         if (drawField) {
           ctx.strokeStyle = "black";
           ctx.beginPath();
-          ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2, true);
+          ctx.arc(this.xPos, this.yPos, this.radius, 0, Math.PI * 2, true);
           ctx.closePath();
           ctx.stroke();
         }
@@ -937,8 +940,8 @@ class Body {
           ctx.beginPath();
           ctx.strokeStyle = "blue";
           ctx.lineWidth = 1 / totalzoom;
-          ctx.moveTo(this.pos.x, this.pos.y);
-          ctx.lineTo(this.pos.x + mult * this.vel.x, this.pos.y + mult * this.vel.y);
+          ctx.moveTo(this.xPos, this.yPos);
+          ctx.lineTo(this.xPos + mult * this.xVel, this.yPos + mult * this.yVel);
           ctx.closePath();
           ctx.stroke();
         }
@@ -948,8 +951,8 @@ class Body {
           ctx.beginPath();
           ctx.lineWidth = 1 / totalzoom;
           ctx.strokeStyle = "red";
-          ctx.moveTo(this.pos.x, this.pos.y);
-          ctx.lineTo(this.pos.x + mult * this.accel.x, this.pos.y + mult * this.accel.y);
+          ctx.moveTo(this.xPos, this.yPos);
+          ctx.lineTo(this.xPos + mult * this.accel.x, this.yPos + mult * this.accel.y);
           ctx.closePath();
           ctx.stroke();
         }
@@ -958,36 +961,43 @@ class Body {
 
     // Update the position of the body
     {
-      // this.accel = gravity(this, bodies.indexOf(this));
-      this.accel.x = this.force.x / this.mass;
-      this.accel.y = this.force.y / this.mass;
-      this.prevPos.x = this.pos.x;
-      this.prevPos.y = this.pos.y;
+      // // this.accel = gravity(this, bodies.indexOf(this));
+      // this.accel.x = this.xForce / this.mass;
+      // this.accel.y = this.yForce / this.mass;
+      this.xAccel = this.xForce / this.mass;
+      this.yAccel = this.yForce / this.mass;
+
+      // this.prevPos.x = this.xPos;
+      // this.prevPos.y = this.yPos;
+      this.xPrev = this.xPos;
+      this.yPrev = this.yPos;
       // edge collision - set accel to 0 when colliding to prevent changes in velocity
       if (collide) {
         if (
-          this.pos.x >= -collideOffset.x + currentOffset.x + canvas.width - this.radius ||
-          this.pos.x <= -collideOffset.x + currentOffset.x + this.radius
+          this.xPos >= -collideOffset.x + currentOffset.x + canvas.width - this.radius ||
+          this.xPos <= -collideOffset.x + currentOffset.x + this.radius
         ) {
-          this.vel.x = -this.vel.x;
-          this.accel.x = 0;
+          this.xVel = -this.xVel;
+          this.xAccel = 0;
         }
         if (
-          this.pos.y >= -collideOffset.y + currentOffset.y + canvas.height - this.radius ||
-          this.pos.y <= -collideOffset.y + currentOffset.y + this.radius
+          this.yPos >= -collideOffset.y + currentOffset.y + canvas.height - this.radius ||
+          this.yPos <= -collideOffset.y + currentOffset.y + this.radius
         ) {
-          this.vel.y = -this.vel.y;
-          this.accel.y = 0;
+          this.yVel = -this.yVel;
+          this.xAccel = 0;
         }
       }
       // implement acceleration
-      this.vel.x += this.accel.x * timestep;
-      this.vel.y += this.accel.y * timestep;
+      // this.xVel += this.accel.x * timestep;
+      // this.yVel += this.accel.y * timestep;
+      this.xVel += this.xAccel * timestep;
+      this.yVel += this.yAccel * timestep;
       // integrate velocity every frame
-      this.pos.x += this.vel.x * timestep;
-      this.pos.y += this.vel.y * timestep;
+      this.xPos += this.xVel * timestep;
+      this.yPos += this.yVel * timestep;
       // reset forces
-      this.force.x = this.force.y = 0;
+      this.xForce = this.yForce = 0;
     }
   }
 }
@@ -995,24 +1005,28 @@ class Body {
 // Calculate gravitational forces between each body (more efficient - does each calc once) then draw
 function runSim() {
   // iterate through all combinations of bodies and add force to body total
-  bodies.forEach((body1, index) => {
+  bodies.forEach((body, index) => {
+    const body1 = body;
     if (bodies.length > 1 && timestep) {
       for (let i = index + 1; i < bodies.length; i++) {
         // calc gravity between body and bodies[i], then add forces
 
-        let body2 = bodies[i];
+        const body2 = bodies[i];
         // get distance
-        const distance = {
-          x: body2.pos.x - body1.pos.x,
-          y: body2.pos.y - body1.pos.y,
-        };
-        let force = { x: 0, y: 0 };
-        distance.sqr = Math.max(distance.x * distance.x + distance.y * distance.y, 1); // Most Time Consuming
+        // const distance = {
+        //   x: body2.xPos - body1.xPos,
+        //   y: body2.yPos - body1.yPos,
+        // };
+        const xDist = body2.xPos - body1.xPos;
+        const yDist = body2.yPos - body1.yPos;
+        // let force = { x: 0, y: 0 };
+        // let xForce = 0, yForce = 0;
+        const sqr = Math.max(xDist * xDist + yDist * yDist, 1);
 
-        let distThreshSqr = (body2.radius + body1.radius) * (body2.radius + body1.radius);
+        const distThreshSqr = (body2.radius + body1.radius) * (body2.radius + body1.radius);
 
         if (
-          distance.sqr <= distThreshSqr &&
+          sqr <= distThreshSqr &&
           bodies.includes(body1) &&
           bodies.includes(body2) &&
           body1.id != body2.id
@@ -1021,30 +1035,36 @@ function runSim() {
           if (globalCollide && body2.collide && body1.collide && collision(body1, body2) < i) i--;
         } else {
           // get total gravity
-          let distRecip = 1 / distance.sqr;
-          const gForce = G * (body2.mass * body1.mass) * distRecip; // Most Time Consuming
+          const gForce = G * (body2.mass * body1.mass) / sqr; // Most Time Consuming
 
           // get the components of the force
-          let dist = Math.sqrt(distance.sqr);
-          force.x += (gForce * distance.x) / dist;
-          force.y += (gForce * distance.y) / dist;
-          let strength = Math.abs(1 - 10 / (gForce + 10));
-          let drawThreshold = drawGThreshold ? (trace ? 1e-4 : 1e-2) : 0;
-          if (drawGravityStrength && strength >= drawThreshold) {
-            ctx.beginPath();
-            ctx.strokeStyle =
-              "rgba(" + (255 - 255 * strength) + ", " + 255 * strength + ",0 ," + strength + ")";
-            ctx.lineWidth = 1 / totalzoom;
-            ctx.moveTo(body2.pos.x, body2.pos.y);
-            ctx.lineTo(body1.pos.x, body1.pos.y);
-            ctx.closePath();
-            ctx.stroke();
+          const dist = Math.sqrt(sqr);
+          const xForce = (gForce * xDist) / dist;
+          const yForce = (gForce * yDist) / dist;
+
+          // apply the forces
+          body1.xForce += xForce;
+          body1.yForce += yForce;
+          body2.xForce -= xForce;
+          body2.yForce -= yForce;
+
+          // draw gravity strength lines
+          if (drawGravityStrength) {
+            const strength = Math.abs(1 - 10 / (gForce + 10));
+            const drawThreshold = drawGThreshold ? (trace ? 1e-4 : 1e-2) : 0;
+            // determine whether to draw
+            if (strength >= drawThreshold) {
+              ctx.beginPath();
+              ctx.strokeStyle =
+                "rgba(" + (255 - 255 * strength) + ", " + 255 * strength + ",0 ," + strength + ")";
+              ctx.lineWidth = 1 / totalzoom;
+              ctx.moveTo(body2.xPos, body2.yPos);
+              ctx.lineTo(body1.xPos, body1.yPos);
+              ctx.closePath();
+              ctx.stroke();
+            }
           }
         }
-        body1.force.x += force.x;
-        body1.force.y += force.y;
-        body2.force.x -= force.x;
-        body2.force.y -= force.y;
       }
     }
     body1.draw();
@@ -1074,11 +1094,13 @@ function collision(body1, body2) {
   };
 
   // change larger body properties
-  larger.pos.x = (body1.pos.x * body1.mass + body2.pos.x * body2.mass) / mass;
-  larger.pos.y = (body1.pos.y * body1.mass + body2.pos.y * body2.mass) / mass;
+  larger.xPos = (body1.xPos * body1.mass + body2.xPos * body2.mass) / mass;
+  larger.yPos = (body1.yPos * body1.mass + body2.yPos * body2.mass) / mass;
   if (Math.abs(larger.radius - getRadius(larger.mass)) < 0.1) larger.radius = getRadius(mass);
   larger.mass = mass;
-  larger.vel = { x: momentum.x / mass, y: momentum.y / mass };
+  // larger.vel = { x: momentum.x / mass, y: momentum.y / mass };
+  larger.xVel = momentum.x / mass;
+  larger.yVel = momentum.y / mass
   // maintain tracking
   if (trackBody === smaller) trackBody = larger;
   // remove the smaller object
@@ -1099,11 +1121,11 @@ function calcField() {
     for (let x = center.x - viewport.x / 2; x <= center.x + viewport.x / 2; x += res) {
       let xyPotential = { x: 0, y: 0 };
       bodies.forEach((body) => {
-        let distance = Math.hypot(body.pos.x - x - res / 2, body.pos.y - y - res / 2);
+        let distance = Math.hypot(body.xPos - x - res / 2, body.yPos - y - res / 2);
         if (distance >= body.radius - res) {
           let gForce = (G * body.mass) / (distance * distance);
-          xyPotential.x += (gForce * (body.pos.x - x)) / distance;
-          xyPotential.y += (gForce * (body.pos.y - y)) / distance;
+          xyPotential.x += (gForce * (body.xPos - x)) / distance;
+          xyPotential.y += (gForce * (body.yPos - y)) / distance;
         }
       });
       let potential = Math.hypot(xyPotential.x, xyPotential.y);
@@ -1126,8 +1148,8 @@ function calcCoM() {
   let CoM = { x: 0, y: 0 };
   let mass = 0;
   bodies.forEach((body) => {
-    CoM.x += body.prevPos.x * body.mass; // use prevpos to align with draw
-    CoM.y += body.prevPos.y * body.mass;
+    CoM.x += body.xPrev * body.mass; // use prevpos to align with draw
+    CoM.y += body.yPrev * body.mass;
     mass += body.mass;
   });
   CoM.x /= mass;
@@ -1149,8 +1171,8 @@ function pan(offset = { x: 0, y: 0 }, clrTrails = true) {
   currentOffset.x += offset.x;
   currentOffset.y += offset.y;
   bodies.forEach((body) => {
-    body.pos.x += offset.x;
-    body.pos.y += offset.y;
+    body.xPos += offset.x;
+    body.yPos += offset.y;
   });
   ui.offset.innerText = Math.round(currentOffset.x) + " Y=" + Math.round(currentOffset.y);
 }
@@ -1163,11 +1185,11 @@ function track(body) {
   if (newBody) {
     pan({ x: -currentOffset.x, y: -currentOffset.y });
     pan({
-      x: center.x - body.pos.x - currentOffset.x,
-      y: center.y - body.pos.y - currentOffset.y,
+      x: center.x - body.xPos - currentOffset.x,
+      y: center.y - body.yPos - currentOffset.y,
     });
   }
-  pan({ x: -body.vel.x * timestep, y: -body.vel.y * timestep }, false);
+  pan({ x: -body.xVel * timestep, y: -body.yVel * timestep }, false);
   newBody = false;
 }
 
@@ -1186,6 +1208,7 @@ function draw() {
   drawCoM = ui.drawCoM.checked;
   trackCoM = ui.trackCoM.checked;
   globalCollide = ui.globalCollide.checked;
+  drawOffscreen = ui.drawOffscreen.checked;
 
   continuous = true;
 
