@@ -1,6 +1,8 @@
 // todo: optimize gravity by lumping things a certain distance away together as one gravitating body
 // distance from body and lumping radius is proportional
 
+// for some reason loading the 500 body preset, deleting bodies, then loading galaxies *significantly* improves performance
+
 frameDelayMs = 0; // Chromebook Simulator (or for debug purposes) 0 for default fps
 
 // initialize user interface elements
@@ -86,7 +88,7 @@ let xCoord = 0;
 
 // simulation variables
 let bodies = [];
-let G = 0.15;
+let G = 1;
 const Gconst = 6.6743 * Math.pow(10, -11);
 let numBodies,
   trace,
@@ -107,6 +109,13 @@ let numBodies,
   globalCollide,
   drawOffscreen;
 let continuous = true;
+
+// SIGNIFICANT PERF IMPROVEMENTS!?!?!?! HOW!?!?
+ui.G.value = ui.GOut.innerText = 1;
+ui.drawVector.checked = drawVector = false;
+ui.drawGravity.checked = drawGravity = false;
+ui.timestep.value = ui.tOut.innerText = 0.25;
+ui.drawGravityStrength.checked = drawGravityStrength = false;
 
 // tracking variables
 let collisionCount = (frameCount = bodyCount = activeBodies = 0);
@@ -180,13 +189,8 @@ draw();
               initOrbitBodies3();
               break;
             case "4": // galaxies
-              ui.trace.checked = false;
-              ui.drawGravity.checked = false;
-              ui.drawGravityStrength.checked = false;
-              ui.drawVector.checked = false;
-              ui.timestep.value = ui.tOut.innerText = timestep = 0.25;
-              let g1num = randInt(250, 1000);
-              let g2num = randInt(250, 1000);
+              const g1num = randInt(500, 1000);
+              const g2num = randInt(500, 1000);
               generateGalaxy(
                 {
                   x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
