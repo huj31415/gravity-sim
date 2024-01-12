@@ -1,8 +1,6 @@
 // todo: optimize gravity by lumping things a certain distance away together as one gravitating body
 // distance from body and lumping radius is proportional
 
-// for some reason loading the 500 body preset, deleting bodies, then loading galaxies *significantly* improves performance
-
 frameDelayMs = 0; // Chromebook Simulator (or for debug purposes) 0 for default fps
 
 // initialize user interface elements
@@ -110,13 +108,6 @@ let numBodies,
   drawOffscreen;
 let continuous = true;
 
-// SIGNIFICANT PERF IMPROVEMENTS!?!?!?! HOW!?!?
-ui.G.value = ui.GOut.innerText = 1;
-ui.drawVector.checked = drawVector = false;
-ui.drawGravity.checked = drawGravity = false;
-ui.timestep.value = ui.tOut.innerText = 0.25;
-ui.drawGravityStrength.checked = drawGravityStrength = false;
-
 // tracking variables
 let collisionCount = (frameCount = bodyCount = activeBodies = 0);
 let lastTime = performance.now();
@@ -189,6 +180,11 @@ draw();
               initOrbitBodies3();
               break;
             case "4": // galaxies
+              ui.G.value = ui.GOut.innerText = 1;
+              ui.drawVector.checked = drawVector = false;
+              ui.drawGravity.checked = drawGravity = false;
+              ui.timestep.value = ui.tOut.innerText = timestep = 0.1;
+              ui.drawGravityStrength.checked = drawGravityStrength = false;
               const g1num = randInt(500, 1000);
               const g2num = randInt(500, 1000);
               generateGalaxy(
@@ -219,11 +215,11 @@ draw();
               );
               break;
             case "5": // solar system formation
-              ui.trace.checked = false;
-              ui.drawGravity.checked = false;
-              ui.drawGravityStrength.checked = false;
-              ui.drawVector.checked = false;
-              ui.timestep.value = ui.tOut.innerText = 0.5;
+              ui.G.value = ui.GOut.innerText = 1;
+              ui.drawVector.checked = drawVector = false;
+              ui.drawGravity.checked = drawGravity = false;
+              ui.timestep.value = ui.tOut.innerText = timestep = 0.25;
+              ui.drawGravityStrength.checked = drawGravityStrength = false;
               generateGalaxy(
                 {
                   x: center.x,
@@ -239,11 +235,11 @@ draw();
               );
               break;
             case "6":
-              ui.trace.checked = false;
-              ui.drawGravity.checked = false;
-              ui.drawGravityStrength.checked = false;
-              ui.drawVector.checked = false;
-              ui.timestep.value = ui.tOut.innerText = 0.5;
+              ui.G.value = ui.GOut.innerText = 1;
+              ui.drawVector.checked = drawVector = false;
+              ui.drawGravity.checked = drawGravity = false;
+              ui.timestep.value = ui.tOut.innerText = timestep = 0.25;
+              ui.drawGravityStrength.checked = drawGravityStrength = false;
               generateSolarSystem({ x: center.x, y: center.y }, { x: 0, y: 0 });
               break;
           }
@@ -740,8 +736,8 @@ draw();
 
   // Binary system
   function initOrbitBodies2() {
-    bodies.push(new Body(center.x, center.y + 100, 4, 0, 20, 0, "blue"));
-    bodies.push(new Body(center.x, center.y - 100, -4, 0, 20, 0, "blue"));
+    bodies.push(new Body(center.x, center.y + 140, 3, 0, 20, 0, "blue"));
+    bodies.push(new Body(center.x, center.y - 140, -3, 0, 20, 0, "blue"));
   }
 
   // Sun, planets, moons
