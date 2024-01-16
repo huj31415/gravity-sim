@@ -107,8 +107,8 @@
       <hr />
       <p class="header">Simulation params</p>
       <div>
-        <input type="range" id="timestep" name="timestep" value="1" max="2" min="0" step="0.01" width="400px" />
-        <label for="timestep">Timestep (<span id="tOut">1</span>)</label>
+        <input type="range" id="timestep" name="timestep" value="0.5" max="2" min="0" step="0.01" width="400px" />
+        <label for="timestep">Timestep (<span id="tOut">0.5</span>)</label>
       </div>
       <div>
         <input type="range" id="g" name="g" value="1" max="2" min="-2" step=".01" width="400px" />
@@ -126,6 +126,10 @@
     <div id="drawparams">
       <hr />
       <p class="header">Draw params</p>
+      <div>
+        <input type="range" id="fadeStrength" name="fadeStrength" value="0.05" max="1" min="0" step="0.01" width="400px" />
+        <label for="fadeStrength">Fade strength (<span id="fadeOutput">0.05</span>)</label>
+      </div>
       <div>
         <input type="checkbox" id="drawOffscreen" name="drawOffscreen" checked />
         <label for="drawOffscreen">Draw offscreen indicators</label>

@@ -48,13 +48,15 @@ const ui = {
   colorByVel: document.getElementById("colorByVel"),
   globalCollide: document.getElementById("globalCollide"),
   drawOffscreen: document.getElementById("drawOffscreen"),
+  fadeStrength: document.getElementById("fadeStrength"),
+  fadeOutput: document.getElementById("fadeOutput"),
 };
 
 // utilities
 const getRadius = (mass) => Math.cbrt((mass * (3 / 4)) / Math.PI);
 
 const randColor = () =>
-  "#" + Math.floor(Math.random() * (16777215 - 5592405) + 5592405).toString(16);
+  "#" + (~~(Math.random() * (16777215 - 5592405) + 5592405)).toString(16);
 
 // initialize main canvas
 const canvas = document.getElementById("canvas", { alpha: false });
@@ -89,23 +91,12 @@ let bodies = [];
 let G = 1;
 const Gconst = 6.6743 * Math.pow(10, -11);
 let numBodies,
-  trace,
-  fade,
-  drawVector,
-  drawGravity,
-  drawGravityStrength,
-  drawGThreshold,
-  collide,
   maxMass,
   minMass,
   initVel,
   timestep,
   oldTimestep,
-  drawCoM,
-  CoM,
-  trackCoM,
-  globalCollide,
-  drawOffscreen;
+  CoM;
 let continuous = true;
 
 // tracking variables
@@ -130,10 +121,25 @@ let maxBody;
 let minPotential = 0;
 let heatmapRes = 4;
 let minL = 0.1;
-let colorByVel;
+
+let colorByVel = ui.colorByVel.checked,
+  trace = ui.trace.checked,
+  fade = ui.fade.checked,
+  drawGravity = ui.drawGravity.checked,
+  drawGravityStrength = ui.drawGravityStrength.checked,
+  drawGThreshold = ui.drawGThreshold.checked,
+  drawVector = ui.drawVector.checked,
+  collide = ui.collide.checked,
+  drawField = ui.heatmap.checked,
+  drawCoM = ui.drawCoM.checked,
+  trackCoM = ui.trackCoM.checked,
+  globalCollide = ui.globalCollide.checked,
+  drawOffscreen = ui.drawOffscreen.checked,
+  fadeStrength = ui.fadeStrength.value;
 
 initParams();
 draw();
+
 
 // form event listeners
 {
@@ -163,20 +169,17 @@ draw();
               break;
             case "1": // sun and 3 planets
               ui.collide.checked = false;
-              ui.G.value = ui.GOut.innerText = 0.15;
-              G = 0.15;
+              ui.G.value = ui.GOut.innerText = G = 0.15;
               initOrbitBodies1();
               break;
             case "2": // two body system
               ui.collide.checked = false;
-              ui.G.value = ui.GOut.innerText = 0.15;
-              G = 0.15;
+              ui.G.value = ui.GOut.innerText = G = 0.15;
               initOrbitBodies2();
               break;
             case "3": // sun planets and moon
               ui.collide.checked = false;
-              ui.G.value = ui.GOut.innerText = 0.25;
-              G = 0.25;
+              ui.G.value = ui.GOut.innerText = G = 0.25;
               initOrbitBodies3();
               break;
             case "4": // galaxies
@@ -266,7 +269,7 @@ draw();
           };
           bodies.forEach((body) => {
             if (!isInView(body, offset)) {
-              remove(bodies, body.id);
+              remove(body);
             }
           });
           activeBodies = bodies.length;
@@ -284,6 +287,19 @@ draw();
           }
           break;
       }
+      colorByVel = ui.colorByVel.checked;
+      trace = ui.trace.checked;
+      fade = ui.fade.checked;
+      drawGravity = ui.drawGravity.checked;
+      drawGravityStrength = ui.drawGravityStrength.checked;
+      drawGThreshold = ui.drawGThreshold.checked;
+      drawVector = ui.drawVector.checked;
+      collide = ui.collide.checked;
+      drawField = ui.heatmap.checked;
+      drawCoM = ui.drawCoM.checked;
+      trackCoM = ui.trackCoM.checked;
+      globalCollide = ui.globalCollide.checked;
+      drawOffscreen = ui.drawOffscreen.checked;
     }
     ui.collapse.onclick = () => {
       ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
@@ -306,6 +322,10 @@ draw();
       ui.tOut.innerText = event.target.value;
       timestep = event.target.value;
     });
+    ui.fadeStrength.addEventListener("input", (event) => {
+      ui.fadeOutput.innerText = event.target.value;
+      fadeStrength = event.target.value;
+    })
 
     ui.G.addEventListener("input", (event) => {
       ui.GOut.innerText = event.target.value;
@@ -314,10 +334,6 @@ draw();
 
     ui.initVel.addEventListener("input", (event) => {
       initVel = event.target.value;
-    });
-
-    ui.collide.addEventListener("input", () => {
-      ui.clrOffscreen.click();
     });
 
     ui.heatmap.addEventListener("input", () => {
@@ -393,10 +409,10 @@ draw();
         totalzoom *= zoomfactor;
         viewport.x /= zoomfactor;
         viewport.y /= zoomfactor;
-        ui.viewport.innerText = Math.round(viewport.x) + " x " + Math.round(viewport.y);
+        ui.viewport.innerText = Math.floor(viewport.x) + " x " + Math.floor(viewport.y);
         ctx.fillStyle = "rgba(0, 0, 0, 1)";
         ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
-        ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
+        ui.zoom.innerText = ~~(totalzoom * 10000) / 100;
       }
     };
   }
@@ -512,7 +528,7 @@ draw();
               viewport.x,
               viewport.y
             );
-            ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
+            ui.zoom.innerText = ~~(totalzoom * 10000) / 100;
             break;
           case "KeyZ":
             zoomfactor = 1.05;
@@ -527,7 +543,7 @@ draw();
             totalzoom *= zoomfactor;
             viewport.x /= zoomfactor;
             viewport.y /= zoomfactor;
-            ui.viewport.innerText = Math.round(viewport.x) + " x " + Math.round(viewport.y);
+            ui.viewport.innerText = Math.floor(viewport.x) + " x " + Math.floor(viewport.y);
             ctx.fillStyle = "rgba(0, 0, 0, 1)";
             ctx.fillRect(
               center.x - viewport.x / 2,
@@ -535,7 +551,7 @@ draw();
               viewport.x,
               viewport.y
             );
-            ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
+            ui.zoom.innerText = ~~(totalzoom * 10000) / 100;
             break;
           case "KeyX":
             zoomfactor = 1 / 1.05;
@@ -550,7 +566,7 @@ draw();
             totalzoom *= zoomfactor;
             viewport.x /= zoomfactor;
             viewport.y /= zoomfactor;
-            ui.viewport.innerText = Math.round(viewport.x) + " x " + Math.round(viewport.y);
+            ui.viewport.innerText = Math.floor(viewport.x) + " x " + Math.floor(viewport.y);
             ctx.fillStyle = "rgba(0, 0, 0, 1)";
             ctx.fillRect(
               center.x - viewport.x / 2,
@@ -558,7 +574,7 @@ draw();
               viewport.x,
               viewport.y
             );
-            ui.zoom.innerText = Math.round(totalzoom * 10000) / 100;
+            ui.zoom.innerText = ~~(totalzoom * 10000) / 100;
             break;
           case "Digit1":
             ui.drawVector.click();
@@ -766,14 +782,13 @@ function initParams() {
  * @param {Number} id id of the value to remove
  * @returns the input array without the removed body
  */
-function remove(arr, id) {
-  const index = arr.findIndex((body) => body.id === id);
-  if (index !== -1) {
-    arr.splice(index, 1);
+function remove(body) {
+  const index = bodies.indexOf(body); //bodies.findIndex((body) => body.id === id);
+  if (index != -1) {
+    bodies.splice(index, 1);
   } else {
-    console.error("Could not remove ", id);
+    console.error("Could not find id ", id);
   }
-  return arr;
 }
 
 /**
@@ -848,7 +863,7 @@ class Body {
     this.xAccel = 0;
     this.yAccel = 0;
     this.radius = r ? r : getRadius(mass);
-    this.mass = mass ? mass : (4 / 3) * Math.PI * Math.pow(r, 3);
+    this.mass = mass ? mass : ((4 / 3) * Math.PI * (r * r * r));
     this.color = color;
     this.id = bodyCount++;
     this.collide = collide;
@@ -857,7 +872,8 @@ class Body {
     return { x: this.xVel * this.mass, y: this.yVel * this.mass };
   }
   draw() {
-    let speed = colorByVel ? Math.hypot(this.xVel, this.yVel) : 0;
+    let speed = colorByVel ?
+      Math.hypot(this.xVel - (trackBody ? trackBody.xVel : 0), this.yVel - (trackBody ? trackBody.yVel : 0)) : 0;
     let hue = colorByVel ? Math.max(240 - 10 * speed, 0) : 0;
     let drawColor = colorByVel ? "hsl(" + hue + ", 100%, 50%)" : this.color;
 
@@ -947,12 +963,12 @@ class Body {
         }
         // acceleration vector
         if (drawGravity) {
-          let mult = 50 * timestep;
+          let mult = 1;//timestep;
           ctx.beginPath();
           ctx.lineWidth = 1 / totalzoom;
           ctx.strokeStyle = "red";
           ctx.moveTo(this.xPos, this.yPos);
-          ctx.lineTo(this.xPos + mult * this.accel.x, this.yPos + mult * this.accel.y);
+          ctx.lineTo(this.xPos + mult * this.xAccel, this.yPos + mult * this.yAccel);
           ctx.closePath();
           ctx.stroke();
         }
@@ -979,6 +995,9 @@ class Body {
         ) {
           this.xVel = -this.xVel;
           this.xAccel = 0;
+          if (this.xPos >= -collideOffset.x + currentOffset.x + canvas.width - this.radius)
+            this.xPos = -collideOffset.x + currentOffset.x + canvas.width - this.radius;
+          else this.xPos = -collideOffset.x + currentOffset.x + this.radius;
         }
         if (
           this.yPos >= -collideOffset.y + currentOffset.y + canvas.height - this.radius ||
@@ -986,6 +1005,9 @@ class Body {
         ) {
           this.yVel = -this.yVel;
           this.xAccel = 0;
+          if (this.yPos >= -collideOffset.y + currentOffset.y + canvas.height - this.radius)
+            this.yPos = -collideOffset.y + currentOffset.y + canvas.height - this.radius;
+          else this.yPos = -collideOffset.y + currentOffset.y + this.radius
         }
       }
       // implement acceleration
@@ -1006,6 +1028,7 @@ class Body {
 function runSim() {
   // iterate through all combinations of bodies and add force to body total
   bodies.forEach((body, index) => {
+    totalmass += body.mass;
     const body1 = body;
     if (bodies.length > 1 && timestep) {
       for (let i = index + 1; i < bodies.length; i++) {
@@ -1019,11 +1042,10 @@ function runSim() {
         // };
         const xDist = body2.xPos - body1.xPos;
         const yDist = body2.yPos - body1.yPos;
-        // let force = { x: 0, y: 0 };
-        // let xForce = 0, yForce = 0;
-        const sqr = Math.max(xDist * xDist + yDist * yDist, 1);
 
         const distThreshSqr = (body2.radius + body1.radius) * (body2.radius + body1.radius);
+        const sqr = Math.max(xDist * xDist + yDist * yDist, distThreshSqr);
+
 
         if (
           sqr <= distThreshSqr &&
@@ -1104,7 +1126,7 @@ function collision(body1, body2) {
   // maintain tracking
   if (trackBody === smaller) trackBody = larger;
   // remove the smaller object
-  remove(bodies, smaller.id);
+  remove(smaller);
   return smallerIndex;
 }
 
@@ -1174,7 +1196,7 @@ function pan(offset = { x: 0, y: 0 }, clrTrails = true) {
     body.xPos += offset.x;
     body.yPos += offset.y;
   });
-  ui.offset.innerText = Math.round(currentOffset.x) + " Y=" + Math.round(currentOffset.y);
+  ui.offset.innerText = Math.floor(currentOffset.x) + " Y=" + Math.floor(currentOffset.y);
 }
 
 /**
@@ -1193,23 +1215,9 @@ function track(body) {
   newBody = false;
 }
 
+var totalmass = 0;
 // draw and animate
 function draw() {
-  // update with user input
-  colorByVel = ui.colorByVel.checked;
-  trace = ui.trace.checked;
-  fade = ui.fade.checked;
-  drawGravity = ui.drawGravity.checked;
-  drawGravityStrength = ui.drawGravityStrength.checked;
-  drawGThreshold = ui.drawGThreshold.checked;
-  drawVector = ui.drawVector.checked;
-  collide = ui.collide.checked;
-  drawField = ui.heatmap.checked;
-  drawCoM = ui.drawCoM.checked;
-  trackCoM = ui.trackCoM.checked;
-  globalCollide = ui.globalCollide.checked;
-  drawOffscreen = ui.drawOffscreen.checked;
-
   continuous = true;
 
   debug = false;
@@ -1225,6 +1233,7 @@ function draw() {
   frameDelayMs ? setTimeout(draw, frameDelayMs) : requestAnimationFrame(draw);
 
   maxBody = bodies[0];
+  totalmass = 0;
 
   // check draw settings and draw stuff
   {
@@ -1234,7 +1243,7 @@ function draw() {
       trace = false;
     }
     if (fade && trace && timestep) {
-      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+      ctx.fillStyle = "rgba(0, 0, 0, " + fadeStrength + ")";
       ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
     } else if (!trace && drawField && maxBody != null && G) {
       calcField();
@@ -1266,6 +1275,7 @@ function draw() {
   }
   // loop through bodies, draw and update
   runSim();
+  console.log(totalmass);
 
   if (bodies.length && drawCoM) {
     CoM = calcCoM();
@@ -1299,7 +1309,7 @@ function updateGraphs(interval) {
   if (elapsedTime >= interval) {
     // Update 10 times per second
     const fps = frameCount / (elapsedTime / 1000);
-    ui.fps.innerText = Math.round(fps * 100) / 100;
+    ui.fps.innerText = ~~(fps * 100) / 100;
 
     //let xCoord = (currentTime / 500 * 3) % fpsGraph.width;
     xCoord += 2;
