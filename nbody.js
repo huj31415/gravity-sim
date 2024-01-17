@@ -1219,6 +1219,7 @@ var totalmass = 0;
 // draw and animate
 function draw() {
   continuous = true;
+  let continueTrace = trace;
 
   debug = false;
   if (debug) {
@@ -1275,7 +1276,7 @@ function draw() {
   }
   // loop through bodies, draw and update
   runSim();
-  console.log(totalmass);
+  if (continueTrace) trace = true;
 
   if (bodies.length && drawCoM) {
     CoM = calcCoM();
