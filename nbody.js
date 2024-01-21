@@ -1,7 +1,4 @@
-// todo: optimize gravity by lumping things a certain distance away together as one gravitating body
-// distance from body and lumping radius is proportional
-
-frameDelayMs = 0; // Chromebook Simulator (or for debug purposes) 0 for default fps
+frameDelayMs = 0; // Chromebook Simulator (or for debug purposes): 0 for default requestAnimationFrame fps
 
 // initialize user interface elements
 const ui = {
@@ -50,6 +47,7 @@ const ui = {
   drawOffscreen: document.getElementById("drawOffscreen"),
   fadeStrength: document.getElementById("fadeStrength"),
   fadeOutput: document.getElementById("fadeOutput"),
+  drawMouseVector: document.getElementById("drawMouseVector"),
 };
 
 // utilities
@@ -115,11 +113,12 @@ let newBody = false;
 let zoomfactor = 1;
 let totalzoom = 1;
 let viewport = { x: canvas.width, y: canvas.height };
+let mouseX, mouseY;
 
 // heatmap
 let maxBody;
-let minPotential = 0;
-let heatmapRes = 4;
+const minPotential = 0;
+const heatmapRes = 4;
 let minL = 0.1;
 
 let colorByVel = ui.colorByVel.checked,
@@ -135,7 +134,8 @@ let colorByVel = ui.colorByVel.checked,
   trackCoM = ui.trackCoM.checked,
   globalCollide = ui.globalCollide.checked,
   drawOffscreen = ui.drawOffscreen.checked,
-  fadeStrength = ui.fadeStrength.value;
+  fadeStrength = ui.fadeStrength.value,
+  drawMouseVector = ui.drawMouseVector.checked;
 
 initParams();
 draw();
@@ -146,6 +146,7 @@ draw();
   // button listeners
   {
     ui.panel.onclick = (event) => {
+      // buttons
       switch (event.target) {
         case ui.randBtn: // generate random
           initParams();
@@ -287,6 +288,7 @@ draw();
           }
           break;
       }
+      // inputs
       colorByVel = ui.colorByVel.checked;
       trace = ui.trace.checked;
       fade = ui.fade.checked;
@@ -300,6 +302,7 @@ draw();
       trackCoM = ui.trackCoM.checked;
       globalCollide = ui.globalCollide.checked;
       drawOffscreen = ui.drawOffscreen.checked;
+      drawMouseVector = ui.drawMouseVector.checked;
     }
     ui.collapse.onclick = () => {
       ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
@@ -394,6 +397,8 @@ draw();
     function mouseStopped() {
       panOffset.x = panOffset.y = 0;
     }
+    
+    canvas.onmousemove = (event) => {mouseX = event.clientX; mouseY = event.clientY}
 
     canvas.onwheel = (event) => {
       if (!event.ctrlKey) {
@@ -900,7 +905,7 @@ class Body {
         ctx.closePath();
         ctx.stroke();
       } else {
-        if (trackBody != this && trace) {
+        if (trackBody != this && trace && !collide) {
           // connect to previous
           if (continuous && trace) {
             ctx.beginPath();
@@ -1028,24 +1033,18 @@ class Body {
 function runSim() {
   // iterate through all combinations of bodies and add force to body total
   bodies.forEach((body, index) => {
-    totalmass += body.mass;
     const body1 = body;
+    if (drawField && (body1.mass > maxBody.mass)) maxBody = body1;
     if (bodies.length > 1 && timestep) {
       for (let i = index + 1; i < bodies.length; i++) {
         // calc gravity between body and bodies[i], then add forces
-
         const body2 = bodies[i];
-        // get distance
-        // const distance = {
-        //   x: body2.xPos - body1.xPos,
-        //   y: body2.yPos - body1.yPos,
-        // };
+
         const xDist = body2.xPos - body1.xPos;
         const yDist = body2.yPos - body1.yPos;
 
         const distThreshSqr = (body2.radius + body1.radius) * (body2.radius + body1.radius);
         const sqr = Math.max(xDist * xDist + yDist * yDist, distThreshSqr);
-
 
         if (
           sqr <= distThreshSqr &&
@@ -1130,27 +1129,40 @@ function collision(body1, body2) {
   return smallerIndex;
 }
 
-// calculate gravitational field
-function calcField() {
-  let res = heatmapRes / totalzoom;
+/**
+ * calculate field strength at point, then draw vector
+ * @param {Number} x X-coordinate for field calculation 
+ * @param {Number} y Y-coordinate for field calculation
+ */
+function calcFieldAtPoint(x, y, res = 0) {
+  let xPot = 0, yPot = 0;
+  bodies.forEach((body) => {
+    let distance = res
+      ? Math.hypot(body.xPos - x - res / 2, body.yPos - y - res / 2)
+      : Math.hypot(body.xPos - x, body.yPos - y);
+    if (distance >= body.radius - (res ? res : 0)) {
+      const gForce = (G * body.mass) / (distance * distance);
+      xPot += (gForce * (body.xPos - x)) / distance;
+      yPot += (gForce * (body.yPos - y)) / distance;
+    }
+  });
+  return {
+    x: xPot,
+    y: yPot,
+  };
+}
 
-  ctx.fillStyle = "hsl(240, 100%, " + minL * 100 + "%)";
-  ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
+// display gravitational field for the whole canvas
+// todo: switch to imagedata for more efficiency
+function drawFullField() {
+  const res = heatmapRes / totalzoom;
 
-  let maxPotential = (0.25 * maxBody.mass) / maxBody.radius ** 2;
+  const maxPotential = (G * maxBody.mass) / maxBody.radius ** 2;
 
   for (let y = center.y - viewport.y / 2; y <= center.y + viewport.y / 2; y += res) {
     for (let x = center.x - viewport.x / 2; x <= center.x + viewport.x / 2; x += res) {
-      let xyPotential = { x: 0, y: 0 };
-      bodies.forEach((body) => {
-        let distance = Math.hypot(body.xPos - x - res / 2, body.yPos - y - res / 2);
-        if (distance >= body.radius - res) {
-          let gForce = (G * body.mass) / (distance * distance);
-          xyPotential.x += (gForce * (body.xPos - x)) / distance;
-          xyPotential.y += (gForce * (body.yPos - y)) / distance;
-        }
-      });
-      let potential = Math.hypot(xyPotential.x, xyPotential.y);
+      let vector = calcFieldAtPoint(x, y, res);
+      const potential = Math.hypot(vector.x, vector.y);
       if (potential >= 0.05) {
         ctx.fillStyle =
           "hsl(" +
@@ -1162,6 +1174,23 @@ function calcField() {
       }
     }
   }
+}
+
+// display gravitational field vector at a point
+// needs mouse event listener
+function drawPointField() {
+  const x = (mouseX / canvas.width) * viewport.x + center.x - viewport.x / 2;
+  const y = (mouseY / canvas.height) * viewport.y + center.y - viewport.y / 2;
+
+  const vector = calcFieldAtPoint(x, y);
+
+  ctx.beginPath();
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 1 / totalzoom;
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + vector.x * 2, y + vector.y * 2);
+  ctx.closePath();
+  ctx.stroke();
 }
 
 // calculate center of mass of the system
@@ -1215,7 +1244,6 @@ function track(body) {
   newBody = false;
 }
 
-var totalmass = 0;
 // draw and animate
 function draw() {
   continuous = true;
@@ -1234,7 +1262,6 @@ function draw() {
   frameDelayMs ? setTimeout(draw, frameDelayMs) : requestAnimationFrame(draw);
 
   maxBody = bodies[0];
-  totalmass = 0;
 
   // check draw settings and draw stuff
   {
@@ -1246,8 +1273,10 @@ function draw() {
     if (fade && trace && timestep) {
       ctx.fillStyle = "rgba(0, 0, 0, " + fadeStrength + ")";
       ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
-    } else if (!trace && drawField && maxBody != null && G) {
-      calcField();
+    } else if (!trace && drawField && G) {
+      ctx.fillStyle = "hsl(240, 100%, " + minL * 100 + "%)";
+      ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
+      if (bodies[0]) drawFullField();
     } else if (!trace) {
       ctx.fillStyle = "rgba(0, 0, 0, 1)";
       ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
@@ -1277,6 +1306,7 @@ function draw() {
   // loop through bodies, draw and update
   runSim();
   if (continueTrace) trace = true;
+  if (drawMouseVector) drawPointField();
 
   if (bodies.length && drawCoM) {
     CoM = calcCoM();
