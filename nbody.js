@@ -63,6 +63,7 @@ canvas.height = window.innerHeight;
 canvas.width = window.innerWidth;
 ui.viewport.innerText = canvas.width + " x " + canvas.height;
 let center = { x: canvas.width / 2, y: canvas.height / 2 };
+let imgData = ctx.createImageData(canvas.height, canvas.width);
 
 window.onresize = () => {
   canvas.height = window.innerHeight;
@@ -121,7 +122,7 @@ const minPotential = 0;
 const heatmapRes = 4;
 let minL = 0.1;
 
-let colorByVel = ui.colorByVel.checked,
+let colorBySpeed = ui.colorByVel.checked,
   trace = ui.trace.checked,
   fade = ui.fade.checked,
   drawGravity = ui.drawGravity.checked,
@@ -289,7 +290,7 @@ draw();
           break;
       }
       // inputs
-      colorByVel = ui.colorByVel.checked;
+      colorBySpeed = ui.colorByVel.checked;
       trace = ui.trace.checked;
       fade = ui.fade.checked;
       drawGravity = ui.drawGravity.checked;
@@ -397,8 +398,8 @@ draw();
     function mouseStopped() {
       panOffset.x = panOffset.y = 0;
     }
-    
-    canvas.onmousemove = (event) => {mouseX = event.clientX; mouseY = event.clientY}
+
+    canvas.onmousemove = (event) => { mouseX = event.clientX; mouseY = event.clientY }
 
     canvas.onwheel = (event) => {
       if (!event.ctrlKey) {
@@ -877,10 +878,14 @@ class Body {
     return { x: this.xVel * this.mass, y: this.yVel * this.mass };
   }
   draw() {
-    let speed = colorByVel ?
-      Math.hypot(this.xVel - (trackBody ? trackBody.xVel : 0), this.yVel - (trackBody ? trackBody.yVel : 0)) : 0;
-    let hue = colorByVel ? Math.max(240 - 10 * speed, 0) : 0;
-    let drawColor = colorByVel ? "hsl(" + hue + ", 100%, 50%)" : this.color;
+    let drawColor = this.color;
+
+    // change the color based on speed
+    if (colorBySpeed) {
+      let speed = Math.hypot(this.xVel - (trackBody ? trackBody.xVel : 0), this.yVel - (trackBody ? trackBody.yVel : 0));
+      let hue = Math.max(240 - 10 * speed, 0);
+      drawColor = "hsl(" + hue + ", 100%, 50%)";
+    }
 
     // Draw the body
     {
@@ -905,7 +910,7 @@ class Body {
         ctx.closePath();
         ctx.stroke();
       } else {
-        if (trackBody != this && trace && !collide) {
+        if (trackBody != this && trace && !(collide && trackBody)) {
           // connect to previous
           if (continuous && trace) {
             ctx.beginPath();
@@ -1104,10 +1109,10 @@ function collision(body1, body2) {
   ui.bodyCount.innerText = activeBodies;
 
   // merge masses and calculate corresponding radius and velocity based on momentum
+  // color of new body is inherited from the larger
   let mass = body1.mass + body2.mass;
   let larger = body1.mass > body2.mass ? body1 : body2;
   let smaller = larger === body1 ? body2 : body1;
-  let smallerIndex = bodies.indexOf(smaller);
 
   let momentum = {
     x: body1.getMomentum().x + body2.getMomentum().x,
@@ -1126,15 +1131,15 @@ function collision(body1, body2) {
   if (trackBody === smaller) trackBody = larger;
   // remove the smaller object
   remove(smaller);
-  return smallerIndex;
 }
 
 /**
  * calculate field strength at point, then draw vector
  * @param {Number} x X-coordinate for field calculation 
  * @param {Number} y Y-coordinate for field calculation
+ * @param {Number} res resolution of the grid for full field calculation
  */
-function calcFieldAtPoint(x, y, res = 0) {
+function calcFieldAtPoint(x, y, res = 0, hypot = false) {
   let xPot = 0, yPot = 0;
   bodies.forEach((body) => {
     let distance = res
@@ -1146,10 +1151,18 @@ function calcFieldAtPoint(x, y, res = 0) {
       yPot += (gForce * (body.yPos - y)) / distance;
     }
   });
-  return {
-    x: xPot,
-    y: yPot,
-  };
+  return hypot ? Math.hypot(xPot, yPot) :
+    {
+      x: xPot,
+      y: yPot,
+    };
+}
+
+// input: h as an angle in [0,360] and s,l in [0,1] - output: r,g,b in [0,1]
+function hsl2rgb(h, s, l) {
+  let a = s * Math.min(l, 1 - l);
+  let f = (n, k = (n + h / 30) % 12) => l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+  return [f(0), f(8), f(4), l];
 }
 
 // display gravitational field for the whole canvas
@@ -1157,12 +1170,14 @@ function calcFieldAtPoint(x, y, res = 0) {
 function drawFullField() {
   const res = heatmapRes / totalzoom;
 
-  const maxPotential = (G * maxBody.mass) / maxBody.radius ** 2;
+  const maxPotential = (G * maxBody.mass) / (maxBody.radius * maxBody.radius);
+  let max = 0;
 
   for (let y = center.y - viewport.y / 2; y <= center.y + viewport.y / 2; y += res) {
     for (let x = center.x - viewport.x / 2; x <= center.x + viewport.x / 2; x += res) {
-      let vector = calcFieldAtPoint(x, y, res);
+      const vector = calcFieldAtPoint(x, y, res);
       const potential = Math.hypot(vector.x, vector.y);
+      if (potential > max) max = potential;
       if (potential >= 0.05) {
         ctx.fillStyle =
           "hsl(" +
@@ -1172,8 +1187,15 @@ function drawFullField() {
           "%)";
         ctx.fillRect(x, y, res, res);
       }
+      // const rgb = hsl2rgb((240 - potential.map(minPotential, maxPotential, 0, 240)), 1, potential.map(minPotential, maxPotential, minL * 100, 50));
+      // imgData[4 * (x + y * canvas.height)] = rgb[0];
+      // imgData[4 * (x + y * canvas.height) + 1] = rgb[1];
+      // imgData[4 * (x + y * canvas.height) + 2] = rgb[2];
+      // imgData[4 * (x + y * canvas.height) + 3] = rgb[3];
+      // ctx.putImageData(imgData, 20, 20);
     }
   }
+  return { a: maxPotential, b: max };
 }
 
 // display gravitational field vector at a point
@@ -1261,7 +1283,8 @@ function draw() {
 
   frameDelayMs ? setTimeout(draw, frameDelayMs) : requestAnimationFrame(draw);
 
-  maxBody = bodies[0];
+  if (!maxBody && bodies[0]) maxBody = bodies[0];
+  else if (!bodies[0]) maxBody = null;
 
   // check draw settings and draw stuff
   {
