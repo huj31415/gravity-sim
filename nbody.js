@@ -63,7 +63,6 @@ canvas.height = window.innerHeight;
 canvas.width = window.innerWidth;
 ui.viewport.innerText = canvas.width + " x " + canvas.height;
 let center = { x: canvas.width / 2, y: canvas.height / 2 };
-let imgData = ctx.createImageData(canvas.height, canvas.width);
 
 window.onresize = () => {
   canvas.height = window.innerHeight;
@@ -837,8 +836,8 @@ Number.prototype.map = function (
   clampMin = false
 ) {
   let mapped = ((this - in_min) * (out_max - out_min)) / (in_max - in_min) + out_min;
-  mapped = mapped <= out_max || !clampMax ? mapped : out_max;
-  mapped = mapped >= out_min || !clampMin ? mapped : out_min;
+  mapped = clampMax ? Math.min(mapped, out_max) : mapped;
+  mapped = clampMin ? Math.max(mapped, out_min) : mapped;
   return mapped;
 };
 
@@ -1158,44 +1157,53 @@ function calcFieldAtPoint(x, y, res = 0, hypot = false) {
     };
 }
 
-// input: h as an angle in [0,360] and s,l in [0,1] - output: r,g,b in [0,1]
+/**
+ * Converts a color from HSL to RGB
+ * @param {Number} h hue as an angle [0, 360]
+ * @param {*} s saturation [0, 1]
+ * @param {*} l lightness [0,1]
+ * @returns An array with the RGB color values
+ */
 function hsl2rgb(h, s, l) {
   let a = s * Math.min(l, 1 - l);
   let f = (n, k = (n + h / 30) % 12) => l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-  return [f(0), f(8), f(4), l];
+  return [f(0), f(8), f(4)];
 }
 
 // display gravitational field for the whole canvas
-// todo: switch to imagedata for more efficiency
 function drawFullField() {
   const res = heatmapRes / totalzoom;
+  const width = canvas.width;
+  const imgData = ctx.createImageData(width, canvas.height);
+  const data = imgData.data;
 
-  const maxPotential = (G * maxBody.mass) / (maxBody.radius * maxBody.radius);
-  let max = 0;
+  const maxPotential = (G * maxBody.mass) / (maxBody.radius * maxBody.radius)
 
-  for (let y = center.y - viewport.y / 2; y <= center.y + viewport.y / 2; y += res) {
-    for (let x = center.x - viewport.x / 2; x <= center.x + viewport.x / 2; x += res) {
+  for (let y = center.y - viewport.y / 2, py = 0; y < center.y + viewport.y / 2; y += res, py++) {
+    for (let x = center.x - viewport.x / 2, px = 0; x < center.x + viewport.x / 2; x += res, px++) {
       const vector = calcFieldAtPoint(x, y, res);
       const potential = Math.hypot(vector.x, vector.y);
-      if (potential > max) max = potential;
+      let rgbColor = [0, 0, .2];
       if (potential >= 0.05) {
-        ctx.fillStyle =
-          "hsl(" +
-          (240 - potential.map(minPotential, maxPotential, 0, 240)) +
-          ", 100%, " +
-          potential.map(minPotential, maxPotential, minL * 100, 50) +
-          "%)";
-        ctx.fillRect(x, y, res, res);
+        // Map the potential to HSL color space
+        const hue = 240 - potential.map(minPotential, maxPotential, 0, 240);
+        const lightness = potential.map(minPotential, maxPotential, 0.01, .5);
+
+        // Convert HSL to RGB
+        rgbColor = hsl2rgb(hue, 1, lightness);
+        for (let i = 0; i < heatmapRes; i++) {
+          for (let j = 0; j < heatmapRes; j++) {
+            const index = ((py * 4 + i) * width + (px * 4 + j)) * heatmapRes;
+            data[index] = rgbColor[0] * 255;
+            data[index + 1] = rgbColor[1] * 255;
+            data[index + 2] = rgbColor[2] * 255;
+            data[index + 3] = 255;
+          }
+        }
       }
-      // const rgb = hsl2rgb((240 - potential.map(minPotential, maxPotential, 0, 240)), 1, potential.map(minPotential, maxPotential, minL * 100, 50));
-      // imgData[4 * (x + y * canvas.height)] = rgb[0];
-      // imgData[4 * (x + y * canvas.height) + 1] = rgb[1];
-      // imgData[4 * (x + y * canvas.height) + 2] = rgb[2];
-      // imgData[4 * (x + y * canvas.height) + 3] = rgb[3];
-      // ctx.putImageData(imgData, 20, 20);
     }
   }
-  return { a: maxPotential, b: max };
+  ctx.putImageData(imgData, 0, 0);
 }
 
 // display gravitational field vector at a point
@@ -1297,8 +1305,8 @@ function draw() {
       ctx.fillStyle = "rgba(0, 0, 0, " + fadeStrength + ")";
       ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
     } else if (!trace && drawField && G) {
-      ctx.fillStyle = "hsl(240, 100%, " + minL * 100 + "%)";
-      ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
+      // ctx.fillStyle = "hsl(240, 100%, " + minL * 100 + "%)";
+      // ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
       if (bodies[0]) drawFullField();
     } else if (!trace) {
       ctx.fillStyle = "rgba(0, 0, 0, 1)";
