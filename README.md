@@ -2,6 +2,8 @@
 
 A Javascript-based N-body simulation for calculating Newtonian gravitational interactions between an arbitrary number of bodies
 
+Intended as a demostration or for qualitative use, not as a quantitative simulation
+
 ## Features
 - Adjustable simulation parameters
   - G, timestep, mass, velocity, etc.

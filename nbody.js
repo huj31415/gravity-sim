@@ -1071,7 +1071,7 @@ function runSim() {
 
           // draw gravity strength lines
           if (drawGravityStrength) {
-            const strength = Math.abs(1 - 10 / (gForce + 10));
+            const strength = Math.abs(1 - 10 / (g * body1.mass * body2.mass + 10));
             const drawThreshold = drawGThreshold ? (trace ? 1e-4 : 1e-2) : 0;
             // determine whether to draw
             if (strength >= drawThreshold) {
