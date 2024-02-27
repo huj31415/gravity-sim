@@ -48,13 +48,13 @@ const ui = {
   fadeStrength: document.getElementById("fadeStrength"),
   fadeOutput: document.getElementById("fadeOutput"),
   drawMouseVector: document.getElementById("drawMouseVector"),
+  inelastic: document.getElementById("collideType"),
 };
 
 // utilities
 const getRadius = (mass) => Math.abs(Math.cbrt((mass * (3 / 4)) / Math.PI));
 
-const randColor = () =>
-  "#" + (~~(Math.random() * (16777215 - 5592405) + 5592405)).toString(16);
+const randColor = () => "#" + (~~(Math.random() * (16777215 - 5592405) + 5592405)).toString(16);
 
 // initialize main canvas
 const canvas = document.getElementById("canvas", { alpha: false });
@@ -88,14 +88,9 @@ let xCoord = 0;
 let bodies = [];
 let G = 1;
 const Gconst = 6.6743 * Math.pow(10, -11);
-let numBodies,
-  maxMass,
-  minMass,
-  initVel,
-  timestep,
-  oldTimestep,
-  CoM;
+let numBodies, maxMass, minMass, initVel, timestep, oldTimestep, CoM;
 let continuous = true;
+let CoR = 1; // coefficient of restitution
 
 // tracking variables
 let collisionCount = (frameCount = bodyCount = activeBodies = 0);
@@ -135,7 +130,8 @@ let colorBySpeed = ui.colorByVel.checked,
   globalCollide = ui.globalCollide.checked,
   drawOffscreen = ui.drawOffscreen.checked,
   fadeStrength = ui.fadeStrength.value,
-  drawMouseVector = ui.drawMouseVector.checked;
+  drawMouseVector = ui.drawMouseVector.checked,
+  inelastic = ui.inelastic.checked;
 
 initParams();
 draw();
@@ -150,7 +146,7 @@ draw();
         switch (event.target) {
           case ui.randBtn: // generate random
             initParams();
-            initRandBodies(numBodies, minMass, maxMass, initVel);
+            initRandBodies(numBodies, minMass, maxMass, initVel, true);
             activeBodies = bodies.length;
             ui.bodyCount.innerText = activeBodies;
             break;
@@ -259,7 +255,12 @@ draw();
           case ui.clear:
             bodies = [];
             ctx.fillStyle = "rgba(0, 0, 0, 1)";
-            ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
+            ctx.fillRect(
+              center.x - viewport.x / 2,
+              center.y - viewport.y / 2,
+              viewport.x,
+              viewport.y
+            );
             activeBodies = bodies.length;
             ui.bodyCount.innerText = activeBodies;
             break;
@@ -303,7 +304,8 @@ draw();
         globalCollide = ui.globalCollide.checked;
         drawOffscreen = ui.drawOffscreen.checked;
         drawMouseVector = ui.drawMouseVector.checked;
-      }
+        inelastic = ui.inelastic.checked;
+      };
       ui.collapse.onclick = () => {
         ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
         if (ui.panel.classList.contains("hidden")) {
@@ -328,7 +330,7 @@ draw();
       ui.fadeStrength.addEventListener("input", (event) => {
         ui.fadeOutput.innerText = event.target.value;
         fadeStrength = event.target.value;
-      })
+      });
 
       ui.G.addEventListener("input", (event) => {
         ui.GOut.innerText = event.target.value;
@@ -398,7 +400,10 @@ draw();
         panOffset.x = panOffset.y = 0;
       }
 
-      canvas.onmousemove = (event) => { mouseX = event.clientX; mouseY = event.clientY }
+      canvas.onmousemove = (event) => {
+        mouseX = event.clientX;
+        mouseY = event.clientY;
+      };
 
       canvas.onwheel = (event) => {
         if (!event.ctrlKey) {
@@ -416,7 +421,12 @@ draw();
           viewport.y /= zoomfactor;
           ui.viewport.innerText = Math.floor(viewport.x) + " x " + Math.floor(viewport.y);
           ctx.fillStyle = "rgba(0, 0, 0, 1)";
-          ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
+          ctx.fillRect(
+            center.x - viewport.x / 2,
+            center.y - viewport.y / 2,
+            viewport.x,
+            viewport.y
+          );
           ui.zoom.innerText = ~~(totalzoom * 10000) / 100;
         }
       };
@@ -621,35 +631,50 @@ draw();
     /**
      * Randomly generate bodies based on params
      * @param {Number} num number of random bodies to generate
-     * @param {Number} minSize minimum mass
-     * @param {Number} maxSize maximum mass
+     * @param {Number} minMass minimum mass
+     * @param {Number} maxMass maximum mass
      * @param {Number} v maximum initial velocity
      * @param {Boolean} randColors whether or not to randomly color the bodies
+     * @param {Boolean} zeroVel whether or not to set the velocity of the center of mass to 0
      */
-    function initRandBodies(num, minSize = 3, maxSize = 5, v = 0, randColors = true) {
-      for (let i = 0; i < num; i++) {
-        let r = getRadius(randInt(minSize, maxSize));
+    function initRandBodies(num, minMass = 3, maxMass = 5, v = 0, randColors = true, zeroVel = false) {
+      let xMomentum = 0;
+      let yMomentum = 0;
+      for (let i = 0; i < num - zeroVel; i++) {
+        const mass = randInt(minMass, maxMass);
+        let r = getRadius(mass);
+        const x = collide
+          ? randInt(-collideOffset.x + currentOffset.x + 2 * r, -collideOffset.x + currentOffset.x + canvas.width - 2 * r)
+          : randInt(center.x - viewport.x / 2 + 2 * r, center.x + viewport.x / 2 - 2 * r);
+        const y = collide
+          ? randInt(-collideOffset.y + currentOffset.y + 2 * r, -collideOffset.y + currentOffset.y + canvas.height - 2 * r)
+          : randInt(center.y - viewport.y / 2 + 2 * r, center.y + viewport.y / 2 - 2 * r);
+        const vx = (Math.random() - 0.5) * 2 * v;
+        const vy = (Math.random() - 0.5) * 2 * v;
+        xMomentum += vx * mass;
+        yMomentum += vy * mass;
+        bodies.push(
+          new Body(x, y, vx, vy, r, 0, randColors ? randColor() : "white")
+        );
+      }
+      // set the last body to cancel out momentum of the system to 0
+      if (zeroVel) {
+        const mass = randInt(minMass, maxMass);
+        let r = getRadius(mass);
         bodies.push(
           new Body(
             collide
-              ? randInt(
-                -collideOffset.x + currentOffset.x + 2 * r,
-                -collideOffset.x + currentOffset.x + canvas.width - 2 * r
-              )
+              ? randInt(-collideOffset.x + currentOffset.x + 2 * r, -collideOffset.x + currentOffset.x + canvas.width - 2 * r)
               : randInt(center.x - viewport.x / 2 + 2 * r, center.x + viewport.x / 2 - 2 * r),
             collide
-              ? randInt(
-                -collideOffset.y + currentOffset.y + 2 * r,
-                -collideOffset.y + currentOffset.y + canvas.height - 2 * r
-              )
+              ? randInt(-collideOffset.y + currentOffset.y + 2 * r, -collideOffset.y + currentOffset.y + canvas.height - 2 * r)
               : randInt(center.y - viewport.y / 2 + 2 * r, center.y + viewport.y / 2 - 2 * r),
-            (Math.random() - 0.5) * 2 * v,
-            (Math.random() - 0.5) * 2 * v,
-            r,
-            0,
-            randColors ? randColor() : "white"
+            -xMomentum / mass, -yMomentum / mass, r, 0, randColors ? randColor() : "white"
           )
         );
+        xMomentum += -xMomentum / mass;
+        yMomentum += -yMomentum / mass;
+        console.log(xMomentum, yMomentum);
       }
     }
 
@@ -804,7 +829,7 @@ function remove(body) {
  */
 function randInt(min, max) {
   min = Math.ceil(min);
-  max = ~~(max);
+  max = ~~max;
   return Math.floor(Math.random() * (max - min) + min); // The maximum is exclusive and the minimum is inclusive
 }
 
@@ -869,7 +894,7 @@ class Body {
     this.xAccel = 0;
     this.yAccel = 0;
     this.radius = r ? r : getRadius(mass);
-    this.mass = mass ? mass : ((4 / 3) * Math.PI * (r * r * r));
+    this.mass = mass ? mass : (4 / 3) * Math.PI * (r * r * r);
     this.color = color;
     this.id = bodyCount++;
     this.collide = collide;
@@ -882,7 +907,10 @@ class Body {
 
     // change the color based on speed
     if (colorBySpeed) {
-      let speed = Math.hypot(this.xVel - (trackBody ? trackBody.xVel : 0), this.yVel - (trackBody ? trackBody.yVel : 0));
+      let speed = Math.hypot(
+        this.xVel - (trackBody ? trackBody.xVel : 0),
+        this.yVel - (trackBody ? trackBody.yVel : 0)
+      );
       let hue = Math.max(240 - 10 * speed, 0);
       drawColor = "hsl(" + hue + ", 100%, 50%)";
     }
@@ -973,7 +1001,7 @@ class Body {
         }
         // acceleration vector
         if (drawGravity) {
-          let mult = 1;//timestep;
+          let mult = 1; //timestep;
           ctx.beginPath();
           ctx.lineWidth = 1 / totalzoom;
           ctx.strokeStyle = "red";
@@ -1012,7 +1040,7 @@ class Body {
           this.xAccel = 0;
           if (this.yPos >= -collideOffset.y + currentOffset.y + canvas.height - this.radius)
             this.yPos = -collideOffset.y + currentOffset.y + canvas.height - this.radius;
-          else this.yPos = -collideOffset.y + currentOffset.y + this.radius
+          else this.yPos = -collideOffset.y + currentOffset.y + this.radius;
         }
       }
       // implement acceleration
@@ -1032,7 +1060,7 @@ function runSim() {
   // iterate through all combinations of bodies and add force to body total
   bodies.forEach((body, index) => {
     const body1 = body;
-    if (drawField && (body1.mass > maxBody.mass)) maxBody = body1;
+    if (drawField && body1.mass > maxBody.mass) maxBody = body1;
     if (bodies.length > 1 && timestep) {
       for (let i = index + 1; i < bodies.length; i++) {
         // calc gravity between body and bodies[i], then add forces
@@ -1051,7 +1079,6 @@ function runSim() {
           body1.id != body2.id
         ) {
           // don't skip a body after removing it
-          // if (globalCollide && body2.collide && body1.collide && collision(body1, body2) < i) i--;
           if (globalCollide && body2.collide && body1.collide) collision(body1, body2);
         } else {
           // get total gravity
@@ -1093,11 +1120,11 @@ function runSim() {
 }
 
 /**
- * Calculate collisions and merge smaller body into larger
+ * Calculate perfectly inelastic collisions, merge smaller body into larger
  * @param {Body} body1 the first body
  * @param {Body} body2 the second body
  */
-function collision(body1, body2) {
+function merge(body1, body2) {
   collisionCount += 1;
   ui.collisionCount.innerText = collisionCount;
   activeBodies = bodies.length - 1;
@@ -1109,10 +1136,8 @@ function collision(body1, body2) {
   let larger = body1.mass > body2.mass ? body1 : body2;
   let smaller = larger === body1 ? body2 : body1;
 
-  let momentum = {
-    x: body1.getMomentum().x + body2.getMomentum().x,
-    y: body1.getMomentum().y + body2.getMomentum().y,
-  };
+  const xMomentum = body1.getMomentum().x + body2.getMomentum().x;
+  const yMomentum = body1.getMomentum().y + body2.getMomentum().y;
 
   // change larger body properties
   larger.xPos = (body1.xPos * body1.mass + body2.xPos * body2.mass) / mass;
@@ -1120,8 +1145,8 @@ function collision(body1, body2) {
   if (Math.abs(larger.radius - getRadius(larger.mass)) < 0.1) larger.radius = getRadius(mass);
   larger.mass = mass;
   // larger.vel = { x: momentum.x / mass, y: momentum.y / mass };
-  larger.xVel = momentum.x / mass;
-  larger.yVel = momentum.y / mass
+  larger.xVel = xMomentum / mass;
+  larger.yVel = yMomentum / mass;
   // maintain tracking
   if (trackBody === smaller) trackBody = larger;
   // remove the smaller object
@@ -1129,13 +1154,86 @@ function collision(body1, body2) {
 }
 
 /**
+ * Calculate inelastic (CoR != 1) and elastic (CoR = 1) collisions
+ * @param {Body} body1 the first body
+ * @param {Body} body2 the second body
+ * @param {Number} CoR Coefficient of restitution: [0, 1] for normal collisions
+ */
+function collision(body1, body2) {//CoR = 0.1) {
+  collisionCount += 1;
+  ui.collisionCount.innerText = collisionCount;
+
+  if (inelastic) merge(body1, body2);
+  else {
+    const xPosDiff = body1.xPos - body2.xPos;
+    const yPosDiff = body1.yPos - body2.yPos;
+
+    const midpointX = (body1.xPos * body2.radius + body2.xPos * body1.radius) / (body1.radius + body2.radius);
+    const midpointY = (body1.yPos * body2.radius + body2.yPos * body1.radius) / (body1.radius + body2.radius);
+    const dist = Math.sqrt(xPosDiff * xPosDiff + yPosDiff * yPosDiff);
+    body1.xPos = midpointX + (body1.radius * xPosDiff) / dist;
+    body1.yPos = midpointY + (body1.radius * yPosDiff) / dist;
+    body2.xPos = midpointX - (body2.radius * xPosDiff) / dist;
+    body2.yPos = midpointY - (body2.radius * yPosDiff) / dist;
+    // timestep = 0; fade = false; trace = true; clearTrails = false;
+    // ctx.beginPath();
+    // ctx.arc(midpointX, midpointY, 10, 0, Math.PI * 2, true);
+    // ctx.closePath();
+    // ctx.fillStyle = "white";
+    // ctx.fill();
+
+    const halfPI = Math.PI / 2;
+    const normAngle = Math.atan2(yPosDiff, xPosDiff) + halfPI;
+
+    const v1 = Math.sqrt(body1.xVel * body1.xVel + body1.yVel * body1.yVel);
+    const v2 = Math.sqrt(body2.xVel * body2.xVel + body2.yVel * body2.yVel);
+
+    const vRelX = body1.xVel - body2.xVel;
+    const vRelY = body1.yVel - body2.yVel;
+    const vRelAngle = Math.atan2(vRelY, vRelX);
+
+    const contactAngle = vRelAngle - normAngle;
+    const contactAngleSin = Math.sin(contactAngle);
+    const contactAngleCos = Math.cos(contactAngle);
+
+    const v1angle = Math.atan2(body1.yVel, body1.xVel) - contactAngle;
+    const v1angleSin = v1 * Math.sin(v1angle);
+    const v1angleCos = v1 * Math.cos(v1angle);
+
+    const v2angle = Math.atan2(body2.yVel, body2.xVel) - contactAngle;
+    const v2angleSin = v2 * Math.sin(v2angle);
+    const v2angleCos = v2 * Math.cos(v2angle);
+
+    const sin90ContactAngle = Math.sin(contactAngle + halfPI);
+    const cos90ContactAngle = Math.cos(contactAngle + halfPI);
+
+    const totalMass = body1.mass + body2.mass;
+    const massDiff = body1.mass - body2.mass;
+
+    const n1 = (v1angleCos * massDiff + 2 * body2.mass * v2angleCos) / totalMass;
+    const x1Vel = n1 * contactAngleCos + v1angleSin * cos90ContactAngle;
+    const y1Vel = n1 * contactAngleSin + v1angleSin * sin90ContactAngle;
+
+    const n2 = (v2angleCos * -massDiff + 2 * body1.mass * v1angleCos) / totalMass;
+    const x2Vel = n2 * contactAngleCos + v2angleSin * cos90ContactAngle;
+    const y2Vel = n2 * contactAngleSin + v2angleSin * sin90ContactAngle;
+
+    body1.xVel = x1Vel;
+    body1.yVel = y1Vel;
+    body2.xVel = x2Vel;
+    body2.yVel = y2Vel;
+  }
+}
+
+/**
  * calculate field strength at point, then draw vector
- * @param {Number} x X-coordinate for field calculation 
+ * @param {Number} x X-coordinate for field calculation
  * @param {Number} y Y-coordinate for field calculation
  * @param {Number} res resolution of the grid for full field calculation
  */
 function calcFieldAtPoint(x, y, res = 0, hypot = false) {
-  let xPot = 0, yPot = 0;
+  let xPot = 0,
+    yPot = 0;
   bodies.forEach((body) => {
     let distance = res
       ? Math.hypot(body.xPos - x - res / 2, body.yPos - y - res / 2)
@@ -1146,8 +1244,9 @@ function calcFieldAtPoint(x, y, res = 0, hypot = false) {
       yPot += (gForce * (body.yPos - y)) / distance;
     }
   });
-  return hypot ? Math.hypot(xPot, yPot) :
-    {
+  return hypot
+    ? Math.hypot(xPot, yPot)
+    : {
       x: xPot,
       y: yPot,
     };
@@ -1173,17 +1272,17 @@ function drawFullField() {
   const imgData = ctx.createImageData(width, canvas.height);
   const data = imgData.data;
 
-  const maxPotential = (G * maxBody.mass) / (maxBody.radius * maxBody.radius)
+  const maxPotential = (G * maxBody.mass) / (maxBody.radius * maxBody.radius);
 
   for (let y = center.y - viewport.y / 2, py = 0; y < center.y + viewport.y / 2; y += res, py++) {
     for (let x = center.x - viewport.x / 2, px = 0; x < center.x + viewport.x / 2; x += res, px++) {
       const vector = calcFieldAtPoint(x, y, res);
       const potential = Math.hypot(vector.x, vector.y);
-      let rgbColor = [0, 0, .2];
+      let rgbColor = [0, 0, 0.2];
       if (potential >= 0.05) {
         // Map the potential to HSL color space
         const hue = 240 - potential.map(minPotential, maxPotential, 0, 240);
-        const lightness = potential.map(minPotential, maxPotential, 0.01, .5);
+        const lightness = potential.map(minPotential, maxPotential, 0.01, 0.5);
 
         // Convert HSL to RGB
         rgbColor = hsl2rgb(hue, 1, lightness);
@@ -1285,8 +1384,6 @@ function draw() {
 
   updateGraphs(100);
 
-  frameDelayMs ? setTimeout(draw, frameDelayMs) : requestAnimationFrame(draw);
-
   if (!maxBody && bodies[0]) maxBody = bodies[0];
   else if (!bodies[0]) maxBody = null;
 
@@ -1351,6 +1448,8 @@ function draw() {
     ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
     clearTrails = false;
   }
+
+  frameDelayMs ? setTimeout(draw, frameDelayMs) : requestAnimationFrame(draw);
 }
 
 /**

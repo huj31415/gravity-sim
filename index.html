@@ -99,7 +99,7 @@
         <label for="minSize">Min mass</label>
       </div>
       <div>
-        <input type="number" id="initVel" name="initVel" value="5" min="0" width="400px" />
+        <input type="number" id="initVel" name="initVel" value="3" min="0" width="400px" />
         <label for="initVel">Max init speed</label>
       </div>
     </div>
@@ -111,7 +111,7 @@
         <label for="timestep">Timestep (<span id="tOut">0.5</span>)</label>
       </div>
       <div>
-        <input type="range" id="g" name="g" value="1" max="2" min="-2" step=".01" width="400px" />
+        <input type="number" id="g" name="g" value="1" max="2" min="-2" step=".1" width="400px" />
         <label for="g">G constant (<span id="gOut">1</span>)</label>
       </div>
       <div>
@@ -121,6 +121,10 @@
       <div>
         <input type="checkbox" id="globalCollide" name="globalCollide" checked />
         <label for="globalCollide">Simulate particle collisions</label>
+      </div>
+      <div>
+        <input type="checkbox" id="collideType" name="collideType" checked />
+        <label for="collideType">Combine bodies (perfectly inelastic)</label>
       </div>
     </div>
     <div id="drawparams">
