@@ -1160,68 +1160,71 @@ function merge(body1, body2) {
  * @param {Number} CoR Coefficient of restitution: [0, 1] for normal collisions
  */
 function collision(body1, body2) {//CoR = 0.1) {
-  collisionCount += 1;
-  ui.collisionCount.innerText = collisionCount;
 
   if (inelastic) merge(body1, body2);
   else {
     const xPosDiff = body1.xPos - body2.xPos;
     const yPosDiff = body1.yPos - body2.yPos;
 
+    // set the bodies to just touch to avoid intersecting
     const midpointX = (body1.xPos * body2.radius + body2.xPos * body1.radius) / (body1.radius + body2.radius);
     const midpointY = (body1.yPos * body2.radius + body2.yPos * body1.radius) / (body1.radius + body2.radius);
-    const dist = Math.sqrt(xPosDiff * xPosDiff + yPosDiff * yPosDiff);
+    const dist = Math.max(Math.sqrt(xPosDiff * xPosDiff + yPosDiff * yPosDiff), 0.00001);
     body1.xPos = midpointX + (body1.radius * xPosDiff) / dist;
     body1.yPos = midpointY + (body1.radius * yPosDiff) / dist;
     body2.xPos = midpointX - (body2.radius * xPosDiff) / dist;
     body2.yPos = midpointY - (body2.radius * yPosDiff) / dist;
-    // timestep = 0; fade = false; trace = true; clearTrails = false;
-    // ctx.beginPath();
-    // ctx.arc(midpointX, midpointY, 10, 0, Math.PI * 2, true);
-    // ctx.closePath();
-    // ctx.fillStyle = "white";
-    // ctx.fill();
 
-    const halfPI = Math.PI / 2;
-    const normAngle = Math.atan2(yPosDiff, xPosDiff) + halfPI;
-
-    const v1 = Math.sqrt(body1.xVel * body1.xVel + body1.yVel * body1.yVel);
-    const v2 = Math.sqrt(body2.xVel * body2.xVel + body2.yVel * body2.yVel);
-
+    // precompute values
     const vRelX = body1.xVel - body2.xVel;
     const vRelY = body1.yVel - body2.yVel;
-    const vRelAngle = Math.atan2(vRelY, vRelX);
+    console.log(vRelX, vRelY);
 
-    const contactAngle = vRelAngle - normAngle;
-    const contactAngleSin = Math.sin(contactAngle);
-    const contactAngleCos = Math.cos(contactAngle);
+    if (vRelX != 0 && vRelY != 0) {
+      collisionCount += 1;
+      ui.collisionCount.innerText = collisionCount;
 
-    const v1angle = Math.atan2(body1.yVel, body1.xVel) - contactAngle;
-    const v1angleSin = v1 * Math.sin(v1angle);
-    const v1angleCos = v1 * Math.cos(v1angle);
+      const halfPI = Math.PI / 2;
+      const normAngle = Math.atan2(yPosDiff, xPosDiff) + halfPI;
 
-    const v2angle = Math.atan2(body2.yVel, body2.xVel) - contactAngle;
-    const v2angleSin = v2 * Math.sin(v2angle);
-    const v2angleCos = v2 * Math.cos(v2angle);
+      const v1 = Math.sqrt(body1.xVel * body1.xVel + body1.yVel * body1.yVel);
+      const v2 = Math.sqrt(body2.xVel * body2.xVel + body2.yVel * body2.yVel);
 
-    const sin90ContactAngle = Math.sin(contactAngle + halfPI);
-    const cos90ContactAngle = Math.cos(contactAngle + halfPI);
+      const vRelAngle = Math.atan2(vRelY, vRelX);
 
-    const totalMass = body1.mass + body2.mass;
-    const massDiff = body1.mass - body2.mass;
+      const contactAngle = vRelAngle - normAngle;
+      const contactAngleSin = Math.sin(contactAngle);
+      const contactAngleCos = Math.cos(contactAngle);
 
-    const n1 = (v1angleCos * massDiff + 2 * body2.mass * v2angleCos) / totalMass;
-    const x1Vel = n1 * contactAngleCos + v1angleSin * cos90ContactAngle;
-    const y1Vel = n1 * contactAngleSin + v1angleSin * sin90ContactAngle;
+      const v1angle = Math.atan2(body1.yVel, body1.xVel) - contactAngle;
+      const v1angleSin = v1 * Math.sin(v1angle);
+      const v1angleCos = v1 * Math.cos(v1angle);
 
-    const n2 = (v2angleCos * -massDiff + 2 * body1.mass * v1angleCos) / totalMass;
-    const x2Vel = n2 * contactAngleCos + v2angleSin * cos90ContactAngle;
-    const y2Vel = n2 * contactAngleSin + v2angleSin * sin90ContactAngle;
+      const v2angle = Math.atan2(body2.yVel, body2.xVel) - contactAngle;
+      const v2angleSin = v2 * Math.sin(v2angle);
+      const v2angleCos = v2 * Math.cos(v2angle);
 
-    body1.xVel = x1Vel;
-    body1.yVel = y1Vel;
-    body2.xVel = x2Vel;
-    body2.yVel = y2Vel;
+      const sin90ContactAngle = Math.sin(contactAngle + halfPI);
+      const cos90ContactAngle = Math.cos(contactAngle + halfPI);
+
+      const totalMass = body1.mass + body2.mass;
+      const massDiff = body1.mass - body2.mass;
+
+      // calculate the final velocities
+      const n1 = (v1angleCos * massDiff + 2 * body2.mass * v2angleCos) / totalMass;
+      const x1Vel = n1 * contactAngleCos + v1angleSin * cos90ContactAngle;
+      const y1Vel = n1 * contactAngleSin + v1angleSin * sin90ContactAngle;
+
+      const n2 = (v2angleCos * -massDiff + 2 * body1.mass * v1angleCos) / totalMass;
+      const x2Vel = n2 * contactAngleCos + v2angleSin * cos90ContactAngle;
+      const y2Vel = n2 * contactAngleSin + v2angleSin * sin90ContactAngle;
+
+      // implement the velocities
+      body1.xVel = x1Vel;
+      body1.yVel = y1Vel;
+      body2.xVel = x2Vel;
+      body2.yVel = y2Vel;
+    }
   }
 }
 
