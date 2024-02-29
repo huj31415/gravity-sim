@@ -674,7 +674,6 @@ draw();
         );
         xMomentum += -xMomentum / mass;
         yMomentum += -yMomentum / mass;
-        console.log(xMomentum, yMomentum);
       }
     }
 
@@ -1163,28 +1162,47 @@ function collision(body1, body2) {//CoR = 0.1) {
 
   if (inelastic) merge(body1, body2);
   else {
-    const xPosDiff = body1.xPos - body2.xPos;
-    const yPosDiff = body1.yPos - body2.yPos;
+    collisionCount += 1;
+    ui.collisionCount.innerText = collisionCount;
+
+    // initial separation
+    const dx1 = body2.xPos - body1.xPos;
+    const dy1 = body2.yPos - body1.yPos;
+
+    const totalMass = body1.mass + body2.mass;
+    const massDiff = body1.mass - body2.mass;
 
     // set the bodies to just touch to avoid intersecting
     const midpointX = (body1.xPos * body2.radius + body2.xPos * body1.radius) / (body1.radius + body2.radius);
     const midpointY = (body1.yPos * body2.radius + body2.yPos * body1.radius) / (body1.radius + body2.radius);
-    const dist = Math.max(Math.sqrt(xPosDiff * xPosDiff + yPosDiff * yPosDiff), 0.00001);
-    body1.xPos = midpointX + (body1.radius * xPosDiff) / dist;
-    body1.yPos = midpointY + (body1.radius * yPosDiff) / dist;
-    body2.xPos = midpointX - (body2.radius * xPosDiff) / dist;
-    body2.yPos = midpointY - (body2.radius * yPosDiff) / dist;
+    const d = Math.sqrt(dx1 * dx1 + dy1 * dy1) - 0.5; // add a small margin
+    body1.xPos = midpointX - (body1.radius * dx1) / d;
+    body1.yPos = midpointY - (body1.radius * dy1) / d;
+    body2.xPos = midpointX + (body2.radius * dx1) / d;
+    body2.yPos = midpointY + (body2.radius * dy1) / d;
 
+    const dx = body2.xPos - body1.xPos;
+    const dy = body2.yPos - body1.yPos;
+
+    // debug
+
+    // timestep = fade = clearTrails = 0; trace = true; continuous = false;
+    // ctx.beginPath();
+    // ctx.arc(midpointX, midpointY, 10, 0, Math.PI * 2, true);
+    // ctx.closePath();
+    // ctx.fillStyle = "red";
+    // ctx.fill();
+    // console.log(body1.id, body2.id);
+    // body1.color = "white";
+
+    const halfPI = Math.PI / 2;
+    /*
     // precompute values
     const vRelX = body1.xVel - body2.xVel;
     const vRelY = body1.yVel - body2.yVel;
-    console.log(vRelX, vRelY);
 
-    if (vRelX != 0 && vRelY != 0) {
-      collisionCount += 1;
-      ui.collisionCount.innerText = collisionCount;
+    // if (vRelX != 0 && vRelY != 0) {
 
-      const halfPI = Math.PI / 2;
       const normAngle = Math.atan2(yPosDiff, xPosDiff) + halfPI;
 
       const v1 = Math.sqrt(body1.xVel * body1.xVel + body1.yVel * body1.yVel);
@@ -1192,7 +1210,7 @@ function collision(body1, body2) {//CoR = 0.1) {
 
       const vRelAngle = Math.atan2(vRelY, vRelX);
 
-      const contactAngle = vRelAngle - normAngle;
+      const contactAngle = normAngle - vRelAngle;
       const contactAngleSin = Math.sin(contactAngle);
       const contactAngleCos = Math.cos(contactAngle);
 
@@ -1211,7 +1229,7 @@ function collision(body1, body2) {//CoR = 0.1) {
       const massDiff = body1.mass - body2.mass;
 
       // calculate the final velocities
-      const n1 = (v1angleCos * massDiff + 2 * body2.mass * v2angleCos) / totalMass;
+      const n1 = (v1angleCos * massDiff + 2 * body2.mass * v2angleCos) / totalMass; // same for both x and y
       const x1Vel = n1 * contactAngleCos + v1angleSin * cos90ContactAngle;
       const y1Vel = n1 * contactAngleSin + v1angleSin * sin90ContactAngle;
 
@@ -1224,7 +1242,63 @@ function collision(body1, body2) {//CoR = 0.1) {
       body1.yVel = y1Vel;
       body2.xVel = x2Vel;
       body2.yVel = y2Vel;
-    }
+    // }
+    */
+
+    // new separation
+    // const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // angle of the collision normal
+    const phi = Math.atan2(dy, dx);
+    
+    // debug
+    // console.log(dx, dy, phi);
+
+    // ctx.beginPath();
+    // ctx.lineWidth = 50;
+    // ctx.strokeStyle = "blue";
+    // ctx.moveTo(body1.xPos, body1.yPos);
+    // ctx.lineTo(body1.xPos + dist * Math.cos(phi), body1.yPos + dist * Math.sin(phi));
+    // ctx.closePath();
+    // ctx.stroke();
+
+    // net velocity
+    const v1 = Math.sqrt(body1.xVel * body1.xVel + body1.yVel * body1.yVel);
+    const v2 = Math.sqrt(body2.xVel * body2.xVel + body2.yVel * body2.yVel);
+
+    // velocity angle relative to phi
+    const a1 = Math.atan2(body1.yVel, body1.xVel) - phi;
+    const a2 = Math.atan2(body2.yVel, body2.xVel) - phi;
+
+    // velocity relative to the collision line
+    const v1relX = v1 * Math.cos(a1);
+    const v1relY = v1 * Math.sin(a1);
+    const v2relX = v2 * Math.cos(a2);
+    const v2relY = v2 * Math.sin(a2);
+
+    // calculate final velocities in rotated frame, changing the component perpendicular to collision
+    const v1finalXrel = (massDiff * v1relX + 2 * body2.mass * v2relX) / (totalMass);
+    const v2finalXrel = (2 * body1.mass * v1relX - massDiff * v2relX) / (totalMass);
+
+    const cosPhi = Math.cos(phi);
+    const sinPhi = Math.sin(phi);
+    const cosPhi90 = Math.cos(phi + halfPI);
+    const sinPhi90 = Math.sin(phi + halfPI);
+    // switch back to original frame
+    const v1xFinal = cosPhi * v1finalXrel + cosPhi90 * v1relY;
+    const v1yFinal = sinPhi * v1finalXrel + sinPhi90 * v1relY;
+
+    const v2xFinal = cosPhi * v2finalXrel + cosPhi90 * v2relY;
+    const v2yFinal = sinPhi * v2finalXrel + sinPhi90 * v2relY;
+
+    // debug
+    // console.log("P=", body1.mass * v1 + body2.mass * v2, Math.sqrt(v1xFinal ** 2 + v1yFinal ** 2) * body1.mass + Math.sqrt(v2xFinal ** 2 + v2yFinal ** 2) * body2.mass);
+
+    // implement new velocity
+    body1.xVel = v1xFinal;
+    body1.yVel = v1yFinal;
+    body2.xVel = v2xFinal;
+    body2.yVel = v2yFinal;
   }
 }
 
