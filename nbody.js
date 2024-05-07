@@ -1,3 +1,5 @@
+// todo: implement electrostatic force and field
+
 frameDelayMs = 0; // Chromebook Simulator (or for debug purposes): 0 for default requestAnimationFrame fps
 
 // initialize user interface elements
@@ -49,6 +51,8 @@ const ui = {
   fadeOutput: document.getElementById("fadeOutput"),
   drawMouseVector: document.getElementById("drawMouseVector"),
   inelastic: document.getElementById("collideType"),
+  CoR: document.getElementById("CoR"),
+  CoROut: document.getElementById("CoROut"),
 };
 
 // utilities
@@ -90,7 +94,7 @@ let G = 1;
 const Gconst = 6.6743 * Math.pow(10, -11);
 let numBodies, maxMass, minMass, initVel, timestep, oldTimestep, CoM;
 let continuous = true;
-let CoR = 1; // coefficient of restitution
+let CoR = 1;
 
 // tracking variables
 let collisionCount = (frameCount = bodyCount = activeBodies = 0);
@@ -242,6 +246,9 @@ draw();
                 ui.drawGravityStrength.checked = drawGravityStrength = false;
                 generateSolarSystem({ x: center.x, y: center.y }, { x: 0, y: 0 });
                 break;
+              case "7":
+                initNewtonsCradle();
+                break;
             }
             activeBodies = bodies.length;
             ui.bodyCount.innerText = activeBodies;
@@ -326,6 +333,10 @@ draw();
       ui.timestep.addEventListener("input", (event) => {
         ui.tOut.innerText = event.target.value;
         timestep = event.target.value;
+      });
+      ui.CoR.addEventListener("input", (event) => {
+        ui.CoROut.innerText = event.target.value;
+        CoR = event.target.value;
       });
       ui.fadeStrength.addEventListener("input", (event) => {
         ui.fadeOutput.innerText = event.target.value;
@@ -724,6 +735,14 @@ draw();
       }
     }
 
+    function initNewtonsCradle(num = 8, initV = 5, mass = 100000) {
+      ui.inelastic.checked = inelastic = false;
+      ui.G.value = G = 0;
+      ui.collide.checked = collide = true;
+      for (let i = 0; i < num - 1; i++) bodies.push(new Body(center.x - i, center.y, 0, 0, 0, mass));
+      bodies.push(new Body(getRadius(mass), center.y, initV, 0, 0, mass));
+    }
+
     /**
      * Generates a solar system
      * @param {Object} centerPos the position of the center
@@ -887,8 +906,8 @@ class Body {
     this.xPrev = xPos;
     this.yPrev = yPos;
     // this.force = { x: 0, y: 0 };
-    this.xForce = 0;
-    this.yForce = 0;
+    // this.xForce = 0;
+    // this.yForce = 0;
     // this.accel = { x: 0, y: 0 };
     this.xAccel = 0;
     this.yAccel = 0;
@@ -897,6 +916,9 @@ class Body {
     this.color = color;
     this.id = bodyCount++;
     this.collide = collide;
+    // rewind position storage
+    // this.rewindX = [xPos];
+    // this.rewindY = [yPos];
   }
   getMomentum() {
     return { x: this.xVel * this.mass, y: this.yVel * this.mass };
@@ -1082,6 +1104,8 @@ function runSim() {
         } else {
           // get total gravity
           // const gForce = G * (body2.mass * body1.mass) / sqr;
+
+          // precalculate g / r^2
           const g = G / sqr;
 
           // get the components of the force
@@ -1131,12 +1155,9 @@ function merge(body1, body2) {
 
   // merge masses and calculate corresponding radius and velocity based on momentum
   // color of new body is inherited from the larger
-  let mass = body1.mass + body2.mass;
-  let larger = body1.mass > body2.mass ? body1 : body2;
-  let smaller = larger === body1 ? body2 : body1;
-
-  const xMomentum = body1.getMomentum().x + body2.getMomentum().x;
-  const yMomentum = body1.getMomentum().y + body2.getMomentum().y;
+  const mass = body1.mass + body2.mass;
+  const larger = body1.mass > body2.mass ? body1 : body2;
+  const smaller = larger === body1 ? body2 : body1;
 
   // change larger body properties
   larger.xPos = (body1.xPos * body1.mass + body2.xPos * body2.mass) / mass;
@@ -1144,8 +1165,8 @@ function merge(body1, body2) {
   if (Math.abs(larger.radius - getRadius(larger.mass)) < 0.1) larger.radius = getRadius(mass);
   larger.mass = mass;
   // larger.vel = { x: momentum.x / mass, y: momentum.y / mass };
-  larger.xVel = xMomentum / mass;
-  larger.yVel = yMomentum / mass;
+  larger.xVel = (body1.getMomentum().x + body2.getMomentum().x) / mass;
+  larger.yVel = (body1.getMomentum().y + body2.getMomentum().y) / mass;
   // maintain tracking
   if (trackBody === smaller) trackBody = larger;
   // remove the smaller object
@@ -1156,113 +1177,39 @@ function merge(body1, body2) {
  * Calculate inelastic (CoR != 1) and elastic (CoR = 1) collisions
  * @param {Body} body1 the first body
  * @param {Body} body2 the second body
- * @param {Number} CoR Coefficient of restitution: [0, 1] for normal collisions
  */
-function collision(body1, body2) {//CoR = 0.1) {
-
-  if (inelastic) merge(body1, body2);
+function collision(body1, body2) {
+  if (inelastic || CoR === 0) merge(body1, body2);
   else {
     collisionCount += 1;
     ui.collisionCount.innerText = collisionCount;
 
-    // initial separation
-    const dx1 = body2.xPos - body1.xPos;
-    const dy1 = body2.yPos - body1.yPos;
-
     const totalMass = body1.mass + body2.mass;
     const massDiff = body1.mass - body2.mass;
 
+    // Intiial velocity of the center of mass
+    const vCoMX = (body1.getMomentum().x + body2.getMomentum().x) / totalMass;
+    const vCoMY = (body1.getMomentum().y + body2.getMomentum().y) / totalMass;
+
+    // initial separation
+    const xPosDist = body2.xPos - body1.xPos;
+    const yPosDist = body2.yPos - body1.yPos;
+
     // set the bodies to just touch to avoid intersecting
-    const midpointX = (body1.xPos * body2.radius + body2.xPos * body1.radius) / (body1.radius + body2.radius);
-    const midpointY = (body1.yPos * body2.radius + body2.yPos * body1.radius) / (body1.radius + body2.radius);
-    const d = Math.sqrt(dx1 * dx1 + dy1 * dy1) - 0.5; // add a small margin
-    body1.xPos = midpointX - (body1.radius * dx1) / d;
-    body1.yPos = midpointY - (body1.radius * dy1) / d;
-    body2.xPos = midpointX + (body2.radius * dx1) / d;
-    body2.yPos = midpointY + (body2.radius * dy1) / d;
+    const midpointX = (body1.xPos * body2.mass + body2.xPos * body1.mass) / totalMass;
+    const midpointY = (body1.yPos * body2.mass + body2.yPos * body1.mass) / totalMass;
+    const d = Math.max(Math.sqrt(xPosDist * xPosDist + yPosDist * yPosDist), 0.0001);
 
-    const dx = body2.xPos - body1.xPos;
-    const dy = body2.yPos - body1.yPos;
-
-    // debug
-
-    // timestep = fade = clearTrails = 0; trace = true; continuous = false;
-    // ctx.beginPath();
-    // ctx.arc(midpointX, midpointY, 10, 0, Math.PI * 2, true);
-    // ctx.closePath();
-    // ctx.fillStyle = "red";
-    // ctx.fill();
-    // console.log(body1.id, body2.id);
-    // body1.color = "white";
-
-    const halfPI = Math.PI / 2;
-    /*
-    // precompute values
-    const vRelX = body1.xVel - body2.xVel;
-    const vRelY = body1.yVel - body2.yVel;
-
-    // if (vRelX != 0 && vRelY != 0) {
-
-      const normAngle = Math.atan2(yPosDiff, xPosDiff) + halfPI;
-
-      const v1 = Math.sqrt(body1.xVel * body1.xVel + body1.yVel * body1.yVel);
-      const v2 = Math.sqrt(body2.xVel * body2.xVel + body2.yVel * body2.yVel);
-
-      const vRelAngle = Math.atan2(vRelY, vRelX);
-
-      const contactAngle = normAngle - vRelAngle;
-      const contactAngleSin = Math.sin(contactAngle);
-      const contactAngleCos = Math.cos(contactAngle);
-
-      const v1angle = Math.atan2(body1.yVel, body1.xVel) - contactAngle;
-      const v1angleSin = v1 * Math.sin(v1angle);
-      const v1angleCos = v1 * Math.cos(v1angle);
-
-      const v2angle = Math.atan2(body2.yVel, body2.xVel) - contactAngle;
-      const v2angleSin = v2 * Math.sin(v2angle);
-      const v2angleCos = v2 * Math.cos(v2angle);
-
-      const sin90ContactAngle = Math.sin(contactAngle + halfPI);
-      const cos90ContactAngle = Math.cos(contactAngle + halfPI);
-
-      const totalMass = body1.mass + body2.mass;
-      const massDiff = body1.mass - body2.mass;
-
-      // calculate the final velocities
-      const n1 = (v1angleCos * massDiff + 2 * body2.mass * v2angleCos) / totalMass; // same for both x and y
-      const x1Vel = n1 * contactAngleCos + v1angleSin * cos90ContactAngle;
-      const y1Vel = n1 * contactAngleSin + v1angleSin * sin90ContactAngle;
-
-      const n2 = (v2angleCos * -massDiff + 2 * body1.mass * v1angleCos) / totalMass;
-      const x2Vel = n2 * contactAngleCos + v2angleSin * cos90ContactAngle;
-      const y2Vel = n2 * contactAngleSin + v2angleSin * sin90ContactAngle;
-
-      // implement the velocities
-      body1.xVel = x1Vel;
-      body1.yVel = y1Vel;
-      body2.xVel = x2Vel;
-      body2.yVel = y2Vel;
-    // }
-    */
-
-    // new separation
-    // const dist = Math.sqrt(dx * dx + dy * dy);
+    // move the bodies to just touch each other
+    body1.xPos = midpointX - (body1.radius * xPosDist) / d;
+    body1.yPos = midpointY - (body1.radius * yPosDist) / d;
+    body2.xPos = midpointX + (body2.radius * xPosDist) / d;
+    body2.yPos = midpointY + (body2.radius * yPosDist) / d;
 
     // angle of the collision normal
-    const phi = Math.atan2(dy, dx);
-    
-    // debug
-    // console.log(dx, dy, phi);
+    const phi = Math.atan2(yPosDist, xPosDist);
 
-    // ctx.beginPath();
-    // ctx.lineWidth = 50;
-    // ctx.strokeStyle = "blue";
-    // ctx.moveTo(body1.xPos, body1.yPos);
-    // ctx.lineTo(body1.xPos + dist * Math.cos(phi), body1.yPos + dist * Math.sin(phi));
-    // ctx.closePath();
-    // ctx.stroke();
-
-    // net velocity
+    // net velocity magnitude
     const v1 = Math.sqrt(body1.xVel * body1.xVel + body1.yVel * body1.yVel);
     const v2 = Math.sqrt(body2.xVel * body2.xVel + body2.yVel * body2.yVel);
 
@@ -1280,25 +1227,27 @@ function collision(body1, body2) {//CoR = 0.1) {
     const v1finalXrel = (massDiff * v1relX + 2 * body2.mass * v2relX) / (totalMass);
     const v2finalXrel = (2 * body1.mass * v1relX - massDiff * v2relX) / (totalMass);
 
+    // precompute these values
     const cosPhi = Math.cos(phi);
     const sinPhi = Math.sin(phi);
-    const cosPhi90 = Math.cos(phi + halfPI);
-    const sinPhi90 = Math.sin(phi + halfPI);
-    // switch back to original frame
-    const v1xFinal = cosPhi * v1finalXrel + cosPhi90 * v1relY;
-    const v1yFinal = sinPhi * v1finalXrel + sinPhi90 * v1relY;
 
-    const v2xFinal = cosPhi * v2finalXrel + cosPhi90 * v2relY;
-    const v2yFinal = sinPhi * v2finalXrel + sinPhi90 * v2relY;
+    // switch back to original frame and get final velocities
+    const v1xFinal = cosPhi * v1finalXrel - sinPhi * v1relY;
+    const v1yFinal = sinPhi * v1finalXrel + cosPhi * v1relY;
+    const v2xFinal = cosPhi * v2finalXrel - sinPhi * v2relY;
+    const v2yFinal = sinPhi * v2finalXrel + cosPhi * v2relY;
 
-    // debug
-    // console.log("P=", body1.mass * v1 + body2.mass * v2, Math.sqrt(v1xFinal ** 2 + v1yFinal ** 2) * body1.mass + Math.sqrt(v2xFinal ** 2 + v2yFinal ** 2) * body2.mass);
+    
+    const v1x = vCoMX + CoR * (v1xFinal - vCoMX);
+    const v1y = vCoMY + CoR * (v1yFinal - vCoMY);
+    const v2x = vCoMX + CoR * (v2xFinal - vCoMX);
+    const v2y = vCoMY + CoR * (v2yFinal - vCoMY);
 
     // implement new velocity
-    body1.xVel = v1xFinal;
-    body1.yVel = v1yFinal;
-    body2.xVel = v2xFinal;
-    body2.yVel = v2yFinal;
+    body1.xVel = v1x;//Final;
+    body1.yVel = v1y;//Final;
+    body2.xVel = v2x;//Final;
+    body2.yVel = v2y;//Final;
   }
 }
 
@@ -1307,6 +1256,8 @@ function collision(body1, body2) {//CoR = 0.1) {
  * @param {Number} x X-coordinate for field calculation
  * @param {Number} y Y-coordinate for field calculation
  * @param {Number} res resolution of the grid for full field calculation
+ * @param {Boolean} hypot whether to retern the net strength or the X and Y components
+ * @returns Net field strength if hypot is true, otherwise an object with the X and Y components
  */
 function calcFieldAtPoint(x, y, res = 0, hypot = false) {
   let xPot = 0,
@@ -1436,10 +1387,10 @@ function pan(offset = { x: 0, y: 0 }, clrTrails = true) {
  */
 function track(body) {
   if (newBody) {
-    pan({ x: -currentOffset.x, y: -currentOffset.y });
+    // pan({ x: -currentOffset.x, y: -currentOffset.y });
     pan({
-      x: center.x - body.xPos - currentOffset.x,
-      y: center.y - body.yPos - currentOffset.y,
+      x: center.x - body.xPos,// - currentOffset.x,
+      y: center.y - body.yPos,// - currentOffset.y,
     });
   }
   pan({ x: -body.xVel * timestep, y: -body.yVel * timestep }, false);

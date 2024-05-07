@@ -1,14 +1,15 @@
-# 2D n-body gravity simulation
+# 2D n-body particle simulation
 
-A Javascript-based N-body simulation for calculating Newtonian gravitational interactions between an arbitrary number of bodies
+A Javascript-based N-body simulation for calculating interactions between an arbitrary number of bodies
 
-Intended as a demostration or for qualitative use, not as a quantitative simulation
+Based on AP Physics 1 content (Physics 2 content coming Soon(tm))
 
 ## Features
 - Adjustable simulation parameters
   - G, timestep, mass, velocity, etc.
 - Body tracking to visualize relative velocity
 - Body collisions
+  - Perfectly elastic, inelastic, perfectly inelastic
 - Various draw options
   - Trace paths
   - Color based on speed
@@ -36,6 +37,7 @@ Intended as a demostration or for qualitative use, not as a quantitative simulat
 - Single core CPU-bound, very inefficient
 
 ## Planned
+- Electrostatics and EM forces
 - Resonant orbit generator
 - Particle trajectory prediction
 - Move calculations to gpu (especially field calcs)
