@@ -1,19 +1,20 @@
 # 2D n-body particle simulation
 
-A Javascript-based N-body simulation for calculating interactions between an arbitrary number of bodies
-
-Based on AP Physics 1 content (Physics 2 content coming Soon(tm))
+A Javascript-based N-body simulation for calculating gravitational and electrostatic interactions between an arbitrary number of particles
 
 ## Features
 - Adjustable simulation parameters
-  - G, timestep, mass, velocity, etc.
+  - G, K, timestep, mass, velocity, etc.
 - Body tracking to visualize relative velocity
 - Body collisions
   - Perfectly elastic, inelastic, perfectly inelastic
+- Conservation laws
+  - Momentum, energy, charge
 - Various draw options
   - Trace paths
   - Color based on speed
   - Gravitational field visualization (VERY SLOW)
+    - Can show the Lagrange points
   - Center of mass
   - Velocity, acceleration vectors
   - etc.
@@ -21,7 +22,7 @@ Based on AP Physics 1 content (Physics 2 content coming Soon(tm))
   - Planets
   - Planets with moons
   - Galaxy collision
-  - Random solar system generator
+  - Solar system generator
 - Interactive
 
 ## Controls
@@ -35,9 +36,10 @@ Based on AP Physics 1 content (Physics 2 content coming Soon(tm))
 
 ## Issues
 - Single core CPU-bound, very inefficient
+  - Setting G to 1 helps with large numbers of bodies
 
 ## Planned
-- Electrostatics and EM forces
+- EM forces
 - Resonant orbit generator
 - Particle trajectory prediction
 - Move calculations to gpu (especially field calcs)

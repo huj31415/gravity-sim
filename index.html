@@ -64,6 +64,10 @@
         <label for="mass">Mass</label>
       </div>
       <div>
+        <input type="number" id="charge" name="charge" value="0" />
+        <label for="charge">Charge</label>
+      </div>
+      <div>
         <input type="number" id="radius" name="radius" value="0" />
         <label for="radius">Radius (0=auto)</label>
       </div>
@@ -100,13 +104,21 @@
         <label for="minSize">Min mass</label>
       </div>
       <div>
+        <input type="number" id="maxCharge" name="maxCharge" value="5" width="400px" />
+        <label for="maxCharge">Max charge</label>
+      </div>
+      <div>
+        <input type="number" id="minCharge" name="minCharge" value="-5" width="400px" />
+        <label for="minCharge">Min charge</label>
+      </div>
+      <div>
         <input type="number" id="initVel" name="initVel" value="3" min="0" width="400px" />
         <label for="initVel">Max init speed</label>
       </div>
     </div>
     <div id="simparams">
       <hr />
-      <p class="header">Simulation params</p>
+      <p class="header">Global simulation params</p>
       <div>
         <input type="range" id="timestep" name="timestep" value="0.5" max="2" min="0" step="0.01" width="400px" />
         <label for="timestep">Timestep (<span id="tOut">0.5</span>)</label>
@@ -114,6 +126,14 @@
       <div>
         <input type="number" id="g" name="g" value="1" max="2" min="-2" step=".1" width="400px" /> <!-- default 1-->
         <label for="g">G constant (<span id="gOut">1</span>)</label>
+      </div>
+      <div>
+        <input type="number" id="K" name="K" value="50000" max="1000000" min="-1000000" step="10000" width="400px" /> <!-- default 1-->
+        <label for="K">k constant (<span id="KOut">50000</span>)</label>
+      </div>
+      <div>
+        <input type="checkbox" id="electrostatic" name="electrostatic" />
+        <label for="electrostatic">Electrostatic forces</label>
       </div>
       <div>
         <input type="checkbox" id="collide" name="collide" />
@@ -128,7 +148,7 @@
         <label for="collideType">Combine bodies (perfectly inelastic)</label>
       </div>
       <div>
-        <input type="range" id="CoR" name="CoR" value="1" max="2" min="-2" step="0.1" width="400px" />
+        <input type="range" id="CoR" name="CoR" value="1" max="2" min="0" step="0.1" width="400px" />
         <label for="CoR">Restitution coeff (<span id="CoROut">1</span>)</label>
       </div>
     </div>
@@ -146,6 +166,10 @@
       <div>
         <input type="checkbox" id="colorByVel" name="colorByVel" />
         <label for="colorByVel">Color bodies by speed (c)</label>
+      </div>
+      <div>
+        <input type="checkbox" id="colorByCharge" name="colorByCharge" />
+        <label for="colorByCharge">Color bodies by charge</label>
       </div>
       <div>
         <input type="checkbox" id="trace" name="trace" />

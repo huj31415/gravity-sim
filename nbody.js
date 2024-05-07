@@ -53,6 +53,13 @@ const ui = {
   inelastic: document.getElementById("collideType"),
   CoR: document.getElementById("CoR"),
   CoROut: document.getElementById("CoROut"),
+  maxCharge: document.getElementById("maxCharge"),
+  minCharge: document.getElementById("minCharge"),
+  charge: document.getElementById("charge"),
+  electrostatic: document.getElementById("electrostatic"),
+  colorByCharge: document.getElementById("colorByCharge"),
+  K: document.getElementById("K"),
+  KOut: document.getElementById("KOut")
 };
 
 // utilities
@@ -91,8 +98,9 @@ let xCoord = 0;
 // simulation variables
 let bodies = [];
 let G = 1;
+let K = 1;
 const Gconst = 6.6743 * Math.pow(10, -11);
-let numBodies, maxMass, minMass, initVel, timestep, oldTimestep, CoM;
+let numBodies, maxMass, minMass, initVel, timestep, oldTimestep, CoM, maxCharge, minCharge;
 let continuous = true;
 let CoR = 1;
 
@@ -135,7 +143,9 @@ let colorBySpeed = ui.colorByVel.checked,
   drawOffscreen = ui.drawOffscreen.checked,
   fadeStrength = ui.fadeStrength.value,
   drawMouseVector = ui.drawMouseVector.checked,
-  inelastic = ui.inelastic.checked;
+  inelastic = ui.inelastic.checked,
+  electrostatic = ui.electrostatic.checked,
+  colorByCharge = ui.colorByCharge.checked;
 
 initParams();
 draw();
@@ -150,7 +160,7 @@ draw();
         switch (event.target) {
           case ui.randBtn: // generate random
             initParams();
-            initRandBodies(numBodies, minMass, maxMass, initVel, true);
+            initRandBodies(numBodies, minMass, maxMass, minCharge, maxCharge, initVel, true);
             activeBodies = bodies.length;
             ui.bodyCount.innerText = activeBodies;
             break;
@@ -158,7 +168,7 @@ draw();
             initParams();
             switch (ui.presets.value) {
               case "0": // 500 body chaos
-                ui.G.value = ui.GOut.innerText = 1;
+                // ui.G.value = ui.GOut.innerText = 1;
                 ui.drawVector.checked = drawVector = false;
                 ui.drawGravity.checked = drawGravity = false;
                 ui.timestep.value = ui.tOut.innerText = 0.5;
@@ -166,7 +176,7 @@ draw();
                 ui.maxMass.value = maxMass = 100;
                 ui.minMass.value = minMass = 50;
                 ui.drawGravityStrength.checked = drawGravityStrength = false;
-                initRandBodies(numBodies, minMass, maxMass, initVel);
+                initRandBodies(numBodies, minMass, minCharge, maxCharge, maxMass, initVel);
                 break;
               case "1": // sun and 3 planets
                 ui.collide.checked = false;
@@ -257,7 +267,7 @@ draw();
             activeBodies += 1;
             ui.bodyCount.innerText = activeBodies;
             initParams();
-            initRandBodies(1, minMass, maxMass, initVel);
+            initRandBodies(1, minMass, maxMass, minCharge, maxCharge, initVel);
             break;
           case ui.clear:
             bodies = [];
@@ -312,6 +322,8 @@ draw();
         drawOffscreen = ui.drawOffscreen.checked;
         drawMouseVector = ui.drawMouseVector.checked;
         inelastic = ui.inelastic.checked;
+        electrostatic = ui.electrostatic.checked;
+        colorByCharge = ui.colorByCharge.checked;
       };
       ui.collapse.onclick = () => {
         ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
@@ -346,6 +358,11 @@ draw();
       ui.G.addEventListener("input", (event) => {
         ui.GOut.innerText = event.target.value;
         G = event.target.value;
+      });
+      
+      ui.K.addEventListener("input", (event) => {
+        ui.KOut.innerText = event.target.value;
+        K = event.target.value;
       });
 
       ui.initVel.addEventListener("input", (event) => {
@@ -384,7 +401,9 @@ draw();
               parseInt(ui.vy.value),
               parseInt(ui.radius.value ? ui.radius.value : getRadius(ui.mass.value)),
               parseInt(ui.mass.value),
-              randColor()
+              randColor(),
+              true,
+              parseInt(ui.charge.value)
             )
           );
 
@@ -648,11 +667,12 @@ draw();
      * @param {Boolean} randColors whether or not to randomly color the bodies
      * @param {Boolean} zeroVel whether or not to set the velocity of the center of mass to 0
      */
-    function initRandBodies(num, minMass = 3, maxMass = 5, v = 0, randColors = true, zeroVel = false) {
+    function initRandBodies(num, minMass = 3, maxMass = 5, minCharge = 0, maxCharge = 0, v = 0, randColors = true, zeroVel = false) {
       let xMomentum = 0;
       let yMomentum = 0;
       for (let i = 0; i < num - zeroVel; i++) {
         const mass = randInt(minMass, maxMass);
+        const charge = randInt(minCharge, maxCharge);
         let r = getRadius(mass);
         const x = collide
           ? randInt(-collideOffset.x + currentOffset.x + 2 * r, -collideOffset.x + currentOffset.x + canvas.width - 2 * r)
@@ -665,7 +685,7 @@ draw();
         xMomentum += vx * mass;
         yMomentum += vy * mass;
         bodies.push(
-          new Body(x, y, vx, vy, r, 0, randColors ? randColor() : "white")
+          new Body(x, y, vx, vy, r, 0, randColors ? randColor() : "white", true, charge)
         );
       }
       // set the last body to cancel out momentum of the system to 0
@@ -823,6 +843,8 @@ function initParams() {
   numBodies = ui.numBodies.value;
   maxMass = ui.maxMass.value;
   minMass = ui.minMass.value;
+  minCharge = ui.minCharge.value;
+  maxCharge = ui.maxCharge.value;
 }
 
 /**
@@ -894,31 +916,29 @@ class Body {
     r = 5,
     mass = 0,
     color = "gray",
-    collide = true
+    collide = true,
+    charge = 0
   ) {
-    // this.pos = { x: xPos, y: yPos };
     this.xPos = xPos;
     this.yPos = yPos;
-    // this.vel = { x: xVel, y: yVel };
+
     this.xVel = xVel;
     this.yVel = yVel;
-    // this.prevPos = { x: xPos, y: yPos };
+
     this.xPrev = xPos;
     this.yPrev = yPos;
-    // this.force = { x: 0, y: 0 };
-    // this.xForce = 0;
-    // this.yForce = 0;
-    // this.accel = { x: 0, y: 0 };
+
     this.xAccel = 0;
     this.yAccel = 0;
+
     this.radius = r ? r : getRadius(mass);
     this.mass = mass ? mass : (4 / 3) * Math.PI * (r * r * r);
+
+    this.charge = charge;
+
     this.color = color;
     this.id = bodyCount++;
     this.collide = collide;
-    // rewind position storage
-    // this.rewindX = [xPos];
-    // this.rewindY = [yPos];
   }
   getMomentum() {
     return { x: this.xVel * this.mass, y: this.yVel * this.mass };
@@ -927,7 +947,9 @@ class Body {
     let drawColor = this.color;
 
     // change the color based on speed
-    if (colorBySpeed) {
+    if (colorByCharge) {
+      drawColor = "rgb(" + (128 + this.charge * 10) + ", " + (128 - Math.abs(this.charge * 10)) + ", " + (128 - this.charge * 10) + ")";
+    } else if (colorBySpeed) {
       let speed = Math.hypot(
         this.xVel - (trackBody ? trackBody.xVel : 0),
         this.yVel - (trackBody ? trackBody.yVel : 0)
@@ -1036,18 +1058,16 @@ class Body {
 
     // Update the position of the body
     {
-      // this.xAccel = this.xForce / this.mass;
-      // this.yAccel = this.yForce / this.mass;
-
       this.xPrev = this.xPos;
       this.yPrev = this.yPos;
+
       // edge collision - set accel to 0 when colliding to prevent changes in velocity
       if (collide) {
         if (
           this.xPos >= -collideOffset.x + currentOffset.x + canvas.width - this.radius ||
           this.xPos <= -collideOffset.x + currentOffset.x + this.radius
         ) {
-          this.xVel = -this.xVel;
+          this.xVel = CoR * -this.xVel;
           this.xAccel = 0;
           if (this.xPos >= -collideOffset.x + currentOffset.x + canvas.width - this.radius)
             this.xPos = -collideOffset.x + currentOffset.x + canvas.width - this.radius;
@@ -1057,7 +1077,7 @@ class Body {
           this.yPos >= -collideOffset.y + currentOffset.y + canvas.height - this.radius ||
           this.yPos <= -collideOffset.y + currentOffset.y + this.radius
         ) {
-          this.yVel = -this.yVel;
+          this.yVel = CoR * -this.yVel;
           this.xAccel = 0;
           if (this.yPos >= -collideOffset.y + currentOffset.y + canvas.height - this.radius)
             this.yPos = -collideOffset.y + currentOffset.y + canvas.height - this.radius;
@@ -1067,16 +1087,18 @@ class Body {
       // implement acceleration
       this.xVel += this.xAccel * timestep;
       this.yVel += this.yAccel * timestep;
+
       // integrate velocity every frame
       this.xPos += this.xVel * timestep;
       this.yPos += this.yVel * timestep;
+
       // reset acceleration
       this.xAccel = this.yAccel = 0;
     }
   }
 }
 
-// Calculate gravitational forces between each body (more efficient - does each calc once) then draw
+// Calculate forces between each body (more efficient - does each calc once) then draw
 function runSim() {
   // iterate through all combinations of bodies and add force to body total
   bodies.forEach((body, index) => {
@@ -1102,9 +1124,6 @@ function runSim() {
           // don't skip a body after removing it
           if (globalCollide && body2.collide && body1.collide) collision(body1, body2);
         } else {
-          // get total gravity
-          // const gForce = G * (body2.mass * body1.mass) / sqr;
-
           // precalculate g / r^2
           const g = G / sqr;
 
@@ -1113,11 +1132,16 @@ function runSim() {
           const xAccel = (g * xDist) / dist;
           const yAccel = (g * yDist) / dist;
 
+          // Coulomb force - repel if like charges, attract if opposite charges
+          const kForce = electrostatic ? K * (-body1.charge) * body2.charge / sqr : 0;
+          const kForceX = kForce * xDist / dist;
+          const kForceY = kForce * yDist / dist;
+
           // apply the forces
-          body1.xAccel += xAccel * body2.mass;
-          body1.yAccel += yAccel * body2.mass;
-          body2.xAccel -= xAccel * body1.mass;
-          body2.yAccel -= yAccel * body1.mass;
+          body1.xAccel += (xAccel * body2.mass + kForceX / body1.mass);
+          body1.yAccel += (yAccel * body2.mass + kForceY / body1.mass);
+          body2.xAccel -= (xAccel * body1.mass + kForceX / body2.mass);
+          body2.yAccel -= (yAccel * body1.mass + kForceY / body2.mass);
 
           // draw gravity strength lines
           if (drawGravityStrength) {
@@ -1155,18 +1179,20 @@ function merge(body1, body2) {
 
   // merge masses and calculate corresponding radius and velocity based on momentum
   // color of new body is inherited from the larger
-  const mass = body1.mass + body2.mass;
+  let mass = body1.mass + body2.mass;
   const larger = body1.mass > body2.mass ? body1 : body2;
   const smaller = larger === body1 ? body2 : body1;
+
+  larger.xVel = (body1.getMomentum().x + body2.getMomentum().x) / mass;
+  larger.yVel = (body1.getMomentum().y + body2.getMomentum().y) / mass;
 
   // change larger body properties
   larger.xPos = (body1.xPos * body1.mass + body2.xPos * body2.mass) / mass;
   larger.yPos = (body1.yPos * body1.mass + body2.yPos * body2.mass) / mass;
   if (Math.abs(larger.radius - getRadius(larger.mass)) < 0.1) larger.radius = getRadius(mass);
   larger.mass = mass;
-  // larger.vel = { x: momentum.x / mass, y: momentum.y / mass };
-  larger.xVel = (body1.getMomentum().x + body2.getMomentum().x) / mass;
-  larger.yVel = (body1.getMomentum().y + body2.getMomentum().y) / mass;
+  larger.charge += smaller.charge;
+
   // maintain tracking
   if (trackBody === smaller) trackBody = larger;
   // remove the smaller object
