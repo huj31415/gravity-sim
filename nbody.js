@@ -1,6 +1,5 @@
 // todo: implement electrostatic force and field
-
-frameDelayMs = 0; // Chromebook Simulator (or for debug purposes): 0 for default requestAnimationFrame fps
+let frameDelayMs = 0; // Chromebook Simulator (or for debug purposes): 0 for default requestAnimationFrame fps
 
 // initialize user interface elements
 const ui = {
@@ -98,7 +97,7 @@ let xCoord = 0;
 // simulation variables
 let bodies = [];
 let G = 1;
-let K = 1;
+let K = 50000;
 const Gconst = 6.6743 * Math.pow(10, -11);
 let numBodies, maxMass, minMass, initVel, timestep, oldTimestep, CoM, maxCharge, minCharge;
 let continuous = true;
@@ -176,7 +175,7 @@ draw();
                 ui.maxMass.value = maxMass = 100;
                 ui.minMass.value = minMass = 50;
                 ui.drawGravityStrength.checked = drawGravityStrength = false;
-                initRandBodies(numBodies, minMass, minCharge, maxCharge, maxMass, initVel);
+                initRandBodies(numBodies, minMass, maxMass, minCharge, maxCharge, initVel);
                 break;
               case "1": // sun and 3 planets
                 ui.collide.checked = false;
@@ -1133,7 +1132,7 @@ function runSim() {
           const yAccel = (g * yDist) / dist;
 
           // Coulomb force - repel if like charges, attract if opposite charges
-          const kForce = electrostatic ? K * (-body1.charge) * body2.charge / sqr : 0;
+          const kForce = electrostatic ? (K * (-body1.charge) * body2.charge) / sqr : 0;
           const kForceX = kForce * xDist / dist;
           const kForceY = kForce * yDist / dist;
 
@@ -1179,7 +1178,7 @@ function merge(body1, body2) {
 
   // merge masses and calculate corresponding radius and velocity based on momentum
   // color of new body is inherited from the larger
-  let mass = body1.mass + body2.mass;
+  const mass = body1.mass + body2.mass;
   const larger = body1.mass > body2.mass ? body1 : body2;
   const smaller = larger === body1 ? body2 : body1;
 
@@ -1330,8 +1329,8 @@ function drawFullField() {
 
   for (let y = center.y - viewport.y / 2, py = 0; y < center.y + viewport.y / 2; y += res, py++) {
     for (let x = center.x - viewport.x / 2, px = 0; x < center.x + viewport.x / 2; x += res, px++) {
-      const vector = calcFieldAtPoint(x, y, res);
-      const potential = Math.hypot(vector.x, vector.y);
+      // const vector = calcFieldAtPoint(x, y, res);
+      const potential = calcFieldAtPoint(x, y, res, true); //Math.hypot(vector.x, vector.y);
       let rgbColor = [0, 0, 0.2];
       if (potential >= 0.05) {
         // Map the potential to HSL color space
