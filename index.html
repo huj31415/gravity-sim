@@ -128,12 +128,20 @@
         <label for="g">G constant (<span id="gOut">1</span>)</label>
       </div>
       <div>
-        <input type="number" id="K" name="K" value="50000" max="1000000" min="-1000000" step="10000" width="400px" /> <!-- default 1-->
+        <input type="number" id="uniformg" name="uniformg" value="0.00" max="1" min="-1" step=".05" width="400px" /> <!-- default 1-->
+        <label for="uniformg">Uniform g (<span id="uniformgOut">0</span>)</label>
+      </div>
+      <div>
+        <input type="number" id="K" name="K" value="500000" max="10000000" min="-10000000" step="10000" width="400px" /> <!-- default 1-->
         <label for="K">k constant (<span id="KOut">50000</span>)</label>
       </div>
       <div>
+        <input type="checkbox" id="gravity" name="gravity" checked />
+        <label for="gravity">Gravity (g)</label>
+      </div>
+      <div>
         <input type="checkbox" id="electrostatic" name="electrostatic" />
-        <label for="electrostatic">Electrostatic forces</label>
+        <label for="electrostatic">Electrostatic forces (k)</label>
       </div>
       <div>
         <input type="checkbox" id="collide" name="collide" />
@@ -145,7 +153,7 @@
       </div>
       <div>
         <input type="checkbox" id="collideType" name="collideType" checked /> <!-- checked-->
-        <label for="collideType">Combine bodies (perfectly inelastic)</label>
+        <label for="collideType">Combine bodies (c)</label>
       </div>
       <div>
         <input type="range" id="CoR" name="CoR" value="1" max="2" min="0" step="0.1" width="400px" />
@@ -156,7 +164,7 @@
       <hr />
       <p class="header">Draw params</p>
       <div>
-        <input type="range" id="fadeStrength" name="fadeStrength" value="0.05" max="1" min="0" step="0.01" width="400px" />
+        <input type="range" id="fadeStrength" name="fadeStrength" value="0.05" max="1" min="0.01" step="0.01" width="400px" />
         <label for="fadeStrength">Fade strength (<span id="fadeOutput">0.05</span>)</label>
       </div>
       <div>
@@ -165,11 +173,11 @@
       </div>
       <div>
         <input type="checkbox" id="colorByVel" name="colorByVel" />
-        <label for="colorByVel">Color bodies by speed (c)</label>
+        <label for="colorByVel">Color bodies by speed (y)</label>
       </div>
       <div>
         <input type="checkbox" id="colorByCharge" name="colorByCharge" />
-        <label for="colorByCharge">Color bodies by charge</label>
+        <label for="colorByCharge">Color bodies by charge (h)</label>
       </div>
       <div>
         <input type="checkbox" id="trace" name="trace" />
@@ -189,7 +197,7 @@
       </div>
       <div>
         <input type="checkbox" id="drawGStrength" name="drawGStrength" />
-        <label for="drawGStrength">Draw gravity strength (slow) (g)</label>
+        <label for="drawGStrength">Draw gravity strength (slow)</label>
       </div>
       <div>
         <input type="checkbox" id="drawGThreshold" name="drawGThreshold" checked />
@@ -216,6 +224,7 @@
       <hr />
       <p>
         Controls<br />
+        Left Shift/Ctrl: adjust timestep<br />
         U/V: toggle sidebar<br />
         Arrows/WASD/Mouse: pan view<br />
         Space: cycle tracked body<br />

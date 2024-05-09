@@ -58,7 +58,10 @@ const ui = {
   electrostatic: document.getElementById("electrostatic"),
   colorByCharge: document.getElementById("colorByCharge"),
   K: document.getElementById("K"),
-  KOut: document.getElementById("KOut")
+  KOut: document.getElementById("KOut"),
+  uniformg: document.getElementById("uniformg"),
+  uniformgOut: document.getElementById("uniformgOut"),
+  gravity: document.getElementById("gravity"),
 };
 
 // utilities
@@ -96,10 +99,10 @@ let xCoord = 0;
 
 // simulation variables
 let bodies = [];
-let G = 1;
-let K = 50000;
+let G = ui.G.value;
+let K = ui.K.value;
 const Gconst = 6.6743 * Math.pow(10, -11);
-let numBodies, maxMass, minMass, initVel, timestep, oldTimestep, CoM, maxCharge, minCharge;
+let numBodies, maxMass, minMass, initVel, timestep, oldTimestep, CoM, maxCharge, minCharge, uniformg;
 let continuous = true;
 let CoR = 1;
 
@@ -130,6 +133,7 @@ let minL = 0.1;
 let colorBySpeed = ui.colorByVel.checked,
   trace = ui.trace.checked,
   fade = ui.fade.checked,
+  gravity = ui.gravity.checked,
   drawGravity = ui.drawGravity.checked,
   drawGravityStrength = ui.drawGravityStrength.checked,
   drawGThreshold = ui.drawGThreshold.checked,
@@ -321,6 +325,7 @@ draw();
         drawOffscreen = ui.drawOffscreen.checked;
         drawMouseVector = ui.drawMouseVector.checked;
         inelastic = ui.inelastic.checked;
+        gravity = ui.gravity.checked;
         electrostatic = ui.electrostatic.checked;
         colorByCharge = ui.colorByCharge.checked;
       };
@@ -342,30 +347,39 @@ draw();
         }
       });
       ui.timestep.addEventListener("input", (event) => {
-        ui.tOut.innerText = event.target.value;
-        timestep = event.target.value;
+        ui.tOut.innerText = parseFloat(event.target.value);
+        timestep = parseFloat(event.target.value);
       });
       ui.CoR.addEventListener("input", (event) => {
-        ui.CoROut.innerText = event.target.value;
-        CoR = event.target.value;
+        ui.CoROut.innerText = parseFloat(event.target.value);
+        CoR = parseFloat(event.target.value);
       });
       ui.fadeStrength.addEventListener("input", (event) => {
-        ui.fadeOutput.innerText = event.target.value;
-        fadeStrength = event.target.value;
+        ui.fadeOutput.innerText = parseFloat(event.target.value);
+        fadeStrength = parseFloat(event.target.value);
       });
 
       ui.G.addEventListener("input", (event) => {
-        ui.GOut.innerText = event.target.value;
-        G = event.target.value;
+        ui.GOut.innerText = parseFloat(event.target.value);
+        G = parseFloat(event.target.value);
+      });
+
+      ui.uniformg.addEventListener("input", (event) => {
+        ui.uniformgOut.innerText = parseFloat(event.target.value);
+        uniformg = parseFloat(event.target.value);
+        if (uniformg) {
+          collide = true;
+          ui.collide.checked = true;
+        }
       });
       
       ui.K.addEventListener("input", (event) => {
-        ui.KOut.innerText = event.target.value;
-        K = event.target.value;
+        ui.KOut.innerText = parseFloat(event.target.value);
+        K = parseFloat(event.target.value);
       });
 
       ui.initVel.addEventListener("input", (event) => {
-        initVel = event.target.value;
+        initVel = parseFloat(event.target.value);
       });
 
       ui.heatmap.addEventListener("input", () => {
@@ -529,13 +543,24 @@ draw();
               ui.trace.click();
               break;
             case "KeyC":
-              ui.colorByVel.click();
+              // ui.colorByVel.click();
+              ui.inelastic.click();
               break;
             case "KeyF":
               ui.fade.click();
               break;
             case "KeyG":
-              ui.drawGravityStrength.click();
+              // ui.drawGravityStrength.click();
+              ui.gravity.click();
+              break;
+            case "KeyK":
+              ui.electrostatic.click();
+              break;
+            case "KeyY":
+              ui.colorByVel.click();
+              break;
+            case "KeyH":
+              ui.colorByCharge.click();
               break;
             case "KeyU":
             case "KeyV":
@@ -631,6 +656,14 @@ draw();
               break;
             case "Digit4":
               ui.trackCoM.click();
+              break;
+            case "ShiftLeft":
+              timestep = ~~((timestep + 0.05) * 100) / 100;
+              ui.timestep.value = ui.tOut.innerText = timestep;
+              break;
+            case "ControlLeft":
+              timestep = ~~((timestep - 0.05) * 100) / 100;
+              ui.timestep.value = ui.tOut.innerText = timestep;
               break;
           }
         }
@@ -836,14 +869,19 @@ draw();
 
 // init form inputs
 function initParams() {
-  if (!paused) timestep = ui.timestep.value;
-  initVel = ui.initVel.value;
-  G = ui.G.value;
-  numBodies = ui.numBodies.value;
-  maxMass = ui.maxMass.value;
-  minMass = ui.minMass.value;
-  minCharge = ui.minCharge.value;
-  maxCharge = ui.maxCharge.value;
+  if (!paused) timestep = parseFloat(ui.timestep.value);
+  initVel = parseFloat(ui.initVel.value);
+  G = parseFloat(ui.G.value);
+  uniformg = parseFloat(ui.uniformg.value);
+  if (uniformg) {
+    collide = true;
+    ui.collide.checked = true;
+  }
+  numBodies = parseFloat(ui.numBodies.value);
+  maxMass = parseFloat(ui.maxMass.value);
+  minMass = parseFloat(ui.minMass.value);
+  minCharge = parseFloat(ui.minCharge.value);
+  maxCharge = parseFloat(ui.maxCharge.value);
 }
 
 /**
@@ -1067,6 +1105,7 @@ class Body {
           this.xPos <= -collideOffset.x + currentOffset.x + this.radius
         ) {
           this.xVel = CoR * -this.xVel;
+          this.yVel *= CoR;
           this.xAccel = 0;
           if (this.xPos >= -collideOffset.x + currentOffset.x + canvas.width - this.radius)
             this.xPos = -collideOffset.x + currentOffset.x + canvas.width - this.radius;
@@ -1076,6 +1115,7 @@ class Body {
           this.yPos >= -collideOffset.y + currentOffset.y + canvas.height - this.radius ||
           this.yPos <= -collideOffset.y + currentOffset.y + this.radius
         ) {
+          this.xVel *= CoR;
           this.yVel = CoR * -this.yVel;
           this.xAccel = 0;
           if (this.yPos >= -collideOffset.y + currentOffset.y + canvas.height - this.radius)
@@ -1092,7 +1132,8 @@ class Body {
       this.yPos += this.yVel * timestep;
 
       // reset acceleration
-      this.xAccel = this.yAccel = 0;
+      this.xAccel = 0;
+      this.yAccel = uniformg;
     }
   }
 }
@@ -1111,30 +1152,36 @@ function runSim() {
         const xDist = body2.xPos - body1.xPos;
         const yDist = body2.yPos - body1.yPos;
 
-        const distThreshSqr = (body2.radius + body1.radius) * (body2.radius + body1.radius);
+        const distThreshSqr = (body2.radius + body1.radius) * (body2.radius + body1.radius) + 1;
         const sqr = Math.max(xDist * xDist + yDist * yDist, distThreshSqr);
 
         if (
-          sqr <= distThreshSqr &&
+          sqr == distThreshSqr &&
           bodies.includes(body1) &&
           bodies.includes(body2) &&
           body1.id != body2.id
         ) {
           // don't skip a body after removing it
-          if (globalCollide && body2.collide && body1.collide) collision(body1, body2);
-        } else {
-          // precalculate g / r^2
-          const g = G / sqr;
-
-          // get the components of the force
+          if (globalCollide && body2.collide && body1.collide && (body1.xVel - body2.xVel != 0 || body1.yVel - body2.yVel != 0))
+            collision(body1, body2);
+        } else {//if (G > 0 && gravity || electrostatic) {
           const dist = Math.sqrt(sqr);
-          const xAccel = (g * xDist) / dist;
-          const yAccel = (g * yDist) / dist;
+          let xAccel = 0, yAccel = 0, kForceX = 0, kForceY = 0;
 
-          // Coulomb force - repel if like charges, attract if opposite charges
-          const kForce = electrostatic ? (K * (-body1.charge) * body2.charge) / sqr : 0;
-          const kForceX = kForce * xDist / dist;
-          const kForceY = kForce * yDist / dist;
+          if (G != 0 && gravity) {
+            // precalculate g / r^2
+            const g = G / sqr;
+
+            // get the components of the force
+            xAccel = (g * xDist) / dist;
+            yAccel = (g * yDist) / dist;
+          }
+          if (K != 0 && electrostatic) {
+            // Coulomb force - repel if like charges, attract if opposite charges
+            const kForce = electrostatic ? (K * (-body1.charge) * body2.charge) / sqr : 0;
+            kForceX = kForce * xDist / dist;
+            kForceY = kForce * yDist / dist;
+          }
 
           // apply the forces
           body1.xAccel += (xAccel * body2.mass + kForceX / body1.mass);
@@ -1204,8 +1251,8 @@ function merge(body1, body2) {
  * @param {Body} body2 the second body
  */
 function collision(body1, body2) {
-  if (inelastic || CoR === 0) merge(body1, body2);
-  else {
+  if (inelastic) merge(body1, body2);
+  else if ((body1.xVel - body2.xVel != 0 || body1.yVel - body2.yVel != 0)) {
     collisionCount += 1;
     ui.collisionCount.innerText = collisionCount;
 
@@ -1219,17 +1266,6 @@ function collision(body1, body2) {
     // initial separation
     const xPosDist = body2.xPos - body1.xPos;
     const yPosDist = body2.yPos - body1.yPos;
-
-    // set the bodies to just touch to avoid intersecting
-    const midpointX = (body1.xPos * body2.mass + body2.xPos * body1.mass) / totalMass;
-    const midpointY = (body1.yPos * body2.mass + body2.yPos * body1.mass) / totalMass;
-    const d = Math.max(Math.sqrt(xPosDist * xPosDist + yPosDist * yPosDist), 0.0001);
-
-    // move the bodies to just touch each other
-    body1.xPos = midpointX - (body1.radius * xPosDist) / d;
-    body1.yPos = midpointY - (body1.radius * yPosDist) / d;
-    body2.xPos = midpointX + (body2.radius * xPosDist) / d;
-    body2.yPos = midpointY + (body2.radius * yPosDist) / d;
 
     // angle of the collision normal
     const phi = Math.atan2(yPosDist, xPosDist);
@@ -1268,11 +1304,25 @@ function collision(body1, body2) {
     const v2x = vCoMX + CoR * (v2xFinal - vCoMX);
     const v2y = vCoMY + CoR * (v2yFinal - vCoMY);
 
+    const d = Math.max(Math.sqrt(xPosDist * xPosDist + yPosDist * yPosDist), 0.0001);
+    // const threshold = 0;//1 / timestep;
+    // if (d < body1.radius + body2.radius && v1relX > threshold || v2relX > threshold) {
+      // set the bodies to just touch to avoid intersecting
+      const midpointX = (body1.xPos * body2.mass + body2.xPos * body1.mass) / totalMass;
+      const midpointY = (body1.yPos * body2.mass + body2.yPos * body1.mass) / totalMass;
+
+      // move the bodies to just touch each other
+      body1.xPos = midpointX - (body1.radius * xPosDist) / d;
+      body1.yPos = midpointY - (body1.radius * yPosDist) / d;
+      body2.xPos = midpointX + (body2.radius * xPosDist) / d;
+      body2.yPos = midpointY + (body2.radius * yPosDist) / d;
+    // }
+
     // implement new velocity
-    body1.xVel = v1x;//Final;
-    body1.yVel = v1y;//Final;
-    body2.xVel = v2x;//Final;
-    body2.yVel = v2y;//Final;
+    body1.xVel = v1x;
+    body1.yVel = v1y;
+    body2.xVel = v2x;
+    body2.yVel = v2y;
   }
 }
 
