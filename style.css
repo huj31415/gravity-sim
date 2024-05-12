@@ -1,12 +1,17 @@
+html {
+  color-scheme: dark !important;
+}
+
 body {
   font-family: "Segoe UI", sans-serif;
   /* font-size: .95em; */
   overflow: hidden;
   background: black;
+  color: #d8d7d5;
 }
 
 canvas {
-  border: 1px solid black;
+  border: 1px solid rgb(124, 116, 105);
   background: black;
   /* width: 100%; */
   zoom: 100%;
@@ -36,6 +41,7 @@ input[type="range"] {
 
 button,
 select {
+  appearance: auto;
   display: inline-block;
   margin: 3px;
   padding: 2px;
@@ -56,6 +62,10 @@ button.fullwidth {
   height: 100%;
   overflow: scroll;
   background: rgba(255, 255, 255, .7);
+}
+
+.right-dark {
+  background: rgba(50, 50, 50, .5);
 }
 
 h2 {
