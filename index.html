@@ -21,7 +21,7 @@
     <div id="graphs">
       <hr />
       <div>
-        <span style="display: inline-block; width: 140px">FPS: <span id="fps">0</span></span>
+        <span style="display: inline-block; width: 140px">FPS/Simrate: <span id="fps">0</span></span>
         <span style="display: inline-block; width: 140px">Active bodies: <span id="bodyCount">0</span></span>
       </div>
       <div>
@@ -141,6 +141,10 @@
         <label for="K">k constant (<span id="KOut">50000</span>)</label>
       </div>
       <div>
+        <input type="range" id="CoR" name="CoR" value="1" max="2" min="0" step="0.1" width="400px" />
+        <label for="CoR">Restitution coeff (<span id="CoROut">1</span>)</label>
+      </div>
+      <div>
         <input type="checkbox" id="gravity" name="gravity" checked />
         <label for="gravity">Gravity (g)</label>
       </div>
@@ -157,12 +161,12 @@
         <label for="globalCollide">Simulate particle collisions</label>
       </div>
       <div>
-        <input type="checkbox" id="collideType" name="collideType" checked /> <!-- checked-->
+        <input type="checkbox" id="collideType" name="collideType" checked />
         <label for="collideType">Combine bodies (c)</label>
       </div>
       <div>
-        <input type="range" id="CoR" name="CoR" value="1" max="2" min="0" step="0.1" width="400px" />
-        <label for="CoR">Restitution coeff (<span id="CoROut">1</span>)</label>
+        <input type="checkbox" id="decoupleFPS" name="decoupleFPS" />
+        <label for="decoupleFPS">Decouple sim rate from FPS</label>
       </div>
     </div>
     <div id="drawparams">

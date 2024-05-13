@@ -63,6 +63,7 @@ const ui = {
   uniformgOut: document.getElementById("uniformgOut"),
   gravity: document.getElementById("gravity"),
   immovable: document.getElementById("immovable"),
+  decoupleFPS: document.getElementById("decoupleFPS"),
 };
 
 // utilities
@@ -288,6 +289,7 @@ draw();
             );
             activeBodies = bodies.length;
             ui.bodyCount.innerText = activeBodies;
+            collisionCount = ui.collisionCount.innerText = 0;
             break;
           case ui.clrOffscreen:
             let offset = {
@@ -314,7 +316,7 @@ draw();
             }
             break;
         }
-        // inputs
+        // update settings
         colorBySpeed = ui.colorByVel.checked;
         trace = ui.trace.checked;
         fade = ui.fade.checked;
@@ -333,6 +335,7 @@ draw();
         gravity = ui.gravity.checked;
         electrostatic = ui.electrostatic.checked;
         colorByCharge = ui.colorByCharge.checked;
+        frameDelayMs = ui.decoupleFPS.checked ? 0.1 : 0;
       };
       ui.collapse.onclick = () => {
         ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
@@ -808,16 +811,28 @@ draw();
   }
 
   function initPiCollisions(initV = 1) {
+    frameDelayMs = 0.1;
+    ui.decoupleFPS.checked = true;
     ui.inelastic.checked = inelastic = false;
-    ui.G.value = G = 0;
+    ui.gravity.checked = gravity = false;
     // ui.collide.checked = collide = true;
-    let mass = 100;
-    let ratio = 1000000;
-    // timestep = ui.timestep.value = 10;
+    let mass = 10;
+    let ratio = 100000000;
+    timestep = ui.timestep.value = 0.1;
     canvas.dispatchEvent(new Event("KeyZ"));
     bodies.push(new Body(center.x * 3.5, center.y, 0, 0, center.x * 2, 1, "default", true, 0, true));
-    bodies.push(new Body(center.x - 1.5 * 100, center.y, 0, 0, 200, mass, "default", true, 0, false, "y"));
-    bodies.push(new Body(center.x - 1.5 * 600, center.y, initV, 0, 500, mass * ratio, "default", true, 0, false, "y"));
+    bodies.push(new Body(center.x - 150, center.y, 0, 0, 300, mass, "default", true, 0, false, "y"));
+    bodies.push(new Body(center.x - 1000, center.y, initV, 0, 500, mass * ratio, "default", true, 0, false, "y"));
+  }
+
+  function initGrid(spacing = 25, mass = 1000, r = 12) {
+    ui.gravity.checked = gravity = false;
+    ui.inelastic.checked = inelastic = false;
+    for (let x = 0; x < viewport.x; x += spacing) {
+      for (let y = 0; y < viewport.y; y += spacing) {
+        bodies.push(new Body(x, y, 0, 0, r, mass, "default"));
+      }
+    }
   }
 
   /**
@@ -1137,7 +1152,7 @@ class Body {
           ui.collisionCount.innerText = collisionCount;
           this.xVel = CoR * -this.xVel;
           this.yVel *= CoR;
-          this.xAccel = 0;
+          // this.xAccel = 0;
           if (this.xPos >= -collideOffset.x + currentOffset.x + canvas.width - this.radius)
             this.xPos = -collideOffset.x + currentOffset.x + canvas.width - this.radius;
           else this.xPos = -collideOffset.x + currentOffset.x + this.radius;
@@ -1150,7 +1165,7 @@ class Body {
           ui.collisionCount.innerText = collisionCount;
           this.xVel *= CoR;
           this.yVel = CoR * -this.yVel;
-          this.xAccel = 0;
+          // this.xAccel = 0;
           if (this.yPos >= -collideOffset.y + currentOffset.y + canvas.height - this.radius)
             this.yPos = -collideOffset.y + currentOffset.y + canvas.height - this.radius;
           else this.yPos = -collideOffset.y + currentOffset.y + this.radius;
@@ -1177,7 +1192,7 @@ function runSim() {
   bodies.forEach((body, index) => {
     const body1 = body;
     if (drawField && body1.mass > maxBody.mass) maxBody = body1;
-    if (bodies.length > 1 && timestep) {
+    if (bodies.length > 1 && timestep && (gravity && G || globalCollide)) {
       for (let i = index + 1; i < bodies.length; i++) {
         const body2 = bodies[i];
         // calc gravity between body and bodies[i], then add forces
@@ -1301,43 +1316,46 @@ function collision(body1, body2) {
     const smaller = larger === body1 ? body2 : body1;
 
     // initial separation
-    const xPosDist = larger.xPos - smaller.xPos;
-    const yPosDist = larger.yPos - smaller.yPos;
+    const xPosDist = body2.xPos - body1.xPos;
+    const yPosDist = body2.yPos - body1.yPos;
+    
+    const xPosDistAbs = larger.xPos - smaller.xPos;
+    const yPosDistAbs = larger.yPos - smaller.yPos;
     const d = Math.max(Math.sqrt(xPosDist * xPosDist + yPosDist * yPosDist), 0.0001);
 
-    const totalMass = larger.mass + smaller.mass;
-    const massDiff = larger.mass - smaller.mass;
+    const totalMass = body1.mass + body2.mass;
+    const massDiff = body1.mass - body2.mass;
 
-    if (!larger.immovable && larger.mass <= smaller.mass * 2) {
+    if (!larger.immovable && larger.mass - smaller.mass * 2 <= 0) {
       // set the bodies to just touch to avoid intersecting
-      const midpointX = (body1.xPos * body2.mass + body2.xPos * body1.mass) / totalMass;
-      const midpointY = (body1.yPos * body2.mass + body2.yPos * body1.mass) / totalMass;
+      const midpointX = (larger.xPos * smaller.mass + smaller.xPos * larger.mass) / totalMass;
+      const midpointY = (larger.yPos * smaller.mass + smaller.yPos * larger.mass) / totalMass;
 
       // move the bodies to just touch each other
-      body1.xPos = midpointX - (body1.radius * xPosDist + 1) / d;
-      body1.yPos = midpointY - (body1.radius * yPosDist + 1) / d;
-      body2.xPos = midpointX + (body2.radius * xPosDist + 1) / d;
-      body2.yPos = midpointY + (body2.radius * yPosDist + 1) / d;
+      larger.xPos = midpointX + (larger.radius) * xPosDistAbs / d;
+      larger.yPos = midpointY + (larger.radius) * yPosDistAbs / d;
+      smaller.xPos = midpointX - (smaller.radius) * 1.1 * xPosDistAbs / d;
+      smaller.yPos = midpointY - (smaller.radius) * 1.1 * yPosDistAbs / d;
     } else {
       // just move smaller
-      smaller.xPos = larger.xPos - (smaller.radius + larger.radius) * xPosDist / d;
-      smaller.yPos = larger.yPos - (smaller.radius + larger.radius) * yPosDist / d;
+      smaller.xPos = larger.xPos - (larger.radius + smaller.radius) * xPosDistAbs / d;
+      smaller.yPos = larger.yPos - (larger.radius + smaller.radius) * yPosDistAbs / d;
     }
 
     // Intiial velocity of the center of mass
-    const vCoMX = (larger.getMomentum().x + smaller.getMomentum().x) / totalMass;
-    const vCoMY = (larger.getMomentum().y + smaller.getMomentum().y) / totalMass;
+    const vCoMX = (body1.getMomentum().x + body2.getMomentum().x) / totalMass;
+    const vCoMY = (body1.getMomentum().y + body2.getMomentum().y) / totalMass;
 
     // angle of the collision normal
     const phi = Math.atan2(yPosDist, xPosDist);
 
     // net velocity magnitude
-    const v1 = Math.sqrt(larger.xVel * larger.xVel + larger.yVel * larger.yVel);
-    const v2 = Math.sqrt(smaller.xVel * smaller.xVel + smaller.yVel * smaller.yVel);
+    const v1 = Math.sqrt(body1.xVel * body1.xVel + body1.yVel * body1.yVel);
+    const v2 = Math.sqrt(body2.xVel * body2.xVel + body2.yVel * body2.yVel);
 
     // velocity angle relative to phi
-    const a1 = Math.atan2(larger.yVel, larger.xVel) - phi;
-    const a2 = Math.atan2(smaller.yVel, smaller.xVel) - phi;
+    const a1 = Math.atan2(body1.yVel, body1.xVel) - phi;
+    const a2 = Math.atan2(body2.yVel, body2.xVel) - phi;
 
     // velocity relative to the collision line
     const v1relX = v1 * Math.cos(a1);
@@ -1348,12 +1366,15 @@ function collision(body1, body2) {
     // calculate final velocities in rotated frame, changing the component perpendicular to collision
     let v1finalXrel;
     let v2finalXrel;
-    if (larger.immovable) {
+    if (body1.immovable) {
       v1finalXrel = 0;
       v2finalXrel = -v2relX;
+    } else if (body2.immovable) {
+      v1finalXrel = -v1relX;
+      v2finalXrel = 0;
     } else {
-      v1finalXrel = (massDiff * v1relX + 2 * smaller.mass * v2relX) / (totalMass);
-      v2finalXrel = (2 * larger.mass * v1relX - massDiff * v2relX) / (totalMass);
+      v1finalXrel = (massDiff * v1relX + 2 * body2.mass * v2relX) / (totalMass);
+      v2finalXrel = (2 * body1.mass * v1relX - massDiff * v2relX) / (totalMass);
     }
 
     // precompute these values
@@ -1361,16 +1382,18 @@ function collision(body1, body2) {
     const sinPhi = Math.sin(phi);
 
     // switch back to original frame and get final velocities, then implement new velocity with CoR
-    if (!larger.immovable) {
+    if (!body1.immovable) {
       const v1xFinal = cosPhi * v1finalXrel - sinPhi * v1relY;
       const v1yFinal = sinPhi * v1finalXrel + cosPhi * v1relY;
-      larger.xVel = vCoMX + CoR * (v1xFinal - vCoMX);
-      larger.yVel = vCoMY + CoR * (v1yFinal - vCoMY);
+      body1.xVel = vCoMX + CoR * (v1xFinal - vCoMX);
+      if (body1.lockAxis != "y") body1.yVel = vCoMY + CoR * (v1yFinal - vCoMY);
     }
-    const v2xFinal = cosPhi * v2finalXrel - sinPhi * v2relY;
-    const v2yFinal = sinPhi * v2finalXrel + cosPhi * v2relY;
-    smaller.xVel = vCoMX + CoR * (v2xFinal - vCoMX);
-    if (!smaller.lockAxis == "y") smaller.yVel = vCoMY + CoR * (v2yFinal - vCoMY);
+    if (!body2.immovable) {
+      const v2xFinal = cosPhi * v2finalXrel - sinPhi * v2relY;
+      const v2yFinal = sinPhi * v2finalXrel + cosPhi * v2relY;
+      body2.xVel = vCoMX + CoR * (v2xFinal - vCoMX);
+      if (body2.lockAxis != "y") body2.yVel = vCoMY + CoR * (v2yFinal - vCoMY);
+    }
   }
 }
 
