@@ -154,6 +154,7 @@ let colorBySpeed = ui.colorByVel.checked,
 initParams();
 draw();
 
+// events
 {
   // form event listeners
   {
@@ -185,17 +186,17 @@ draw();
               case "1": // sun and 3 planets
                 ui.collide.checked = false;
                 ui.G.value = ui.GOut.innerText = G = 0.15;
-                initOrbitBodies1();
+                sun3PlanetsSystem();
                 break;
               case "2": // two body system
                 ui.collide.checked = false;
                 ui.G.value = ui.GOut.innerText = G = 0.15;
-                initOrbitBodies2();
+                binarySystem();
                 break;
               case "3": // sun planets and moon
                 ui.collide.checked = false;
                 ui.G.value = ui.GOut.innerText = G = 0.25;
-                initOrbitBodies3();
+                sunPlanetsMoonsSystem();
                 break;
               case "4": // galaxies
                 ui.G.value = ui.GOut.innerText = 1;
@@ -356,7 +357,7 @@ draw();
       });
       ui.CoR.addEventListener("input", (event) => {
         ui.CoROut.innerText = parseFloat(event.target.value);
-        CoR = Math.sqrt(parseFloat(event.target.value));
+        CoR = parseFloat(event.target.value);
       });
       ui.fadeStrength.addEventListener("input", (event) => {
         ui.fadeOutput.innerText = parseFloat(event.target.value);
@@ -511,6 +512,10 @@ draw();
             case "Space":
               event.preventDefault();
               event.stopPropagation();
+              if (trackCoM) {
+                trackCoM = false;
+                ui.trackCoM.checked = false;
+              }
               if (trackNum < bodies.length) {
                 trackBody = bodies[trackNum++];
                 newBody = true;
@@ -692,198 +697,201 @@ draw();
       };
     }
   }
+}
 
-  // body presets
-  {
-    /**
-     * Randomly generate bodies based on params
-     * @param {Number} num number of random bodies to generate
-     * @param {Number} minMass minimum mass
-     * @param {Number} maxMass maximum mass
-     * @param {Number} v maximum initial velocity
-     * @param {Boolean} randColors whether or not to randomly color the bodies
-     * @param {Boolean} zeroVel whether or not to set the velocity of the center of mass to 0
-     */
-    function initRandBodies(num, minMass = 3, maxMass = 5, minCharge = 0, maxCharge = 0, v = 0, randColors = true, zeroVel = false) {
-      let xMomentum = 0;
-      let yMomentum = 0;
-      for (let i = 0; i < num - zeroVel; i++) {
-        const mass = randInt(minMass, maxMass);
-        const charge = randInt(minCharge, maxCharge);
-        let r = getRadius(mass);
-        const x = collide
-          ? randInt(-collideOffset.x + currentOffset.x + 2 * r, -collideOffset.x + currentOffset.x + canvas.width - 2 * r)
-          : randInt(center.x - viewport.x / 2 + 2 * r, center.x + viewport.x / 2 - 2 * r);
-        const y = collide
-          ? randInt(-collideOffset.y + currentOffset.y + 2 * r, -collideOffset.y + currentOffset.y + canvas.height - 2 * r)
-          : randInt(center.y - viewport.y / 2 + 2 * r, center.y + viewport.y / 2 - 2 * r);
-        const vx = (Math.random() - 0.5) * 2 * v;
-        const vy = (Math.random() - 0.5) * 2 * v;
-        xMomentum += vx * mass;
-        yMomentum += vy * mass;
-        bodies.push(
-          new Body(x, y, vx, vy, r, 0, randColors ? randColor() : "white", true, charge)
-        );
-      }
-      // set the last body to cancel out momentum of the system to 0
-      if (zeroVel) {
-        const mass = randInt(minMass, maxMass);
-        let r = getRadius(mass);
-        bodies.push(
-          new Body(
-            collide
-              ? randInt(-collideOffset.x + currentOffset.x + 2 * r, -collideOffset.x + currentOffset.x + canvas.width - 2 * r)
-              : randInt(center.x - viewport.x / 2 + 2 * r, center.x + viewport.x / 2 - 2 * r),
-            collide
-              ? randInt(-collideOffset.y + currentOffset.y + 2 * r, -collideOffset.y + currentOffset.y + canvas.height - 2 * r)
-              : randInt(center.y - viewport.y / 2 + 2 * r, center.y + viewport.y / 2 - 2 * r),
-            -xMomentum / mass, -yMomentum / mass, r, 0, randColors ? randColor() : "white"
-          )
-        );
-        xMomentum += -xMomentum / mass;
-        yMomentum += -yMomentum / mass;
-      }
-    }
 
-    /**
-     * Generates a galaxy
-     * @param {Object} centerPos the position of the center
-     * @param {Object} vel initial velocity of the galaxy
-     * @param {Number} num the number of stars
-     * @param {Number} minMass minimum mass of stars
-     * @param {Number} maxMass maximum mass of stars
-     * @param {Number} radius radius of the galaxy
-     * @param {Number} rotDir rotation direction 0 or 1
-     * @param {Boolean} bodyCollide whether or not the stars can collide
-     */
-    function generateGalaxy(
-      centerPos = { x: center.x, y: center.y },
-      vel = { x: 0, y: 0 },
-      num = 500,
-      minMass = 1,
-      maxMass = 2,
-      radius = 500,
-      rotDir = 0,
-      bodyCollide = false
-    ) {
-      // center
-      let centerMass = num * 100;
-      let centerRadius = 10; //getRadius(num * 100);
-      bodies.push(new Body(centerPos.x, centerPos.y, vel.x, vel.y, 10, centerMass));
-      for (let i = 0; i < num; i++) {
-        let mass = randInt(minMass, maxMass);
-        let r = getRadius(mass);
-        let angle = randInt(0, 360);
-        let distance = Math.pow(2, -2 * Math.random()).map(0.25, 1, 0, 1) * radius + centerRadius; //randInt(centerRadius * 2, radius)
-        let ac = (G * centerMass) / (distance * distance);
-        let speed = Math.sqrt(ac * distance);
-        bodies.push(
-          new Body(
-            centerPos.x + distance * Math.cos(angle),
-            centerPos.y + distance * Math.sin(angle),
-            vel.x + speed * Math.sin(-angle) * (rotDir ? 1 : -1),
-            vel.y + speed * Math.cos(-angle) * (rotDir ? 1 : -1),
-            r,
-            0,
-            "white",
-            bodyCollide
-          )
-        );
-      }
+// body presets
+{
+  /**
+   * Randomly generate bodies based on params
+   * @param {Number} num number of random bodies to generate
+   * @param {Number} minMass minimum mass
+   * @param {Number} maxMass maximum mass
+   * @param {Number} v maximum initial velocity
+   * @param {Boolean} randColors whether or not to randomly color the bodies
+   * @param {Boolean} zeroVel whether or not to set the velocity of the center of mass to 0
+   */
+  function initRandBodies(num, minMass = 3, maxMass = 5, minCharge = 0, maxCharge = 0, v = 0, randColors = true, zeroVel = false) {
+    let xMomentum = 0;
+    let yMomentum = 0;
+    for (let i = 0; i < num - zeroVel; i++) {
+      const mass = randInt(minMass, maxMass);
+      const charge = randInt(minCharge, maxCharge);
+      let r = getRadius(mass);
+      const x = collide
+        ? randInt(-collideOffset.x + currentOffset.x + 2 * r, -collideOffset.x + currentOffset.x + canvas.width - 2 * r)
+        : randInt(center.x - viewport.x / 2 + 2 * r, center.x + viewport.x / 2 - 2 * r);
+      const y = collide
+        ? randInt(-collideOffset.y + currentOffset.y + 2 * r, -collideOffset.y + currentOffset.y + canvas.height - 2 * r)
+        : randInt(center.y - viewport.y / 2 + 2 * r, center.y + viewport.y / 2 - 2 * r);
+      const vx = (Math.random() - 0.5) * 2 * v;
+      const vy = (Math.random() - 0.5) * 2 * v;
+      xMomentum += vx * mass;
+      yMomentum += vy * mass;
+      bodies.push(
+        new Body(x, y, vx, vy, r, 0, randColors ? randColor() : "white", true, charge)
+      );
     }
+    // set the last body to cancel out momentum of the system to 0
+    if (zeroVel) {
+      const mass = randInt(minMass, maxMass);
+      let r = getRadius(mass);
+      bodies.push(
+        new Body(
+          collide
+            ? randInt(-collideOffset.x + currentOffset.x + 2 * r, -collideOffset.x + currentOffset.x + canvas.width - 2 * r)
+            : randInt(center.x - viewport.x / 2 + 2 * r, center.x + viewport.x / 2 - 2 * r),
+          collide
+            ? randInt(-collideOffset.y + currentOffset.y + 2 * r, -collideOffset.y + currentOffset.y + canvas.height - 2 * r)
+            : randInt(center.y - viewport.y / 2 + 2 * r, center.y + viewport.y / 2 - 2 * r),
+          -xMomentum / mass, -yMomentum / mass, r, 0, randColors ? randColor() : "white"
+        )
+      );
+      xMomentum += -xMomentum / mass;
+      yMomentum += -yMomentum / mass;
+    }
+  }
 
-    function initNewtonsCradle(num = 8, initV = 5, mass = 100000) {
-      ui.inelastic.checked = inelastic = false;
-      ui.G.value = G = 0;
-      ui.collide.checked = collide = true;
-      for (let i = 0; i < num - 1; i++) bodies.push(new Body(center.x - i, center.y, 0, 0, 0, mass));
-      bodies.push(new Body(getRadius(mass), center.y, initV, 0, 0, mass));
+  /**
+   * Generates a galaxy
+   * @param {Object} centerPos the position of the center
+   * @param {Object} vel initial velocity of the galaxy
+   * @param {Number} num the number of stars
+   * @param {Number} minMass minimum mass of stars
+   * @param {Number} maxMass maximum mass of stars
+   * @param {Number} radius radius of the galaxy
+   * @param {Number} rotDir rotation direction 0 or 1
+   * @param {Boolean} bodyCollide whether or not the stars can collide
+   */
+  function generateGalaxy(
+    centerPos = { x: center.x, y: center.y },
+    vel = { x: 0, y: 0 },
+    num = 500,
+    minMass = 1,
+    maxMass = 2,
+    radius = 500,
+    rotDir = 0,
+    bodyCollide = false
+  ) {
+    // center
+    let centerMass = num * 100;
+    let centerRadius = 10; //getRadius(num * 100);
+    bodies.push(new Body(centerPos.x, centerPos.y, vel.x, vel.y, 10, centerMass));
+    for (let i = 0; i < num; i++) {
+      let mass = randInt(minMass, maxMass);
+      let r = getRadius(mass);
+      let angle = randInt(0, 360);
+      let distance = Math.pow(2, -2 * Math.random()).map(0.25, 1, 0, 1) * radius + centerRadius; //randInt(centerRadius * 2, radius)
+      let ac = (G * centerMass) / (distance * distance);
+      let speed = Math.sqrt(ac * distance);
+      bodies.push(
+        new Body(
+          centerPos.x + distance * Math.cos(angle),
+          centerPos.y + distance * Math.sin(angle),
+          vel.x + speed * Math.sin(-angle) * (rotDir ? 1 : -1),
+          vel.y + speed * Math.cos(-angle) * (rotDir ? 1 : -1),
+          r,
+          0,
+          "white",
+          bodyCollide
+        )
+      );
     }
+  }
 
-    function initPiCollisions(initV = 3) {
-      ui.inelastic.checked = inelastic = false;
-      ui.G.value = G = 0;
-      // ui.collide.checked = collide = true;
-      let mass = 100;
-      let ratio = 10000
-      bodies.push(new Body(center.x * 2.5, center.y, 0, 0, center.x, 1000, "default", true, 0, true));
-      bodies.push(new Body(center.x - 1.5 * 100, center.y, 0, 0, 100, mass));
-      bodies.push(new Body(center.x - 1.5 * 500, center.y, initV, 0, 200, mass * ratio));
-    }
+  function initNewtonsCradle(num = 8, initV = 5, mass = 100000) {
+    ui.inelastic.checked = inelastic = false;
+    ui.G.value = G = 0;
+    ui.collide.checked = collide = true;
+    for (let i = 0; i < num - 1; i++) bodies.push(new Body(center.x - i, center.y, 0, 0, 0, mass));
+    bodies.push(new Body(getRadius(mass), center.y, initV, 0, 0, mass));
+  }
 
-    /**
-     * Generates a solar system
-     * @param {Object} centerPos the position of the center
-     * @param {Object} vel initial velocity of the system
-     * @param {Number} num the number of planets
-     * @param {Number} minMass minimum mass of planets
-     * @param {Number} maxMass maximum mass of planets
-     * @param {Number} radius radius of the system
-     * @param {Number} rotDir rotation direction 0 or 1
-     * @param {Boolean} bodyCollide whether or not the planets can collide
-     */
-    function generateSolarSystem(
-      centerPos = { x: center.x, y: center.y },
-      vel = { x: 0, y: 0 },
-      num = 8,
-      minMass = 10000,
-      maxMass = 100000,
-      radius = 10000,
-      rotDir = 0,
-      bodyCollide = true
-    ) {
-      // center
-      let centerMass = maxMass * 100;
-      let centerRadius = getRadius(maxMass * 10000);
-      bodies.push(new Body(centerPos.x, centerPos.y, vel.x, vel.y, 0, centerMass));
-      for (let i = 0; i < num; i++) {
-        let mass = randInt(minMass, maxMass);
-        let r = getRadius(mass);
-        let angle = randInt(0, 360);
-        let distance = randInt(centerRadius * 2, radius);
-        let ac = (G * centerMass) / (distance * distance);
-        let speed = Math.sqrt(ac * distance);
-        bodies.push(
-          new Body(
-            centerPos.x + distance * Math.cos(angle),
-            centerPos.y + distance * Math.sin(angle),
-            vel.x + speed * Math.sin(-angle) * (rotDir ? 1 : -1),
-            vel.y + speed * Math.cos(-angle) * (rotDir ? 1 : -1),
-            r,
-            0,
-            "white",
-            bodyCollide
-          )
-        );
-      }
-    }
+  function initPiCollisions(initV = 1) {
+    ui.inelastic.checked = inelastic = false;
+    ui.G.value = G = 0;
+    // ui.collide.checked = collide = true;
+    let mass = 100;
+    let ratio = 1000000;
+    // timestep = ui.timestep.value = 10;
+    canvas.dispatchEvent(new Event("KeyZ"));
+    bodies.push(new Body(center.x * 3.5, center.y, 0, 0, center.x * 2, 1, "default", true, 0, true));
+    bodies.push(new Body(center.x - 1.5 * 100, center.y, 0, 0, 200, mass, "default", true, 0, false, "y"));
+    bodies.push(new Body(center.x - 1.5 * 600, center.y, initV, 0, 500, mass * ratio, "default", true, 0, false, "y"));
+  }
 
-    // Sun and 3 planets
-    function initOrbitBodies1() {
-      bodies.push(new Body(center.x, center.y, 0, 0, 50, 0, "yellow"));
-      bodies.push(new Body(center.x, center.y + 200, 20, 0, 5, 0, "blue"));
-      bodies.push(new Body(center.x + 300, center.y, 0, -10, 5, 0, "blue"));
-      bodies.push(new Body(center.x - 500, center.y, 0, 8, 5, 0, "blue"));
+  /**
+   * Generates a solar system
+   * @param {Object} centerPos the position of the center
+   * @param {Object} vel initial velocity of the system
+   * @param {Number} num the number of planets
+   * @param {Number} minMass minimum mass of planets
+   * @param {Number} maxMass maximum mass of planets
+   * @param {Number} radius radius of the system
+   * @param {Number} rotDir rotation direction 0 or 1
+   * @param {Boolean} bodyCollide whether or not the planets can collide
+   */
+  function generateSolarSystem(
+    centerPos = { x: center.x, y: center.y },
+    vel = { x: 0, y: 0 },
+    num = 8,
+    minMass = 10000,
+    maxMass = 100000,
+    radius = 10000,
+    rotDir = 0,
+    bodyCollide = true
+  ) {
+    // center
+    let centerMass = maxMass * 100;
+    let centerRadius = getRadius(maxMass * 10000);
+    bodies.push(new Body(centerPos.x, centerPos.y, vel.x, vel.y, 0, centerMass));
+    for (let i = 0; i < num; i++) {
+      let mass = randInt(minMass, maxMass);
+      let r = getRadius(mass);
+      let angle = randInt(0, 360);
+      let distance = randInt(centerRadius * 2, radius);
+      let ac = (G * centerMass) / (distance * distance);
+      let speed = Math.sqrt(ac * distance);
+      bodies.push(
+        new Body(
+          centerPos.x + distance * Math.cos(angle),
+          centerPos.y + distance * Math.sin(angle),
+          vel.x + speed * Math.sin(-angle) * (rotDir ? 1 : -1),
+          vel.y + speed * Math.cos(-angle) * (rotDir ? 1 : -1),
+          r,
+          0,
+          "white",
+          bodyCollide
+        )
+      );
     }
+  }
 
-    // Binary system
-    function initOrbitBodies2() {
-      bodies.push(new Body(center.x, center.y + 140, 3, 0, 20, 0, "blue"));
-      bodies.push(new Body(center.x, center.y - 140, -3, 0, 20, 0, "blue"));
-    }
+  // Sun and 3 planets
+  function sun3PlanetsSystem() {
+    bodies.push(new Body(center.x, center.y, 0, 0, 50, 0, "yellow"));
+    bodies.push(new Body(center.x, center.y + 200, 20, 0, 5, 0, "blue"));
+    bodies.push(new Body(center.x + 300, center.y, 0, -10, 5, 0, "blue"));
+    bodies.push(new Body(center.x - 500, center.y, 0, 8, 5, 0, "blue"));
+  }
 
-    // Sun, planets, moons
-    function initOrbitBodies3() {
-      bodies.push(new Body(center.x, center.y, 0, 0, 30, 0, "yellow"));
-      bodies.push(new Body(center.x, center.y - 150, 14, 0, 5, 0, "blue"));
-      bodies.push(new Body(center.x, center.y - 170, 11, 0, 1, 0, "white"));
-      bodies.push(new Body(center.x, center.y + 400, -8.7, 0, 5, 0, "blue"));
-      bodies.push(new Body(center.x, center.y + 430, -6.7, 0, 1, 0, "white"));
-    }
+  // Binary system
+  function binarySystem() {
+    bodies.push(new Body(center.x, center.y + 140, 3, 0, 20, 0, "blue"));
+    bodies.push(new Body(center.x, center.y - 140, -3, 0, 20, 0, "blue"));
+  }
+
+  // Sun, planets, moons
+  function sunPlanetsMoonsSystem() {
+    bodies.push(new Body(center.x, center.y, 0, 0, 30, 0, "yellow"));
+    bodies.push(new Body(center.x, center.y - 150, 14, 0, 5, 0, "blue"));
+    bodies.push(new Body(center.x, center.y - 170, 11, 0, 1, 0, "white"));
+    bodies.push(new Body(center.x, center.y + 400, -8.7, 0, 5, 0, "blue"));
+    bodies.push(new Body(center.x, center.y + 430, -6.7, 0, 1, 0, "white"));
   }
 }
 
-// init form inputs
+/** init form inputs */
 function initParams() {
   if (!paused) timestep = parseFloat(ui.timestep.value);
   initVel = parseFloat(ui.initVel.value);
@@ -971,16 +979,14 @@ class Body {
     color = "gray",
     collide = true,
     charge = 0,
-    immovable = false
+    immovable = false,
+    lockAxis = "none"
   ) {
-    this.xPos = xPos;
-    this.yPos = yPos;
+    this.xPos = this.xPrev = xPos;
+    this.yPos = this.yPrev = yPos;
 
     this.xVel = xVel;
     this.yVel = yVel;
-
-    this.xPrev = xPos;
-    this.yPrev = yPos;
 
     this.xAccel = 0;
     this.yAccel = 0;
@@ -995,10 +1001,13 @@ class Body {
     this.collide = collide;
 
     this.immovable = immovable;
+    this.lockAxis = lockAxis;
   }
+  /** Returns the x and y momentum */
   getMomentum() {
     return { x: this.xVel * this.mass, y: this.yVel * this.mass };
   }
+  /** Draw the body onto the canvas */
   draw() {
     let drawColor = this.color;
 
@@ -1037,7 +1046,7 @@ class Body {
         ctx.closePath();
         ctx.stroke();
       } else {
-        if (trackBody != this && trace && !(collide && trackBody)) {
+        if (trackBody != this && trace && !(collide && trackBody) && !this.immovable) {
           // connect to previous
           if (continuous && trace) {
             ctx.beginPath();
@@ -1081,6 +1090,7 @@ class Body {
         // black outline for field visualization
         if (drawField) {
           ctx.strokeStyle = "black";
+          ctx.lineWidth = 1;
           ctx.beginPath();
           ctx.arc(this.xPos, this.yPos, this.radius, 0, Math.PI * 2, true);
           ctx.closePath();
@@ -1161,7 +1171,7 @@ class Body {
   }
 }
 
-// Calculate forces between each body (more efficient - does each calc once) then draw
+/** Calculate forces between each body, then the body */
 function runSim() {
   // iterate through all combinations of bodies and add force to body total
   bodies.forEach((body, index) => {
@@ -1169,8 +1179,8 @@ function runSim() {
     if (drawField && body1.mass > maxBody.mass) maxBody = body1;
     if (bodies.length > 1 && timestep) {
       for (let i = index + 1; i < bodies.length; i++) {
-        // calc gravity between body and bodies[i], then add forces
         const body2 = bodies[i];
+        // calc gravity between body and bodies[i], then add forces
 
         const xDist = body2.xPos - body1.xPos;
         const yDist = body2.yPos - body1.yPos;
@@ -1191,7 +1201,7 @@ function runSim() {
           const dist = Math.sqrt(sqr);
           let xAccel = 0, yAccel = 0, kForceX = 0, kForceY = 0;
 
-          if (G != 0 && gravity) {
+          if (G != 0 && gravity && !(body1.immovable && body2.immovable)) {
             // precalculate g / r^2
             const g = G / sqr;
 
@@ -1217,7 +1227,7 @@ function runSim() {
           }
 
           // draw gravity strength lines
-          if (drawGravityStrength) {
+          if (drawGravityStrength && gravity && G != 0) {
             const strength = Math.abs(1 - 10 / (g * body1.mass * body2.mass + 10));
             const drawThreshold = drawGThreshold ? (trace ? 1e-4 : 1e-2) : 0;
             // determine whether to draw
@@ -1296,7 +1306,7 @@ function collision(body1, body2) {
     const d = Math.max(Math.sqrt(xPosDist * xPosDist + yPosDist * yPosDist), 0.0001);
 
     const totalMass = larger.mass + smaller.mass;
-    const massDiff = larger.mass - smaller.mass; // must not be always positive
+    const massDiff = larger.mass - smaller.mass;
 
     if (!larger.immovable && larger.mass <= smaller.mass * 2) {
       // set the bodies to just touch to avoid intersecting
@@ -1313,55 +1323,54 @@ function collision(body1, body2) {
       smaller.xPos = larger.xPos - (smaller.radius + larger.radius) * xPosDist / d;
       smaller.yPos = larger.yPos - (smaller.radius + larger.radius) * yPosDist / d;
     }
-    // if ((larger.xVel - smaller.xVel != 0 || larger.yVel - smaller.yVel != 0)) {
 
-      // Intiial velocity of the center of mass
-      const vCoMX = (larger.getMomentum().x + smaller.getMomentum().x) / totalMass;
-      const vCoMY = (larger.getMomentum().y + smaller.getMomentum().y) / totalMass;
+    // Intiial velocity of the center of mass
+    const vCoMX = (larger.getMomentum().x + smaller.getMomentum().x) / totalMass;
+    const vCoMY = (larger.getMomentum().y + smaller.getMomentum().y) / totalMass;
 
-      // angle of the collision normal
-      const phi = Math.atan2(yPosDist, xPosDist);
+    // angle of the collision normal
+    const phi = Math.atan2(yPosDist, xPosDist);
 
-      // net velocity magnitude
-      const v1 = Math.sqrt(larger.xVel * larger.xVel + larger.yVel * larger.yVel);
-      const v2 = Math.sqrt(smaller.xVel * smaller.xVel + smaller.yVel * smaller.yVel);
+    // net velocity magnitude
+    const v1 = Math.sqrt(larger.xVel * larger.xVel + larger.yVel * larger.yVel);
+    const v2 = Math.sqrt(smaller.xVel * smaller.xVel + smaller.yVel * smaller.yVel);
 
-      // velocity angle relative to phi
-      const a1 = Math.atan2(larger.yVel, larger.xVel) - phi;
-      const a2 = Math.atan2(smaller.yVel, smaller.xVel) - phi;
+    // velocity angle relative to phi
+    const a1 = Math.atan2(larger.yVel, larger.xVel) - phi;
+    const a2 = Math.atan2(smaller.yVel, smaller.xVel) - phi;
 
-      // velocity relative to the collision line
-      const v1relX = v1 * Math.cos(a1);
-      const v1relY = v1 * Math.sin(a1);
-      const v2relX = v2 * Math.cos(a2);
-      const v2relY = v2 * Math.sin(a2);
+    // velocity relative to the collision line
+    const v1relX = v1 * Math.cos(a1);
+    const v1relY = v1 * Math.sin(a1);
+    const v2relX = v2 * Math.cos(a2);
+    const v2relY = v2 * Math.sin(a2);
 
-      // calculate final velocities in rotated frame, changing the component perpendicular to collision
-      const v1finalXrel = larger.immovable ? 0 : (massDiff * v1relX + 2 * smaller.mass * v2relX) / (totalMass);
-      const v2finalXrel = smaller.immovable ? -v2relX : (2 * larger.mass * v1relX - massDiff * v2relX) / (totalMass);
+    // calculate final velocities in rotated frame, changing the component perpendicular to collision
+    let v1finalXrel;
+    let v2finalXrel;
+    if (larger.immovable) {
+      v1finalXrel = 0;
+      v2finalXrel = -v2relX;
+    } else {
+      v1finalXrel = (massDiff * v1relX + 2 * smaller.mass * v2relX) / (totalMass);
+      v2finalXrel = (2 * larger.mass * v1relX - massDiff * v2relX) / (totalMass);
+    }
 
-      // precompute these values
-      const cosPhi = Math.cos(phi);
-      const sinPhi = Math.sin(phi);
+    // precompute these values
+    const cosPhi = Math.cos(phi);
+    const sinPhi = Math.sin(phi);
 
-      // switch back to original frame and get final velocities
+    // switch back to original frame and get final velocities, then implement new velocity with CoR
+    if (!larger.immovable) {
       const v1xFinal = cosPhi * v1finalXrel - sinPhi * v1relY;
       const v1yFinal = sinPhi * v1finalXrel + cosPhi * v1relY;
-      const v2xFinal = cosPhi * v2finalXrel - sinPhi * v2relY;
-      const v2yFinal = sinPhi * v2finalXrel + cosPhi * v2relY;
-
-
-      const v1x = vCoMX + CoR * (v1xFinal - vCoMX);
-      const v1y = vCoMY + CoR * (v1yFinal - vCoMY);
-      const v2x = vCoMX + CoR * (v2xFinal - vCoMX);
-      const v2y = vCoMY + CoR * (v2yFinal - vCoMY);
-
-      // implement new velocity
-      larger.xVel = v1x;
-      larger.yVel = v1y;
-      smaller.xVel = v2x;
-      smaller.yVel = v2y;
-    // }
+      larger.xVel = vCoMX + CoR * (v1xFinal - vCoMX);
+      larger.yVel = vCoMY + CoR * (v1yFinal - vCoMY);
+    }
+    const v2xFinal = cosPhi * v2finalXrel - sinPhi * v2relY;
+    const v2yFinal = sinPhi * v2finalXrel + cosPhi * v2relY;
+    smaller.xVel = vCoMX + CoR * (v2xFinal - vCoMX);
+    if (!smaller.lockAxis == "y") smaller.yVel = vCoMY + CoR * (v2yFinal - vCoMY);
   }
 }
 
@@ -1407,7 +1416,7 @@ function hsl2rgb(h, s, l) {
   return [f(0), f(8), f(4)];
 }
 
-// display gravitational field for the whole canvas
+/** display gravitational field for the whole canvas */
 function drawFullField() {
   const res = heatmapRes / totalzoom;
   const width = canvas.width;
@@ -1443,8 +1452,7 @@ function drawFullField() {
   ctx.putImageData(imgData, 0, 0);
 }
 
-// display gravitational field vector at a point
-// needs mouse event listener
+/** display gravitational field vector at a point */
 function drawPointField() {
   const x = (mouseX / canvas.width) * viewport.x + center.x - viewport.x / 2;
   const y = (mouseY / canvas.height) * viewport.y + center.y - viewport.y / 2;
@@ -1460,7 +1468,7 @@ function drawPointField() {
   ctx.stroke();
 }
 
-// calculate center of mass of the system
+/** calculate center of mass of the system */
 function calcCoM() {
   // calc x and y CoM using (m1x1+m2x2...) / (m1+m2...)
   let CoM = { x: 0, y: 0 };
@@ -1511,7 +1519,7 @@ function track(body) {
   newBody = false;
 }
 
-// draw and animate
+/** draw and animate */
 function draw() {
   continuous = true;
   let continueTrace = trace;
