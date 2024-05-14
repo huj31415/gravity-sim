@@ -21,7 +21,7 @@
     <div id="graphs">
       <hr />
       <div>
-        <span style="display: inline-block; width: 140px">FPS/Simrate: <span id="fps">0</span></span>
+        <span style="display: inline-block; width: 140px">FPS: <span id="fps">0</span></span>
         <span style="display: inline-block; width: 140px">Active bodies: <span id="bodyCount">0</span></span>
       </div>
       <div>
@@ -50,6 +50,7 @@
           <option value="6">Random solar system</option>
           <option value="7">Newton's cradle</option>
           <option value="8">Pi collisions</option>
+          <option value="9">Grid</option>
         </select>
         <button id="loadPreset">Load preset</button>
       </div>
@@ -181,7 +182,7 @@
         <label for="drawOffscreen">Draw offscreen indicators</label>
       </div>
       <div>
-        <input type="checkbox" id="colorByVel" name="colorByVel" />
+        <input type="checkbox" id="colorByVel" name="colorByVel" checked />
         <label for="colorByVel">Color bodies by speed (y)</label>
       </div>
       <div>

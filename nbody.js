@@ -268,6 +268,9 @@ draw();
               case "8":
                 initPiCollisions();
                 break;
+              case "9":
+                initGrid();
+                break;
             }
             activeBodies = bodies.length;
             ui.bodyCount.innerText = activeBodies;
@@ -828,8 +831,8 @@ draw();
   function initGrid(spacing = 25, mass = 1000, r = 12) {
     ui.gravity.checked = gravity = false;
     ui.inelastic.checked = inelastic = false;
-    for (let x = 0; x < viewport.x; x += spacing) {
-      for (let y = 0; y < viewport.y; y += spacing) {
+    for (let x = spacing / 2; x < window.innerWidth; x += spacing) {
+      for (let y = spacing / 2; y < window.innerHeight; y += spacing) {
         bodies.push(new Body(x, y, 0, 0, r, mass, "default"));
       }
     }
@@ -1125,7 +1128,7 @@ class Body {
         }
         // acceleration vector
         if (drawGravity) {
-          let mult = 1; //timestep;
+          let mult = 10; //timestep;
           ctx.beginPath();
           ctx.lineWidth = 1 / totalzoom;
           ctx.strokeStyle = "red";
@@ -1243,13 +1246,13 @@ function runSim() {
 
           // draw gravity strength lines
           if (drawGravityStrength && gravity && G != 0) {
-            const strength = Math.abs(1 - 10 / (g * body1.mass * body2.mass + 10));
+            const strength = Math.abs(1 - 10 / (G / sqr * body1.mass * body2.mass + 10));
             const drawThreshold = drawGThreshold ? (trace ? 1e-4 : 1e-2) : 0;
             // determine whether to draw
             if (strength >= drawThreshold) {
               ctx.beginPath();
               ctx.strokeStyle =
-                "rgba(" + (255 - 255 * strength) + ", " + 255 * strength + ",0 ," + strength + ")";
+                "rgba(" + (255 - 255 * strength) + ", " + (255 * strength) + ",0 ," + strength + ")";
               ctx.lineWidth = 1 / totalzoom;
               ctx.moveTo(body2.xPos, body2.yPos);
               ctx.lineTo(body1.xPos, body1.yPos);
