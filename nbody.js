@@ -462,27 +462,7 @@ draw();
 
       canvas.onwheel = (event) => {
         if (!event.ctrlKey) {
-          zoomfactor = Math.sign(event.deltaY) < 0 ? 1.05 : 1 / 1.05;
-          ctx.transform(
-            zoomfactor,
-            0,
-            0,
-            zoomfactor,
-            (-(zoomfactor - 1) * canvas.width) / 2,
-            (-(zoomfactor - 1) * canvas.height) / 2
-          );
-          totalzoom *= zoomfactor;
-          viewport.x /= zoomfactor;
-          viewport.y /= zoomfactor;
-          ui.viewport.innerText = Math.floor(viewport.x) + " x " + Math.floor(viewport.y);
-          ctx.fillStyle = "rgba(0, 0, 0, 1)";
-          ctx.fillRect(
-            center.x - viewport.x / 2,
-            center.y - viewport.y / 2,
-            viewport.x,
-            viewport.y
-          );
-          ui.zoom.innerText = ~~(totalzoom * 10000) / 100;
+          zoom(Math.sign(event.deltaY) < 0 ? 1.05 : 1 / 1.05);
         }
       };
     }
@@ -594,72 +574,13 @@ draw();
                   ? { x: -currentOffset.x + collideOffset.x, y: -currentOffset.y + collideOffset.y }
                   : { x: -currentOffset.x, y: -currentOffset.y }
               );
-              zoomfactor = 1 / totalzoom;
-              ctx.transform(
-                zoomfactor,
-                0,
-                0,
-                zoomfactor,
-                (-(zoomfactor - 1) * canvas.width) / 2,
-                (-(zoomfactor - 1) * canvas.height) / 2
-              );
-              totalzoom = 1;
-              viewport.x = canvas.width;
-              viewport.y = canvas.height;
-              ctx.fillStyle = "rgba(0, 0, 0, 1)";
-              ctx.fillRect(
-                center.x - viewport.x / 2,
-                center.y - viewport.y / 2,
-                viewport.x,
-                viewport.y
-              );
-              ui.zoom.innerText = ~~(totalzoom * 10000) / 100;
+              zoom(0);
               break;
             case "KeyZ":
-              zoomfactor = 1.05;
-              ctx.transform(
-                zoomfactor,
-                0,
-                0,
-                zoomfactor,
-                (-(zoomfactor - 1) * canvas.width) / 2,
-                (-(zoomfactor - 1) * canvas.height) / 2
-              );
-              totalzoom *= zoomfactor;
-              viewport.x /= zoomfactor;
-              viewport.y /= zoomfactor;
-              ui.viewport.innerText = Math.floor(viewport.x) + " x " + Math.floor(viewport.y);
-              ctx.fillStyle = "rgba(0, 0, 0, 1)";
-              ctx.fillRect(
-                center.x - viewport.x / 2,
-                center.y - viewport.y / 2,
-                viewport.x,
-                viewport.y
-              );
-              ui.zoom.innerText = ~~(totalzoom * 10000) / 100;
+              zoom(1.05);
               break;
             case "KeyX":
-              zoomfactor = 1 / 1.05;
-              ctx.transform(
-                zoomfactor,
-                0,
-                0,
-                zoomfactor,
-                (-(zoomfactor - 1) * canvas.width) / 2,
-                (-(zoomfactor - 1) * canvas.height) / 2
-              );
-              totalzoom *= zoomfactor;
-              viewport.x /= zoomfactor;
-              viewport.y /= zoomfactor;
-              ui.viewport.innerText = Math.floor(viewport.x) + " x " + Math.floor(viewport.y);
-              ctx.fillStyle = "rgba(0, 0, 0, 1)";
-              ctx.fillRect(
-                center.x - viewport.x / 2,
-                center.y - viewport.y / 2,
-                viewport.x,
-                viewport.y
-              );
-              ui.zoom.innerText = ~~(totalzoom * 10000) / 100;
+              zoom(1 / 1.05);
               break;
             case "Digit1":
               ui.drawVector.click();
@@ -673,12 +594,12 @@ draw();
             case "Digit4":
               ui.trackCoM.click();
               break;
-            case "ShiftLeft":
+            case "Period":
               timestep = ~~((timestep + 0.05) * 100) / 100;
               ui.timestep.value = ui.tOut.innerText = timestep;
               break;
-            case "ControlLeft":
-              timestep = ~~((timestep - 0.05) * 100) / 100;
+            case "Comma":
+              timestep = timestep <= 0.05 ? 0 : ~~((timestep - 0.05) * 100) / 100;
               ui.timestep.value = ui.tOut.innerText = timestep;
               break;
           }
@@ -805,6 +726,7 @@ draw();
     }
   }
 
+  // set up the newton's cradle demonstration of momentum
   function initNewtonsCradle(num = 8, initV = 5, mass = 100000) {
     ui.inelastic.checked = inelastic = false;
     ui.G.value = G = 0;
@@ -813,6 +735,7 @@ draw();
     bodies.push(new Body(getRadius(mass), center.y, initV, 0, 0, mass));
   }
 
+  // set up three objects to generate 31415 collisions
   function initPiCollisions(initV = 1) {
     frameDelayMs = 0.1;
     ui.decoupleFPS.checked = true;
@@ -828,6 +751,7 @@ draw();
     bodies.push(new Body(center.x - 1000, center.y, initV, 0, 500, mass * ratio, "default", true, 0, false, "y"));
   }
 
+  // set up a grid of bodies
   function initGrid(spacing = 25, mass = 1000, r = 12) {
     ui.gravity.checked = gravity = false;
     ui.inelastic.checked = inelastic = false;
@@ -1321,7 +1245,7 @@ function collision(body1, body2) {
     // initial separation
     const xPosDist = body2.xPos - body1.xPos;
     const yPosDist = body2.yPos - body1.yPos;
-    
+
     const xPosDistAbs = larger.xPos - smaller.xPos;
     const yPosDistAbs = larger.yPos - smaller.yPos;
     const d = Math.max(Math.sqrt(xPosDist * xPosDist + yPosDist * yPosDist), 0.0001);
@@ -1527,6 +1451,36 @@ function pan(offset = { x: 0, y: 0 }, clrTrails = true) {
     body.yPos += offset.y;
   });
   ui.offset.innerText = Math.floor(currentOffset.x) + " Y=" + Math.floor(currentOffset.y);
+}
+
+function zoom(zoomfactor = 0) {
+  if (zoomfactor == 0) {
+    zoomfactor = 1 / totalzoom;
+    totalzoom = 1;
+    viewport.x = canvas.width;
+    viewport.y = canvas.height;
+  } else {
+    totalzoom *= zoomfactor;
+    viewport.x /= zoomfactor;
+    viewport.y /= zoomfactor;
+  }
+  ctx.transform(
+    zoomfactor,
+    0,
+    0,
+    zoomfactor,
+    (-(zoomfactor - 1) * canvas.width) / 2,
+    (-(zoomfactor - 1) * canvas.height) / 2
+  );
+  ui.viewport.innerText = ~~(viewport.x) + " x " + ~~(viewport.y);
+  ctx.fillStyle = "rgba(0, 0, 0, 1)";
+  ctx.fillRect(
+    center.x - viewport.x / 2,
+    center.y - viewport.y / 2,
+    viewport.x,
+    viewport.y
+  );
+  ui.zoom.innerText = ~~(totalzoom * 10000) / 100;
 }
 
 /**
