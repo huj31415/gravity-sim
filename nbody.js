@@ -191,15 +191,20 @@ draw();
                 break;
               case "2": // two body system
                 ui.collide.checked = false;
-                ui.G.value = ui.GOut.innerText = G = 0.15;
+                // ui.G.value = ui.GOut.innerText = G = 0.15;
                 binarySystem();
                 break;
-              case "3": // sun planets and moon
+              case "3": // two body system (circular)
+                ui.collide.checked = false;
+                // ui.G.value = ui.GOut.innerText = G = 0.15;
+                binarySystem(true);
+                break;
+              case "4": // sun planets and moon
                 ui.collide.checked = false;
                 ui.G.value = ui.GOut.innerText = G = 0.25;
                 sunPlanetsMoonsSystem();
                 break;
-              case "4": // galaxies
+              case "5": // galaxies
                 ui.G.value = ui.GOut.innerText = 1;
                 ui.drawVector.checked = drawVector = false;
                 ui.drawGravity.checked = drawGravity = false;
@@ -234,7 +239,7 @@ draw();
                   false
                 );
                 break;
-              case "5": // solar system formation
+              case "6": // solar system formation
                 ui.G.value = ui.GOut.innerText = 1;
                 ui.drawVector.checked = drawVector = false;
                 ui.drawGravity.checked = drawGravity = false;
@@ -254,7 +259,7 @@ draw();
                   true
                 );
                 break;
-              case "6":
+              case "7":
                 ui.G.value = ui.GOut.innerText = 1;
                 ui.drawVector.checked = drawVector = false;
                 ui.drawGravity.checked = drawGravity = false;
@@ -262,13 +267,13 @@ draw();
                 ui.drawGravityStrength.checked = drawGravityStrength = false;
                 generateSolarSystem({ x: center.x, y: center.y }, { x: 0, y: 0 });
                 break;
-              case "7":
+              case "8":
                 initNewtonsCradle();
                 break;
-              case "8":
+              case "9":
                 initPiCollisions();
                 break;
-              case "9":
+              case "10":
                 initGrid();
                 break;
             }
@@ -818,9 +823,21 @@ draw();
   }
 
   // Binary system
-  function binarySystem() {
-    bodies.push(new Body(center.x, center.y + 140, 3, 0, 20, 0, "blue"));
-    bodies.push(new Body(center.x, center.y - 140, -3, 0, 20, 0, "blue"));
+  function binarySystem(circular = false) {
+    const m1 = randInt(5000, 100000);
+    const m2 = randInt(5000, 100000);
+    const x1 = randInt(100, 500);
+    const x2 = (m1 * x1) / m2;
+    const circularVel = m2 / (m1 + m2) * Math.sqrt(G * m2 / x1);
+    const v1 = circular ? circularVel : 
+      randInt(circularVel / 2, circularVel * 1.1);
+      // randInt(Math.cbrt(G * (m2) / (x1 + x2)), Math.sqrt(G * (m2 + m1) / 2 / (x1 + x2)));
+    const v2 = (m1 * v1) / m2;
+
+    bodies.push(new Body(center.x + x1, center.y, 0, v1, 0, m1));
+    bodies.push(new Body(center.x - x2, center.y, 0, -v2, 0, m2));
+    // bodies.push(new Body(center.x, center.y + 140, 3, 0, 20, 0, "blue"));
+    // bodies.push(new Body(center.x, center.y - 140, -3, 0, 20, 0, "blue"));
   }
 
   // Sun, planets, moons
@@ -1052,7 +1069,7 @@ class Body {
         }
         // acceleration vector
         if (drawGravity) {
-          let mult = 10; //timestep;
+          let mult = 1; //timestep;
           ctx.beginPath();
           ctx.lineWidth = 1 / totalzoom;
           ctx.strokeStyle = "red";
