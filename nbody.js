@@ -64,6 +64,7 @@ const ui = {
   gravity: document.getElementById("gravity"),
   immovable: document.getElementById("immovable"),
   decoupleFPS: document.getElementById("decoupleFPS"),
+  softbody: document.getElementById("softbody"),
 };
 
 // utilities
@@ -153,7 +154,8 @@ let colorBySpeed = ui.colorByVel.checked,
   drawMouseVector = ui.drawMouseVector.checked,
   inelastic = ui.inelastic.checked,
   electrostatic = ui.electrostatic.checked,
-  colorByCharge = ui.colorByCharge.checked;
+  colorByCharge = ui.colorByCharge.checked,
+  softbody = ui.softbody.checked;
 
 // initialize the ui inputs and then start the draw loop
 initParams();
@@ -359,7 +361,7 @@ draw();
         const activeElement = document.activeElement;
         const register = activeElement.tagName !== "INPUT";
         console.log(event.code);
-        if (register) {
+        if (register && !event.ctrlKey) {
           switch (event.code) {
             case "ArrowLeft":
             case "KeyA":
@@ -407,7 +409,10 @@ draw();
               ui.toggle.click();
               break;
             case "KeyR":
-              if (!event.ctrlKey) ui.randBtn.click();
+              ui.randBtn.click();
+              break;
+            case "KeyL":
+              ui.loadBtn.click();
               break;
             case "Backspace":
               ui.clear.click();
@@ -437,6 +442,9 @@ draw();
               break;
             case "KeyK":
               ui.electrostatic.click();
+              break;
+            case "KeyB":
+              ui.softbody.click();
               break;
             case "KeyY":
               ui.colorByVel.click();
@@ -511,7 +519,6 @@ draw();
     }
   }
 }
-
 
 // body presets
 {
@@ -637,13 +644,25 @@ draw();
     bodies.push(new Body(center.x - 1000, center.y, initV, 0, 500, mass * ratio, "default", true, 0, false, "y"));
   }
 
-  // set up a grid of bodies to smash with projectiles
-  function initGrid(spacing = 25, mass = 1000, r = 12) {
+  // set up a grid of bodies to smash with objects (square packing)
+  function initSquareGrid(spacing = 25, mass = 100, r = softbody ? 4 : 12) { // r = 12
     ui.gravity.checked = gravity = false;
     ui.inelastic.checked = inelastic = false;
     for (let x = spacing / 2; x < window.innerWidth; x += spacing) {
       for (let y = spacing / 2; y < window.innerHeight; y += spacing) {
         bodies.push(new Body(x, y, 0, 0, r, mass, "default"));
+      }
+    }
+  }
+
+  // set up a grid of bodies to smash with objects (hexagonal packing)
+  function initHexGrid(spacing = 25, mass = 100, r = softbody ? 4 : 12) { // r = 12
+    ui.gravity.checked = gravity = false;
+    ui.inelastic.checked = inelastic = false;
+    let ySpacing = Math.sqrt(3) * spacing / 2;
+    for (let x = spacing / 2; x < window.innerWidth; x += spacing) {
+      for (let y = spacing / 2, odd = true; y < window.innerHeight; y += ySpacing, odd = !odd) {
+        bodies.push(new Body(x + odd * (spacing / 2), y, 0, 0, r, mass, "default"));
       }
     }
   }
@@ -717,6 +736,8 @@ draw();
 
     bodies.push(new Body(center.x + x1, center.y, 0, v1, 0, m1));
     bodies.push(new Body(center.x - x2, center.y, 0, -v2, 0, m2));
+
+    // original binary preset
     // bodies.push(new Body(center.x, center.y + 140, 3, 0, 20, 0, "blue"));
     // bodies.push(new Body(center.x, center.y - 140, -3, 0, 20, 0, "blue"));
   }
@@ -769,6 +790,7 @@ function updateSettings() {
   electrostatic = ui.electrostatic.checked;
   colorByCharge = ui.colorByCharge.checked;
   frameDelayMs = ui.decoupleFPS.checked ? 0.1 : 0;
+  softbody = ui.softbody.checked;
 }
 
 /** load a preset */
@@ -789,21 +811,25 @@ function load() {
     case "1": // sun and 3 planets
       ui.collide.checked = false;
       ui.G.value = ui.GOut.innerText = G = 0.15;
+      ui.gravity.checked = true;
       sun3PlanetsSystem();
       break;
     case "2": // two body system
       ui.collide.checked = false;
+      ui.gravity.checked = true;
       // ui.G.value = ui.GOut.innerText = G = 0.15;
       binarySystem();
       break;
     case "3": // two body system (circular)
       ui.collide.checked = false;
+      ui.gravity.checked = true;
       // ui.G.value = ui.GOut.innerText = G = 0.15;
       binarySystem(true);
       break;
     case "4": // sun planets and moon
       ui.collide.checked = false;
       ui.G.value = ui.GOut.innerText = G = 0.25;
+      ui.gravity.checked = true;
       sunPlanetsMoonsSystem();
       break;
     case "5": // galaxies
@@ -812,6 +838,7 @@ function load() {
       ui.drawGravity.checked = drawGravity = false;
       ui.timestep.value = ui.tOut.innerText = timestep = 0.1;
       ui.drawGravityStrength.checked = drawGravityStrength = false;
+      ui.gravity.checked = true;
       const g1num = randInt(500, 1000);
       const g2num = randInt(500, 1000);
       generateGalaxy(
@@ -847,6 +874,7 @@ function load() {
       ui.drawGravity.checked = drawGravity = false;
       ui.timestep.value = ui.tOut.innerText = timestep = 0.25;
       ui.drawGravityStrength.checked = drawGravityStrength = false;
+      ui.gravity.checked = true;
       generateGalaxy(
         {
           x: center.x,
@@ -867,6 +895,7 @@ function load() {
       ui.drawGravity.checked = drawGravity = false;
       ui.timestep.value = ui.tOut.innerText = timestep = 0.25;
       ui.drawGravityStrength.checked = drawGravityStrength = false;
+      ui.gravity.checked = true;
       generateSolarSystem({ x: center.x, y: center.y }, { x: 0, y: 0 });
       break;
     case "8":
@@ -876,7 +905,13 @@ function load() {
       initPiCollisions();
       break;
     case "10":
-      initGrid();
+      initSquareGrid();
+      break;
+    case "11":
+      initHexGrid();
+      break;
+    case "12":
+      //
       break;
   }
   activeBodies = bodies.length;
@@ -943,7 +978,7 @@ Number.prototype.map = function (
   return mapped;
 };
 
-/** Class containing all the physical properties of a body with a method to draw and update */
+/** Class containing all the physical properties of a body */
 class Body {
   constructor(
     xPos = 0,
@@ -1147,7 +1182,7 @@ class Body {
   }
 }
 
-/** Calculate forces between each body, then the body.
+/** Calculate forces between each body, then draw them.
  * This is where the physics is
 */
 function runSim() {
@@ -1179,7 +1214,7 @@ function runSim() {
         } else {
           // calculate acceleration based on forces
           const dist = Math.sqrt(sqr);
-          let xAccel = 0, yAccel = 0, kForceX = 0, kForceY = 0;
+          let xAccel = 0, yAccel = 0, forceX = 0, forceY = 0, force = 0;
 
           // calculate gravity if needed
           if (G != 0 && gravity && !(body1.immovable && body2.immovable)) {
@@ -1190,22 +1225,34 @@ function runSim() {
             xAccel = (g * xDist) / dist;
             yAccel = (g * yDist) / dist;
           }
-          // calculate Coulomb force if needed
-          if (K != 0 && electrostatic) {
-            // repel if like charges, attract if opposite charges
-            const kForce = electrostatic ? (K * (-body1.charge) * body2.charge) / sqr : 0;
-            kForceX = kForce * xDist / dist;
-            kForceY = kForce * yDist / dist;
+          // calculate other force if needed
+          if (K != 0 && electrostatic || softbody) {
+            // coulomb force
+            if (electrostatic) {
+              // repel if like charges, attract if opposite charges
+              force += electrostatic ? (K * (-body1.charge) * body2.charge) / sqr : 0;
+            }
+            // softbody physics (spring force based on Hooke's law)
+            if (softbody && dist < 1.2 * 25) {
+              let springDist = dist - 25;
+              force += springDist * 100;
+              // dampening
+              body1.xVel *= 0.99; //(body1.xVel - vCoMX) * 0.99 + vCoMX;
+              body1.yVel *= 0.99; //(body1.yVel - vCoMY) * 0.99 + vCoMY;
+              body2.xVel *= 0.99; //(body2.xVel - vCoMX) * 0.99 + vCoMX;
+              body2.yVel *= 0.99; //(body2.yVel - vCoMY) * 0.99 + vCoMY;
+            }
+            forceX += force * xDist / dist;
+            forceY += force * yDist / dist;
           }
-
           // apply the forces
           if (!body1.immovable) {
-            body1.xAccel += (xAccel * body2.mass + kForceX / body1.mass);
-            body1.yAccel += (yAccel * body2.mass + kForceY / body1.mass);
+            body1.xAccel += (xAccel * body2.mass + forceX / body1.mass);
+            body1.yAccel += (yAccel * body2.mass + forceY / body1.mass);
           }
           if (!body2.immovable) {
-            body2.xAccel -= (xAccel * body1.mass + kForceX / body2.mass);
-            body2.yAccel -= (yAccel * body1.mass + kForceY / body2.mass);
+            body2.xAccel -= (xAccel * body1.mass + forceX / body2.mass);
+            body2.yAccel -= (yAccel * body1.mass + forceY / body2.mass);
           }
 
           // draw gravity strength lines

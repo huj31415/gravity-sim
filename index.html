@@ -51,9 +51,11 @@
           <option value="7">Random solar system</option>
           <option value="8">Newton's cradle</option>
           <option value="9">Pi collisions</option>
-          <option value="10">Grid</option>
+          <option value="10">Square grid</option>
+          <option value="11">Hex grid</option>
+          <!-- <option value="12"></option> -->
         </select>
-        <button id="loadPreset">Load preset</button>
+        <button id="loadPreset">Load preset (L)</button>
       </div>
       <div>
         <button id="toggle" class="fullwidth">Pause / Play (p)</button>
@@ -63,7 +65,7 @@
       <hr />
       <p class="header">Add a body: Ctrl+click / Alt+click</p>
       <div>
-        <input type="number" id="mass" name="mass" value="1000" />
+        <input type="number" id="mass" name="mass" value="1000" step="100" />
         <label for="mass">Mass</label>
       </div>
       <div>
@@ -103,11 +105,11 @@
         <label for="num">Number of objects</label>
       </div>
       <div>
-        <input type="number" id="maxSize" name="maxSize" value="5000" width="400px" />
+        <input type="number" id="maxSize" name="maxSize" value="5000" step="100" width="400px" />
         <label for="maxSize">Max mass</label>
       </div>
       <div>
-        <input type="number" id="minSize" name="minSize" value="1000" width="400px" />
+        <input type="number" id="minSize" name="minSize" value="1000" step="100" width="400px" />
         <label for="minSize">Min mass</label>
       </div>
       <div>
@@ -153,6 +155,10 @@
       <div>
         <input type="checkbox" id="electrostatic" name="electrostatic" />
         <label for="electrostatic">Electrostatic forces (k)</label>
+      </div>
+      <div>
+        <input type="checkbox" id="softbody" name="softbody" />
+        <label for="softbody">Pseudo-softbody forces (b)</label>
       </div>
       <div>
         <input type="checkbox" id="collide" name="collide" />
