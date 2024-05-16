@@ -1,7 +1,7 @@
-// todo: implement electrostatic force and field
+// todo: implement electrostatic and magnetic (?) fields
 let frameDelayMs = 0; // Chromebook Simulator (or for debug purposes): 0 for default requestAnimationFrame fps
 
-// initialize user interface elements
+// object containing the user interface elements
 const ui = {
   panel: document.getElementById("settings"),
   collapse: document.getElementById("toggleSettings"),
@@ -67,8 +67,9 @@ const ui = {
 };
 
 // utilities
+// calculate radius based on a spherical mass
 const getRadius = (mass) => Math.abs(Math.cbrt((mass * (3 / 4)) / Math.PI));
-
+// generate a random hex color
 const randColor = () => "#" + (~~(Math.random() * (16777215 - 5592405) + 5592405)).toString(16);
 
 // initialize main canvas
@@ -79,6 +80,7 @@ canvas.width = window.innerWidth;
 ui.viewport.innerText = canvas.width + " x " + canvas.height;
 let center = { x: canvas.width / 2, y: canvas.height / 2 };
 
+// make the canvas size responsive
 window.onresize = () => {
   canvas.height = window.innerHeight;
   canvas.width = window.innerWidth;
@@ -132,6 +134,7 @@ const minPotential = 0;
 const heatmapRes = 4;
 let minL = 0.1;
 
+// initialize settings
 let colorBySpeed = ui.colorByVel.checked,
   trace = ui.trace.checked,
   fade = ui.fade.checked,
@@ -152,6 +155,7 @@ let colorBySpeed = ui.colorByVel.checked,
   electrostatic = ui.electrostatic.checked,
   colorByCharge = ui.colorByCharge.checked;
 
+// initialize the ui inputs and then start the draw loop
 initParams();
 draw();
 
@@ -171,114 +175,7 @@ draw();
             ui.bodyCount.innerText = activeBodies;
             break;
           case ui.loadBtn: // load preset
-            initParams();
-            switch (ui.presets.value) {
-              case "0": // 500 body chaos
-                // ui.G.value = ui.GOut.innerText = 1;
-                ui.drawVector.checked = drawVector = false;
-                ui.drawGravity.checked = drawGravity = false;
-                ui.timestep.value = ui.tOut.innerText = 0.5;
-                ui.numBodies.value = numBodies = 500;
-                ui.maxMass.value = maxMass = 100;
-                ui.minMass.value = minMass = 50;
-                ui.drawGravityStrength.checked = drawGravityStrength = false;
-                initRandBodies(numBodies, minMass, maxMass, minCharge, maxCharge, initVel);
-                break;
-              case "1": // sun and 3 planets
-                ui.collide.checked = false;
-                ui.G.value = ui.GOut.innerText = G = 0.15;
-                sun3PlanetsSystem();
-                break;
-              case "2": // two body system
-                ui.collide.checked = false;
-                // ui.G.value = ui.GOut.innerText = G = 0.15;
-                binarySystem();
-                break;
-              case "3": // two body system (circular)
-                ui.collide.checked = false;
-                // ui.G.value = ui.GOut.innerText = G = 0.15;
-                binarySystem(true);
-                break;
-              case "4": // sun planets and moon
-                ui.collide.checked = false;
-                ui.G.value = ui.GOut.innerText = G = 0.25;
-                sunPlanetsMoonsSystem();
-                break;
-              case "5": // galaxies
-                ui.G.value = ui.GOut.innerText = 1;
-                ui.drawVector.checked = drawVector = false;
-                ui.drawGravity.checked = drawGravity = false;
-                ui.timestep.value = ui.tOut.innerText = timestep = 0.1;
-                ui.drawGravityStrength.checked = drawGravityStrength = false;
-                const g1num = randInt(500, 1000);
-                const g2num = randInt(500, 1000);
-                generateGalaxy(
-                  {
-                    x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
-                    y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
-                  },
-                  { x: randInt(-1, 1), y: randInt(-1, 1) },
-                  g1num,
-                  1,
-                  2,
-                  g1num / 2,
-                  0,
-                  false
-                );
-                generateGalaxy(
-                  {
-                    x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
-                    y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
-                  },
-                  { x: randInt(-1, 1), y: randInt(-1, 1) },
-                  g2num,
-                  1,
-                  2,
-                  g2num / 2,
-                  randInt(0, 2),
-                  false
-                );
-                break;
-              case "6": // solar system formation
-                ui.G.value = ui.GOut.innerText = 1;
-                ui.drawVector.checked = drawVector = false;
-                ui.drawGravity.checked = drawGravity = false;
-                ui.timestep.value = ui.tOut.innerText = timestep = 0.25;
-                ui.drawGravityStrength.checked = drawGravityStrength = false;
-                generateGalaxy(
-                  {
-                    x: center.x,
-                    y: center.y,
-                  },
-                  { x: 0, y: 0 },
-                  1500,
-                  5,
-                  10,
-                  1000,
-                  0,
-                  true
-                );
-                break;
-              case "7":
-                ui.G.value = ui.GOut.innerText = 1;
-                ui.drawVector.checked = drawVector = false;
-                ui.drawGravity.checked = drawGravity = false;
-                ui.timestep.value = ui.tOut.innerText = timestep = 0.25;
-                ui.drawGravityStrength.checked = drawGravityStrength = false;
-                generateSolarSystem({ x: center.x, y: center.y }, { x: 0, y: 0 });
-                break;
-              case "8":
-                initNewtonsCradle();
-                break;
-              case "9":
-                initPiCollisions();
-                break;
-              case "10":
-                initGrid();
-                break;
-            }
-            activeBodies = bodies.length;
-            ui.bodyCount.innerText = activeBodies;
+            load();
             break;
           case ui.add:
             activeBodies += 1;
@@ -325,26 +222,10 @@ draw();
             break;
         }
         // update settings
-        colorBySpeed = ui.colorByVel.checked;
-        trace = ui.trace.checked;
-        fade = ui.fade.checked;
-        drawGravity = ui.drawGravity.checked;
-        drawGravityStrength = ui.drawGravityStrength.checked;
-        drawGThreshold = ui.drawGThreshold.checked;
-        drawVector = ui.drawVector.checked;
-        collide = ui.collide.checked;
-        drawField = ui.heatmap.checked;
-        drawCoM = ui.drawCoM.checked;
-        trackCoM = ui.trackCoM.checked;
-        globalCollide = ui.globalCollide.checked;
-        drawOffscreen = ui.drawOffscreen.checked;
-        drawMouseVector = ui.drawMouseVector.checked;
-        inelastic = ui.inelastic.checked;
-        gravity = ui.gravity.checked;
-        electrostatic = ui.electrostatic.checked;
-        colorByCharge = ui.colorByCharge.checked;
-        frameDelayMs = ui.decoupleFPS.checked ? 0.1 : 0;
+        updateSettings();
       };
+
+      // toggle visibility of the settings panel
       ui.collapse.onclick = () => {
         ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
         if (ui.panel.classList.contains("hidden")) {
@@ -685,7 +566,7 @@ draw();
   }
 
   /**
-   * Generates a galaxy
+   * Generates a galaxy with num stars in circular orbits around a massive core
    * @param {Object} centerPos the position of the center
    * @param {Object} vel initial velocity of the galaxy
    * @param {Number} num the number of stars
@@ -740,7 +621,7 @@ draw();
     bodies.push(new Body(getRadius(mass), center.y, initV, 0, 0, mass));
   }
 
-  // set up three objects to generate 31415 collisions
+  // set up three objects to generate 31415 collisions - see 3blue1brown's video on it
   function initPiCollisions(initV = 1) {
     frameDelayMs = 0.1;
     ui.decoupleFPS.checked = true;
@@ -756,7 +637,7 @@ draw();
     bodies.push(new Body(center.x - 1000, center.y, initV, 0, 500, mass * ratio, "default", true, 0, false, "y"));
   }
 
-  // set up a grid of bodies
+  // set up a grid of bodies to smash with projectiles
   function initGrid(spacing = 25, mass = 1000, r = 12) {
     ui.gravity.checked = gravity = false;
     ui.inelastic.checked = inelastic = false;
@@ -768,7 +649,7 @@ draw();
   }
 
   /**
-   * Generates a solar system
+   * Generates a solar system, similar to a galaxy but the particles in orbit can collide
    * @param {Object} centerPos the position of the center
    * @param {Object} vel initial velocity of the system
    * @param {Number} num the number of planets
@@ -822,16 +703,16 @@ draw();
     bodies.push(new Body(center.x - 500, center.y, 0, 8, 5, 0, "blue"));
   }
 
-  // Binary system
+  // Binary system with calculated stable orbits
   function binarySystem(circular = false) {
     const m1 = randInt(5000, 100000);
     const m2 = randInt(5000, 100000);
     const x1 = randInt(100, 500);
     const x2 = (m1 * x1) / m2;
     const circularVel = m2 / (m1 + m2) * Math.sqrt(G * m2 / x1);
-    const v1 = circular ? circularVel : 
+    const v1 = circular ? circularVel :
       randInt(circularVel / 2, circularVel * 1.1);
-      // randInt(Math.cbrt(G * (m2) / (x1 + x2)), Math.sqrt(G * (m2 + m1) / 2 / (x1 + x2)));
+    // randInt(Math.cbrt(G * (m2) / (x1 + x2)), Math.sqrt(G * (m2 + m1) / 2 / (x1 + x2)));
     const v2 = (m1 * v1) / m2;
 
     bodies.push(new Body(center.x + x1, center.y, 0, v1, 0, m1));
@@ -865,6 +746,141 @@ function initParams() {
   minMass = parseFloat(ui.minMass.value);
   minCharge = parseFloat(ui.minCharge.value);
   maxCharge = parseFloat(ui.maxCharge.value);
+}
+
+/** update varables based on ui input values */
+function updateSettings() {
+  colorBySpeed = ui.colorByVel.checked;
+  trace = ui.trace.checked;
+  fade = ui.fade.checked;
+  drawGravity = ui.drawGravity.checked;
+  drawGravityStrength = ui.drawGravityStrength.checked;
+  drawGThreshold = ui.drawGThreshold.checked;
+  drawVector = ui.drawVector.checked;
+  collide = ui.collide.checked;
+  drawField = ui.heatmap.checked;
+  drawCoM = ui.drawCoM.checked;
+  trackCoM = ui.trackCoM.checked;
+  globalCollide = ui.globalCollide.checked;
+  drawOffscreen = ui.drawOffscreen.checked;
+  drawMouseVector = ui.drawMouseVector.checked;
+  inelastic = ui.inelastic.checked;
+  gravity = ui.gravity.checked;
+  electrostatic = ui.electrostatic.checked;
+  colorByCharge = ui.colorByCharge.checked;
+  frameDelayMs = ui.decoupleFPS.checked ? 0.1 : 0;
+}
+
+/** load a preset */
+function load() {
+  initParams();
+  switch (ui.presets.value) {
+    case "0": // 500 body chaos
+      // ui.G.value = ui.GOut.innerText = 1;
+      ui.drawVector.checked = drawVector = false;
+      ui.drawGravity.checked = drawGravity = false;
+      ui.timestep.value = ui.tOut.innerText = 0.5;
+      ui.numBodies.value = numBodies = 500;
+      ui.maxMass.value = maxMass = 100;
+      ui.minMass.value = minMass = 50;
+      ui.drawGravityStrength.checked = drawGravityStrength = false;
+      initRandBodies(numBodies, minMass, maxMass, minCharge, maxCharge, initVel);
+      break;
+    case "1": // sun and 3 planets
+      ui.collide.checked = false;
+      ui.G.value = ui.GOut.innerText = G = 0.15;
+      sun3PlanetsSystem();
+      break;
+    case "2": // two body system
+      ui.collide.checked = false;
+      // ui.G.value = ui.GOut.innerText = G = 0.15;
+      binarySystem();
+      break;
+    case "3": // two body system (circular)
+      ui.collide.checked = false;
+      // ui.G.value = ui.GOut.innerText = G = 0.15;
+      binarySystem(true);
+      break;
+    case "4": // sun planets and moon
+      ui.collide.checked = false;
+      ui.G.value = ui.GOut.innerText = G = 0.25;
+      sunPlanetsMoonsSystem();
+      break;
+    case "5": // galaxies
+      ui.G.value = ui.GOut.innerText = 1;
+      ui.drawVector.checked = drawVector = false;
+      ui.drawGravity.checked = drawGravity = false;
+      ui.timestep.value = ui.tOut.innerText = timestep = 0.1;
+      ui.drawGravityStrength.checked = drawGravityStrength = false;
+      const g1num = randInt(500, 1000);
+      const g2num = randInt(500, 1000);
+      generateGalaxy(
+        {
+          x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
+          y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
+        },
+        { x: randInt(-1, 1), y: randInt(-1, 1) },
+        g1num,
+        1,
+        2,
+        g1num / 2,
+        0,
+        false
+      );
+      generateGalaxy(
+        {
+          x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
+          y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
+        },
+        { x: randInt(-1, 1), y: randInt(-1, 1) },
+        g2num,
+        1,
+        2,
+        g2num / 2,
+        randInt(0, 2),
+        false
+      );
+      break;
+    case "6": // solar system formation
+      ui.G.value = ui.GOut.innerText = 1;
+      ui.drawVector.checked = drawVector = false;
+      ui.drawGravity.checked = drawGravity = false;
+      ui.timestep.value = ui.tOut.innerText = timestep = 0.25;
+      ui.drawGravityStrength.checked = drawGravityStrength = false;
+      generateGalaxy(
+        {
+          x: center.x,
+          y: center.y,
+        },
+        { x: 0, y: 0 },
+        1500,
+        5,
+        10,
+        1000,
+        0,
+        true
+      );
+      break;
+    case "7":
+      ui.G.value = ui.GOut.innerText = 1;
+      ui.drawVector.checked = drawVector = false;
+      ui.drawGravity.checked = drawGravity = false;
+      ui.timestep.value = ui.tOut.innerText = timestep = 0.25;
+      ui.drawGravityStrength.checked = drawGravityStrength = false;
+      generateSolarSystem({ x: center.x, y: center.y }, { x: 0, y: 0 });
+      break;
+    case "8":
+      initNewtonsCradle();
+      break;
+    case "9":
+      initPiCollisions();
+      break;
+    case "10":
+      initGrid();
+      break;
+  }
+  activeBodies = bodies.length;
+  ui.bodyCount.innerText = activeBodies;
 }
 
 /**
@@ -905,7 +921,7 @@ const isInView = (body, offset = { x: 0, y: 0 }) =>
   body.yPos >= offset.x + center.y - viewport.y / 2 - body.radius;
 
 /**
- * Map values from one range to another
+ * Map values from one range to another (lerp)
  * @param {Number} in_min minimum input value
  * @param {Number} in_max maximum input value
  * @param {Number} out_min minimum output value
@@ -927,6 +943,7 @@ Number.prototype.map = function (
   return mapped;
 };
 
+/** Class containing all the physical properties of a body with a method to draw and update */
 class Body {
   constructor(
     xPos = 0,
@@ -1130,7 +1147,9 @@ class Body {
   }
 }
 
-/** Calculate forces between each body, then the body */
+/** Calculate forces between each body, then the body.
+ * This is where the physics is
+*/
 function runSim() {
   // iterate through all combinations of bodies and add force to body total
   bodies.forEach((body, index) => {
@@ -1139,27 +1158,30 @@ function runSim() {
     if (bodies.length > 1 && timestep && (gravity && G || globalCollide)) {
       for (let i = index + 1; i < bodies.length; i++) {
         const body2 = bodies[i];
-        // calc gravity between body and bodies[i], then add forces
 
+        // calc gravity between body and bodies[i], then add forces
         const xDist = body2.xPos - body1.xPos;
         const yDist = body2.yPos - body1.yPos;
 
         const distThreshSqr = (body2.radius + body1.radius) * (body2.radius + body1.radius) + 1;
         const sqr = Math.max(xDist * xDist + yDist * yDist, distThreshSqr);
 
+        // check if bodies are colliding
         if (
           sqr == distThreshSqr &&
           bodies.includes(body1) &&
           bodies.includes(body2) &&
           body1.id != body2.id
         ) {
-          // don't skip a body after removing it
+          // collide the bodies
           if (globalCollide && body2.collide && body1.collide)
             collision(body1, body2);
-        } else {//if (G > 0 && gravity || electrostatic) {
+        } else {
+          // calculate acceleration based on forces
           const dist = Math.sqrt(sqr);
           let xAccel = 0, yAccel = 0, kForceX = 0, kForceY = 0;
 
+          // calculate gravity if needed
           if (G != 0 && gravity && !(body1.immovable && body2.immovable)) {
             // precalculate g / r^2
             const g = G / sqr;
@@ -1168,8 +1190,9 @@ function runSim() {
             xAccel = (g * xDist) / dist;
             yAccel = (g * yDist) / dist;
           }
+          // calculate Coulomb force if needed
           if (K != 0 && electrostatic) {
-            // Coulomb force - repel if like charges, attract if opposite charges
+            // repel if like charges, attract if opposite charges
             const kForce = electrostatic ? (K * (-body1.charge) * body2.charge) / sqr : 0;
             kForceX = kForce * xDist / dist;
             kForceY = kForce * yDist / dist;
@@ -1189,7 +1212,7 @@ function runSim() {
           if (drawGravityStrength && gravity && G != 0) {
             const strength = Math.abs(1 - 10 / (G / sqr * body1.mass * body2.mass + 10));
             const drawThreshold = drawGThreshold ? (trace ? 1e-4 : 1e-2) : 0;
-            // determine whether to draw
+            // determine whether to draw for better performance
             if (strength >= drawThreshold) {
               ctx.beginPath();
               ctx.strokeStyle =
@@ -1204,6 +1227,7 @@ function runSim() {
         }
       }
     }
+    // draw the updated body
     body1.draw();
   });
 }
@@ -1225,6 +1249,7 @@ function merge(body1, body2) {
   const larger = (body1.immovable || body2.immovable) ? (body1.immovable ? body1 : body2) : (body1.mass > body2.mass ? body1 : body2);
   const smaller = larger === body1 ? body2 : body1;
 
+  // if one is immovable, merge into that one
   if (!larger.immovable) {
     // get velocity based on momentum
     larger.xVel = (body1.getMomentum().x + body2.getMomentum().x) / mass;
@@ -1235,13 +1260,15 @@ function merge(body1, body2) {
     larger.yPos = (body1.yPos * body1.mass + body2.yPos * body2.mass) / mass;
   }
 
+  // if the density has been manually set, don't change it
   if (Math.abs(larger.radius - getRadius(larger.mass)) < 0.1) larger.radius = getRadius(mass);
+  // Conserve mass and charge
   larger.mass = mass;
   larger.charge += smaller.charge;
 
-  // maintain tracking
+  // Maintain tracking
   if (trackBody === smaller) trackBody = larger;
-  // remove the smaller object
+  // Remove the smaller object
   remove(smaller);
 }
 
@@ -1251,10 +1278,11 @@ function merge(body1, body2) {
  * @param {Body} body2 the second body
  */
 function collision(body1, body2) {
+  // increment collision counter
   collisionCount += 1;
   ui.collisionCount.innerText = collisionCount;
-  if (inelastic) merge(body1, body2);
-  else {
+  if (inelastic) merge(body1, body2); // combine the bodies into one
+  else { // calculate non-perfectly inelastic collisions
     // larger and smaller bodies
     const larger = (body1.immovable || body2.immovable) ? (body1.immovable ? body1 : body2) : (body1.mass > body2.mass ? body1 : body2);
     const smaller = larger === body1 ? body2 : body1;
@@ -1270,6 +1298,7 @@ function collision(body1, body2) {
     const totalMass = body1.mass + body2.mass;
     const massDiff = body1.mass - body2.mass;
 
+    // set the bodies to not touch
     if (!larger.immovable && larger.mass - smaller.mass * 2 <= 0) {
       // set the bodies to just touch to avoid intersecting
       const midpointX = (larger.xPos * smaller.mass + smaller.xPos * larger.mass) / totalMass;
@@ -1325,7 +1354,7 @@ function collision(body1, body2) {
     const cosPhi = Math.cos(phi);
     const sinPhi = Math.sin(phi);
 
-    // switch back to original frame and get final velocities, then implement new velocity with CoR
+    // switch back to original frame and get final velocities, then implement new velocity with CoR if not immovable
     if (!body1.immovable) {
       const v1xFinal = cosPhi * v1finalXrel - sinPhi * v1relY;
       const v1yFinal = sinPhi * v1finalXrel + cosPhi * v1relY;
@@ -1342,7 +1371,7 @@ function collision(body1, body2) {
 }
 
 /**
- * calculate field strength at point, then draw vector
+ * calculate field strength at a given point
  * @param {Number} x X-coordinate for field calculation
  * @param {Number} y Y-coordinate for field calculation
  * @param {Number} res resolution of the grid for full field calculation
@@ -1352,6 +1381,8 @@ function collision(body1, body2) {
 function calcFieldAtPoint(x, y, res = 0, hypot = false) {
   let xPot = 0,
     yPot = 0;
+
+  // accumulate total potential using vector sum
   bodies.forEach((body) => {
     let distance = res
       ? Math.hypot(body.xPos - x - res / 2, body.yPos - y - res / 2)
@@ -1371,7 +1402,7 @@ function calcFieldAtPoint(x, y, res = 0, hypot = false) {
 }
 
 /**
- * Converts a color from HSL to RGB
+ * Converts a color from HSL to RGB for the heatmap
  * @param {Number} h hue as an angle [0, 360]
  * @param {Number} s saturation [0, 1]
  * @param {Number} l lightness [0, 1]
@@ -1390,8 +1421,10 @@ function drawFullField() {
   const imgData = ctx.createImageData(width, canvas.height);
   const data = imgData.data;
 
+  // used to adjust coloring based on the max potential value
   const maxPotential = (G * maxBody.mass) / (maxBody.radius * maxBody.radius);
 
+  // calculate for every res*res block of pixels
   for (let y = center.y - viewport.y / 2, py = 0; y < center.y + viewport.y / 2; y += res, py++) {
     for (let x = center.x - viewport.x / 2, px = 0; x < center.x + viewport.x / 2; x += res, px++) {
       // const vector = calcFieldAtPoint(x, y, res);
@@ -1404,6 +1437,8 @@ function drawFullField() {
 
         // Convert HSL to RGB
         rgbColor = hsl2rgb(hue, 1, lightness);
+
+        // set the pixels to that color
         for (let i = 0; i < heatmapRes; i++) {
           for (let j = 0; j < heatmapRes; j++) {
             const index = ((py * 4 + i) * width + (px * 4 + j)) * heatmapRes;
@@ -1416,16 +1451,18 @@ function drawFullField() {
       }
     }
   }
+  // update the field visualization
   ctx.putImageData(imgData, 0, 0);
 }
 
-/** display gravitational field vector at a point */
+/** display gravitational field vector at the mouse position */
 function drawPointField() {
   const x = (mouseX / canvas.width) * viewport.x + center.x - viewport.x / 2;
   const y = (mouseY / canvas.height) * viewport.y + center.y - viewport.y / 2;
 
   const vector = calcFieldAtPoint(x, y);
 
+  // draw the vector line
   ctx.beginPath();
   ctx.strokeStyle = "white";
   ctx.lineWidth = 1 / totalzoom;
@@ -1441,7 +1478,8 @@ function calcCoM() {
   let CoM = { x: 0, y: 0 };
   let mass = 0;
   bodies.forEach((body) => {
-    CoM.x += body.xPrev * body.mass; // use prevpos to align with draw
+    // use prevpos to align with draw
+    CoM.x += body.xPrev * body.mass;
     CoM.y += body.yPrev * body.mass;
     mass += body.mass;
   });
@@ -1451,7 +1489,7 @@ function calcCoM() {
 }
 
 /**
- * Pan by adjusting positions of all bodies
+ * Pan by adjusting positions of all bodies based on an offset value
  * @param {Object} offset
  * @param {Boolean} clrTrails
  */
@@ -1461,26 +1499,35 @@ function pan(offset = { x: 0, y: 0 }, clrTrails = true) {
     continuous = false;
     clearTrails = true;
   }
+  // offset each body
   currentOffset.x += offset.x;
   currentOffset.y += offset.y;
   bodies.forEach((body) => {
     body.xPos += offset.x;
     body.yPos += offset.y;
   });
+
   ui.offset.innerText = Math.floor(currentOffset.x) + " Y=" + Math.floor(currentOffset.y);
 }
 
+/**
+ * Zooms the canvas using transformations, then adjusts viewport values
+ * @param {Number} zoomfactor the factor to zoom by 
+ */
 function zoom(zoomfactor = 0) {
   if (zoomfactor == 0) {
+    // reset zoom
     zoomfactor = 1 / totalzoom;
     totalzoom = 1;
     viewport.x = canvas.width;
     viewport.y = canvas.height;
   } else {
+    // adjust zoom
     totalzoom *= zoomfactor;
     viewport.x /= zoomfactor;
     viewport.y /= zoomfactor;
   }
+  // transformation
   ctx.transform(
     zoomfactor,
     0,
@@ -1506,12 +1553,13 @@ function zoom(zoomfactor = 0) {
  */
 function track(body) {
   if (newBody) {
-    // pan({ x: -currentOffset.x, y: -currentOffset.y });
+    // place the tracked body in the center
     pan({
       x: center.x - body.xPos,// - currentOffset.x,
       y: center.y - body.yPos,// - currentOffset.y,
     });
   }
+  // follow the body
   pan({ x: -body.xVel * timestep, y: -body.yVel * timestep }, false);
   newBody = false;
 }
@@ -1529,6 +1577,7 @@ function draw() {
     drawVector = false;
   }
 
+  // update the FPS and bodycount graphs
   updateGraphs(100);
 
   if (!maxBody && bodies[0]) maxBody = bodies[0];
@@ -1537,31 +1586,37 @@ function draw() {
   // check draw settings and draw stuff
   {
     if (trackBody) track(trackBody);
+    // pan if needed
     if (panOffset.x != 0 || panOffset.y != 0) {
       pan(panOffset, false);
       trace = false;
     }
+    // fade the trails if needed, or draw the field, or remove the trails
     if (fade && trace && timestep) {
+      // fade by covering canvas with a slightly opaque black
       ctx.fillStyle = "rgba(0, 0, 0, " + fadeStrength + ")";
       ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
-    } else if (!trace && drawField && G) {
-      // ctx.fillStyle = "hsl(240, 100%, " + minL * 100 + "%)";
-      // ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
-      if (bodies[0]) drawFullField();
+    } else if (!trace && drawField && G && bodies[0]) {
+      // draw the field
+      drawFullField();
     } else if (!trace) {
+      // remove trails by drawing black over the canvas
       ctx.fillStyle = "rgba(0, 0, 0, 1)";
       ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
     }
     // draw collision box
     if (collide) {
+      // set the collision box at the current viewport location
       if (!collideOffset.x && !collideOffset.y) {
         collideOffset.x = currentOffset.x;
         collideOffset.y = currentOffset.y;
       }
       if (trackBody) {
+        // can't have trails while colliding
         ctx.fillStyle = "rgba(0, 0, 0, 1)";
         ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
       }
+      // draw the box
       ctx.strokeStyle = "white";
       ctx.lineWidth = 1;
       ctx.strokeRect(
@@ -1579,6 +1634,7 @@ function draw() {
   if (continueTrace) trace = true;
   if (drawMouseVector) drawPointField();
 
+  // draw CoM
   if (bodies.length && drawCoM) {
     CoM = calcCoM();
     ctx.beginPath();
@@ -1590,32 +1646,34 @@ function draw() {
       pan({ x: center.x - CoM.x, y: center.y - CoM.y }, false);
     }
   }
+  // clear the trails if needed
   if (clearTrails) {
     ctx.fillStyle = "rgba(0, 0, 0, 1)";
     ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
     clearTrails = false;
   }
 
+  // call the loop again
   frameDelayMs ? setTimeout(draw, frameDelayMs) : requestAnimationFrame(draw);
 }
 
 /**
- * Display framerate and number of bodies
+ * Update graphs to display framerate and number of bodies
  * @param {Number} interval interval to measure and display values
  */
 function updateGraphs(interval) {
   // get fps
   frameCount++;
-
   const currentTime = performance.now();
   const elapsedTime = currentTime - lastTime;
 
+  // only update in specific intervals
   if (elapsedTime >= interval) {
     // Update 10 times per second
     const fps = frameCount / (elapsedTime / 1000);
     ui.fps.innerText = ~~(fps * 100) / 100;
 
-    //let xCoord = (currentTime / 500 * 3) % fpsGraph.width;
+    // draw fps graph
     xCoord += 2;
     fpsCtx.beginPath();
     fpsCtx.strokeStyle = fps >= 15 ? (fps >= 30 ? "lightgreen" : "orange") : "red"; //"white";
@@ -1631,6 +1689,7 @@ function updateGraphs(interval) {
     frameCount = 0;
     lastTime = currentTime;
 
+    // draw bodycount graph
     bodyCtx.beginPath();
     bodyCtx.strokeStyle =
       activeBodies >= 500 ? "red" : activeBodies >= 200 ? "orange" : "lightgreen";
