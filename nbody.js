@@ -16,7 +16,6 @@ const ui = {
   drawGThreshold: document.getElementById("drawGThreshold"),
   continuous: document.getElementById("continuous"),
   G: document.getElementById("g"),
-  GOut: document.getElementById("gOut"),
   collide: document.getElementById("collide"),
   maxMass: document.getElementById("maxSize"),
   minMass: document.getElementById("minSize"),
@@ -58,13 +57,15 @@ const ui = {
   electrostatic: document.getElementById("electrostatic"),
   colorByCharge: document.getElementById("colorByCharge"),
   K: document.getElementById("K"),
-  KOut: document.getElementById("KOut"),
   uniformg: document.getElementById("uniformg"),
-  uniformgOut: document.getElementById("uniformgOut"),
   gravity: document.getElementById("gravity"),
   immovable: document.getElementById("immovable"),
   decoupleFPS: document.getElementById("decoupleFPS"),
   softbody: document.getElementById("softbody"),
+  springConst: document.getElementById("springConst"),
+  dampening: document.getElementById("dampening"),
+  dampOut: document.getElementById("dampOut"),
+  springEquilPos: document.getElementById("softbodyEquilPos"),
 };
 
 // utilities
@@ -110,6 +111,9 @@ const Gconst = 6.6743 * Math.pow(10, -11);
 let numBodies, maxMass, minMass, initVel, timestep, oldTimestep, CoM, maxCharge, minCharge, uniformg;
 let continuous = true;
 let CoR = 1;
+let springConst = 100;
+let dampening = 0.99;
+let springEquilPos = 25;
 
 // tracking variables
 let collisionCount = (frameCount = bodyCount = activeBodies = 0);
@@ -259,12 +263,10 @@ draw();
       });
 
       ui.G.addEventListener("input", (event) => {
-        ui.GOut.innerText = parseFloat(event.target.value);
         G = parseFloat(event.target.value);
       });
 
       ui.uniformg.addEventListener("input", (event) => {
-        ui.uniformgOut.innerText = parseFloat(event.target.value);
         uniformg = parseFloat(event.target.value);
         if (uniformg) {
           collide = true;
@@ -273,8 +275,20 @@ draw();
       });
 
       ui.K.addEventListener("input", (event) => {
-        ui.KOut.innerText = parseFloat(event.target.value);
         K = parseFloat(event.target.value);
+      });
+
+      ui.springConst.addEventListener("input", (event) => {
+        springConst = parseInt(event.target.value);
+      });
+
+      ui.dampening.addEventListener("input", (event) => {
+        ui.dampOut.innerText = parseFloat(event.target.value);
+        dampening = 1 - parseFloat(event.target.value);
+      });
+
+      ui.springEquilPos.addEventListener("input", (event) => {
+        springEquilPos = parseInt(event.target.value);
       });
 
       ui.initVel.addEventListener("input", (event) => {
@@ -645,9 +659,11 @@ draw();
   }
 
   // set up a grid of bodies to smash with objects (square packing)
-  function initSquareGrid(spacing = 25, mass = 100, r = softbody ? 4 : 12) { // r = 12
+  function initSquareGrid(spacing = 25, mass = 100, r = 4) { // r = 12 for non-softbody
     ui.gravity.checked = gravity = false;
     ui.inelastic.checked = inelastic = false;
+    ui.softbody.checked = softbody = true;
+    ui.CoR.value = ui.CoROut.innerText = CoR = 0;
     for (let x = spacing / 2; x < window.innerWidth; x += spacing) {
       for (let y = spacing / 2; y < window.innerHeight; y += spacing) {
         bodies.push(new Body(x, y, 0, 0, r, mass, "default"));
@@ -656,9 +672,11 @@ draw();
   }
 
   // set up a grid of bodies to smash with objects (hexagonal packing)
-  function initHexGrid(spacing = 25, mass = 100, r = softbody ? 4 : 12) { // r = 12
+  function initHexGrid(spacing = 25, mass = 100, r = 4) { // r = 12 for non-softbody
     ui.gravity.checked = gravity = false;
     ui.inelastic.checked = inelastic = false;
+    ui.CoR.value = ui.CoROut.innerText = CoR = 0;
+    ui.softbody.checked = softbody = true;
     let ySpacing = Math.sqrt(3) * spacing / 2;
     for (let x = spacing / 2; x < window.innerWidth; x += spacing) {
       for (let y = spacing / 2, odd = true; y < window.innerHeight; y += ySpacing, odd = !odd) {
@@ -1033,6 +1051,65 @@ class Body {
       let hue = Math.max(240 - 10 * speed, 0);
       drawColor = "hsl(" + hue + ", 100%, 50%)";
     }
+    // Update the position of the body
+    if (!this.immovable) {
+      this.xPrev = this.xPos;
+      this.yPrev = this.yPos;
+
+      // implement acceleration
+      this.xVel += this.xAccel * timestep;
+      this.yVel += this.yAccel * timestep;
+
+      // integrate velocity every frame
+      this.xPos += this.xVel * timestep;
+      this.yPos += this.yVel * timestep;
+
+      // reset acceleration
+      this.xAccel = 0;
+      this.yAccel = uniformg;
+
+      // edge collision
+      if (collide) {
+        const xOffset = -collideOffset.x + currentOffset.x;
+        const yOffset = -collideOffset.y + currentOffset.y;
+        if (
+          this.xPos >= xOffset + canvas.width - this.radius ||
+          this.xPos <= xOffset + this.radius
+        ) {
+          // increment collision
+          collisionCount += 1;
+          ui.collisionCount.innerText = collisionCount;
+
+          // reverse velocity and implement CoR
+          this.xVel = CoR * -this.xVel;
+          this.yVel *= CoR;
+
+          // set position within box, visual glitch but accurate
+          if (this.xPos >= xOffset + canvas.width - this.radius) {
+            this.xPos = 2 * (xOffset + canvas.width - this.radius) - this.xPos;
+          } else {
+            this.xPos = 2 * (xOffset + this.radius) - this.xPos;
+          }
+        }
+        if (
+          this.yPos >= yOffset + canvas.height - this.radius ||
+          this.yPos <= yOffset + this.radius
+        ) {
+          // increment collision
+          collisionCount += 1;
+          ui.collisionCount.innerText = collisionCount;
+
+          // reverse velocity and implement CoR
+          this.xVel *= CoR;
+          this.yVel = CoR * -this.yVel;
+
+          // set position within box, visual glitch but accurate
+          if (this.yPos >= yOffset + canvas.height - this.radius)
+            this.yPos = 2 * (yOffset + canvas.height - this.radius) - this.yPos;
+          else this.yPos = 2 * (yOffset + this.radius) - this.yPos;
+        }
+      }
+    }
 
     // Draw the body
     {
@@ -1132,53 +1209,6 @@ class Body {
         }
       }
     }
-
-    // Update the position of the body
-    if (!this.immovable) {
-      this.xPrev = this.xPos;
-      this.yPrev = this.yPos;
-
-      // edge collision - set accel to 0 when colliding to prevent changes in velocity
-      if (collide) {
-        if (
-          this.xPos >= -collideOffset.x + currentOffset.x + canvas.width - this.radius ||
-          this.xPos <= -collideOffset.x + currentOffset.x + this.radius
-        ) {
-          collisionCount += 1;
-          ui.collisionCount.innerText = collisionCount;
-          this.xVel = CoR * -this.xVel;
-          this.yVel *= CoR;
-          // this.xAccel = 0;
-          if (this.xPos >= -collideOffset.x + currentOffset.x + canvas.width - this.radius)
-            this.xPos = -collideOffset.x + currentOffset.x + canvas.width - this.radius;
-          else this.xPos = -collideOffset.x + currentOffset.x + this.radius;
-        }
-        if (
-          this.yPos >= -collideOffset.y + currentOffset.y + canvas.height - this.radius ||
-          this.yPos <= -collideOffset.y + currentOffset.y + this.radius
-        ) {
-          collisionCount += 1;
-          ui.collisionCount.innerText = collisionCount;
-          this.xVel *= CoR;
-          this.yVel = CoR * -this.yVel;
-          // this.xAccel = 0;
-          if (this.yPos >= -collideOffset.y + currentOffset.y + canvas.height - this.radius)
-            this.yPos = -collideOffset.y + currentOffset.y + canvas.height - this.radius;
-          else this.yPos = -collideOffset.y + currentOffset.y + this.radius;
-        }
-      }
-      // implement acceleration
-      this.xVel += this.xAccel * timestep;
-      this.yVel += this.yAccel * timestep;
-
-      // integrate velocity every frame
-      this.xPos += this.xVel * timestep;
-      this.yPos += this.yVel * timestep;
-
-      // reset acceleration
-      this.xAccel = 0;
-      this.yAccel = uniformg;
-    }
   }
 }
 
@@ -1233,14 +1263,14 @@ function runSim() {
               force += electrostatic ? (K * (-body1.charge) * body2.charge) / sqr : 0;
             }
             // softbody physics (spring force based on Hooke's law)
-            if (softbody && dist < 1.2 * 25) {
-              let springDist = dist - 25;
-              force += springDist * 100;
+            if (softbody && dist < springEquilPos * 1.2) {
+              let springDist = dist - springEquilPos;
+              force += springDist * springConst;
               // dampening
-              body1.xVel *= 0.99; //(body1.xVel - vCoMX) * 0.99 + vCoMX;
-              body1.yVel *= 0.99; //(body1.yVel - vCoMY) * 0.99 + vCoMY;
-              body2.xVel *= 0.99; //(body2.xVel - vCoMX) * 0.99 + vCoMX;
-              body2.yVel *= 0.99; //(body2.yVel - vCoMY) * 0.99 + vCoMY;
+              body1.xVel *= dampening; //(body1.xVel - vCoMX) * 0.99 + vCoMX;
+              body1.yVel *= dampening; //(body1.yVel - vCoMY) * 0.99 + vCoMY;
+              body2.xVel *= dampening; //(body2.xVel - vCoMX) * 0.99 + vCoMX;
+              body2.yVel *= dampening; //(body2.yVel - vCoMY) * 0.99 + vCoMY;
             }
             forceX += force * xDist / dist;
             forceY += force * yDist / dist;
@@ -1525,9 +1555,8 @@ function calcCoM() {
   let CoM = { x: 0, y: 0 };
   let mass = 0;
   bodies.forEach((body) => {
-    // use prevpos to align with draw
-    CoM.x += body.xPrev * body.mass;
-    CoM.y += body.yPrev * body.mass;
+    CoM.x += body.xPos * body.mass;
+    CoM.y += body.yPos * body.mass;
     mass += body.mass;
   });
   CoM.x /= mass;

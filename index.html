@@ -42,6 +42,7 @@
       <div>
         <select id="presets" name="presets">
           <option value="0">500 random bodies</option>
+          <optgroup label="Orbital mechanics & gravity"></optgroup>
           <option value="1">3 planets + sun</option>
           <option value="2">Random binary</option>
           <option value="3">Random circular binary</option>
@@ -49,8 +50,10 @@
           <option value="5">Galaxies</option>
           <option value="6">Solar system formation</option>
           <option value="7">Random solar system</option>
+          <optgroup label="Momentum and collisions"></optgroup>
           <option value="8">Newton's cradle</option>
           <option value="9">Pi collisions</option>
+          <optgroup label="Softbody"></optgroup>
           <option value="10">Square grid</option>
           <option value="11">Hex grid</option>
           <!-- <option value="12"></option> -->
@@ -133,32 +136,40 @@
         <label for="timestep">Timestep (<span id="tOut">0.5</span>)</label>
       </div>
       <div>
-        <input type="number" id="g" name="g" value="1" max="2" min="-2" step=".1" width="400px" /> <!-- default 1-->
-        <label for="g">G constant (<span id="gOut">1</span>)</label>
-      </div>
-      <div>
-        <input type="number" id="uniformg" name="uniformg" value="0.00" max="1" min="-1" step=".05" width="400px" /> <!-- default 1-->
-        <label for="uniformg">Uniform g (<span id="uniformgOut">0</span>)</label>
-      </div>
-      <div>
-        <input type="number" id="K" name="K" value="500000" max="10000000" min="-10000000" step="10000" width="400px" /> <!-- default 1-->
-        <label for="K">k constant (<span id="KOut">50000</span>)</label>
-      </div>
-      <div>
-        <input type="range" id="CoR" name="CoR" value="1" max="2" min="0" step="0.1" width="400px" />
-        <label for="CoR">Restitution coeff (<span id="CoROut">1</span>)</label>
-      </div>
-      <div>
         <input type="checkbox" id="gravity" name="gravity" checked />
         <label for="gravity">Gravity (g)</label>
+      </div>
+      <div>
+        <input type="number" id="g" name="g" value="1" max="2" min="-2" step=".1" width="400px" /> <!-- default 1-->
+        <label for="g">G constant</label>
+      </div>
+      <div>
+        <input type="number" id="uniformg" name="uniformg" value="0.00" max="1" min="-1" step=".05" width="400px" /> <!-- default 0-->
+        <label for="uniformg">Uniform g</label>
       </div>
       <div>
         <input type="checkbox" id="electrostatic" name="electrostatic" />
         <label for="electrostatic">Electrostatic forces (k)</label>
       </div>
       <div>
+        <input type="number" id="K" name="K" value="500000" max="10000000" min="-10000000" step="10000" width="400px" />
+        <label for="K">k constant (<span id="KOut">50000</span>)</label>
+      </div>
+      <div>
         <input type="checkbox" id="softbody" name="softbody" />
         <label for="softbody">Pseudo-softbody forces (b)</label>
+      </div>
+      <div>
+        <input type="number" id="springConst" name="springConst" value="100" max="1000" min="0" step="10" width="400px" />
+        <label for="springConst">Spring constant</label>
+      </div>
+      <div>
+        <input type="number" id="softbodyEquilPos" name="softbodyEquilPos" value="25" max="1000" min="0" step="1" width="400px" />
+        <label for="softbodyEquilPos">Spring equilibrium</label>
+      </div>
+      <div>
+        <input type="range" id="dampening" name="dampening" value="0.01" max="1" min="0" step="0.01" width="400px" />
+        <label for="dampening">Dampening (<span id="dampOut">0.01</span>)</label>
       </div>
       <div>
         <input type="checkbox" id="collide" name="collide" />
@@ -167,6 +178,10 @@
       <div>
         <input type="checkbox" id="globalCollide" name="globalCollide" checked />
         <label for="globalCollide">Simulate particle collisions</label>
+      </div>
+      <div>
+        <input type="range" id="CoR" name="CoR" value="1" max="2" min="0" step="0.1" width="400px" />
+        <label for="CoR">Restitution coeff (<span id="CoROut">1</span>)</label>
       </div>
       <div>
         <input type="checkbox" id="collideType" name="collideType" checked />
