@@ -6,6 +6,8 @@
   <title>2D n-body particle simulation</title>
   <link rel="stylesheet" href="style.css" />
   <script src="./nbody.js" defer></script>
+  <script src="./presets.js" defer></script>
+  <script src="./events.js" defer></script>
 </head>
 
 <body>
@@ -104,15 +106,15 @@
       <hr />
       <p class="header">Random body generation params</p>
       <div>
-        <input type="number" id="num" name="num" value="5" width="400px" />
+        <input type="number" id="num" name="num" value="500" width="400px" />
         <label for="num">Number of objects</label>
       </div>
       <div>
-        <input type="number" id="maxSize" name="maxSize" value="5000" step="100" width="400px" />
+        <input type="number" id="maxSize" name="maxSize" value="100" step="100" width="400px" />
         <label for="maxSize">Max mass</label>
       </div>
       <div>
-        <input type="number" id="minSize" name="minSize" value="1000" step="100" width="400px" />
+        <input type="number" id="minSize" name="minSize" value="50" step="100" width="400px" />
         <label for="minSize">Min mass</label>
       </div>
       <div>
@@ -229,7 +231,7 @@
       </div>
       <div>
         <input type="checkbox" id="drawGStrength" name="drawGStrength" />
-        <label for="drawGStrength">Draw gravity strength (slow)</label>
+        <label for="drawGStrength">Draw gravity strength</label>
       </div>
       <div>
         <input type="checkbox" id="drawGThreshold" name="drawGThreshold" checked />
@@ -242,6 +244,14 @@
       <div>
         <input type="checkbox" id="heatmap" name="heatmap" />
         <label for="heatmap">Show gravitational field (SLOW)</label>
+      </div>
+      <div>
+        <input type="checkbox" id="drawKStrength" name="drawKStrength" />
+        <label for="drawKStrength">Draw electrostatic strength</label>
+      </div>
+      <div>
+        <input type="checkbox" id="drawKThreshold" name="drawKThreshold" checked />
+        <label for="drawKThreshold">Electrostatic draw threshold</label>
       </div>
       <div>
         <input type="checkbox" id="drawCoM" name="drawCoM" />

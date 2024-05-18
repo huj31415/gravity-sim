@@ -57,6 +57,8 @@ const ui = {
   electrostatic: document.getElementById("electrostatic"),
   colorByCharge: document.getElementById("colorByCharge"),
   K: document.getElementById("K"),
+  drawKStrength: document.getElementById("drawKStrength"),
+  drawKThreshold: document.getElementById("drawKThreshold"),
   uniformg: document.getElementById("uniformg"),
   gravity: document.getElementById("gravity"),
   immovable: document.getElementById("immovable"),
@@ -118,7 +120,7 @@ let springEquilPos = 25;
 // tracking variables
 let collisionCount = (frameCount = bodyCount = activeBodies = 0);
 let lastTime = performance.now();
-let clearTrails = (paused = false);
+let clearTrails = false, paused = false;
 
 // interactive variables
 let panOffset = { x: 0, y: 0 };
@@ -159,616 +161,13 @@ let colorBySpeed = ui.colorByVel.checked,
   inelastic = ui.inelastic.checked,
   electrostatic = ui.electrostatic.checked,
   colorByCharge = ui.colorByCharge.checked,
+  drawKStrength = ui.drawKStrength.checked,
+  drawKThreshold = ui.drawKThreshold.checked,
   softbody = ui.softbody.checked;
 
 // initialize the ui inputs and then start the draw loop
 initParams();
 draw();
-
-// events
-{
-  // form event listeners
-  {
-    // button listeners
-    {
-      ui.panel.onclick = (event) => {
-        // buttons
-        switch (event.target) {
-          case ui.randBtn: // generate random
-            initParams();
-            initRandBodies(numBodies, minMass, maxMass, minCharge, maxCharge, initVel, true);
-            activeBodies = bodies.length;
-            ui.bodyCount.innerText = activeBodies;
-            break;
-          case ui.loadBtn: // load preset
-            load();
-            break;
-          case ui.add:
-            activeBodies += 1;
-            ui.bodyCount.innerText = activeBodies;
-            initParams();
-            initRandBodies(1, minMass, maxMass, minCharge, maxCharge, initVel);
-            break;
-          case ui.clear:
-            bodies = [];
-            ctx.fillStyle = "rgba(0, 0, 0, 1)";
-            ctx.fillRect(
-              center.x - viewport.x / 2,
-              center.y - viewport.y / 2,
-              viewport.x,
-              viewport.y
-            );
-            activeBodies = bodies.length;
-            ui.bodyCount.innerText = activeBodies;
-            collisionCount = ui.collisionCount.innerText = 0;
-            break;
-          case ui.clrOffscreen:
-            let offset = {
-              x: collide ? -collideOffset.x + currentOffset.x : 0,
-              y: collide ? -collideOffset.y + currentOffset.y : 0,
-            };
-            bodies.forEach((body) => {
-              if (!isInView(body, offset)) {
-                remove(body);
-              }
-            });
-            activeBodies = bodies.length;
-            ui.bodyCount.innerText = activeBodies;
-            break;
-          case ui.toggle:
-            paused = !paused;
-            if (timestep) {
-              oldTimestep = timestep;
-              timestep = 0;
-              ui.timestep.value = 0;
-            } else {
-              timestep = oldTimestep;
-              ui.timestep.value = timestep;
-            }
-            break;
-        }
-        // update settings
-        updateSettings();
-      };
-
-      // toggle visibility of the settings panel
-      ui.collapse.onclick = () => {
-        ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
-        if (ui.panel.classList.contains("hidden")) {
-          ui.panel.classList.remove("hidden");
-        } else {
-          ui.panel.classList.add("hidden");
-        }
-      };
-    }
-
-    // input listeners
-    {
-      ui.trace.addEventListener("input", () => {
-        if (ui.trace.checked) {
-          ui.heatmap.checked = drawField = false;
-        }
-      });
-      ui.timestep.addEventListener("input", (event) => {
-        ui.tOut.innerText = parseFloat(event.target.value);
-        timestep = parseFloat(event.target.value);
-      });
-      ui.CoR.addEventListener("input", (event) => {
-        ui.CoROut.innerText = parseFloat(event.target.value);
-        CoR = parseFloat(event.target.value);
-      });
-      ui.fadeStrength.addEventListener("input", (event) => {
-        ui.fadeOutput.innerText = parseFloat(event.target.value);
-        fadeStrength = parseFloat(event.target.value);
-      });
-
-      ui.G.addEventListener("input", (event) => {
-        G = parseFloat(event.target.value);
-      });
-
-      ui.uniformg.addEventListener("input", (event) => {
-        uniformg = parseFloat(event.target.value);
-        if (uniformg) {
-          collide = true;
-          ui.collide.checked = true;
-        }
-      });
-
-      ui.K.addEventListener("input", (event) => {
-        K = parseFloat(event.target.value);
-      });
-
-      ui.springConst.addEventListener("input", (event) => {
-        springConst = parseInt(event.target.value);
-      });
-
-      ui.dampening.addEventListener("input", (event) => {
-        ui.dampOut.innerText = parseFloat(event.target.value);
-        dampening = 1 - parseFloat(event.target.value);
-      });
-
-      ui.springEquilPos.addEventListener("input", (event) => {
-        springEquilPos = parseInt(event.target.value);
-      });
-
-      ui.initVel.addEventListener("input", (event) => {
-        initVel = parseFloat(event.target.value);
-      });
-
-      ui.heatmap.addEventListener("input", () => {
-        ui.trace.checked = trace = false;
-        ui.drawGravityStrength.checked = drawGravityStrength = false;
-        ui.drawVector.checked = drawVector = false;
-        ui.drawGravity.checked = drawGravity = false;
-      });
-
-      ui.trackCoM.addEventListener("input", () => {
-        ui.drawCoM.checked = true;
-        trackCoM = ui.trackCoM.checked;
-      });
-    }
-  }
-
-  // interaction event listeners
-  {
-    // mouse events
-    {
-      canvas.onmousedown = (event) => {
-        if (event.ctrlKey || event.altKey) {
-          bodies.push(
-            new Body(
-              ui.xp.value
-                ? parseInt(ui.xp.value)
-                : (event.clientX / canvas.width) * viewport.x + center.x - viewport.x / 2,
-              ui.yp.value
-                ? parseInt(ui.yp.value)
-                : (event.clientY / canvas.height) * viewport.y + center.y - viewport.y / 2,
-              parseInt(ui.vx.value),
-              parseInt(ui.vy.value),
-              parseInt(ui.radius.value ? ui.radius.value : getRadius(ui.mass.value)),
-              parseInt(ui.mass.value),
-              randColor(),
-              true,
-              parseInt(ui.charge.value),
-              ui.immovable.checked
-            )
-          );
-
-          activeBodies += 1;
-          ui.bodyCount.innerText = activeBodies;
-        } else {
-          canvas.addEventListener("mousemove", handleMouseMove);
-        }
-      };
-      canvas.onmouseup = () => {
-        canvas.removeEventListener("mousemove", handleMouseMove);
-        panOffset = { x: 0, y: 0 };
-      };
-      function handleMouseMove(event) {
-        event.preventDefault();
-        event.stopPropagation();
-
-        panOffset.x = event.movementX / totalzoom;
-        panOffset.y = event.movementY / totalzoom;
-
-        setTimeout(mouseStopped, 50);
-      }
-      function mouseStopped() {
-        panOffset.x = panOffset.y = 0;
-      }
-
-      canvas.onmousemove = (event) => {
-        mouseX = event.clientX;
-        mouseY = event.clientY;
-      };
-
-      canvas.onwheel = (event) => {
-        if (!event.ctrlKey) {
-          zoom(Math.sign(event.deltaY) < 0 ? 1.05 : 1 / 1.05);
-        }
-      };
-    }
-
-    // key events
-    {
-      window.onkeydown = (event) => {
-        const activeElement = document.activeElement;
-        const register = activeElement.tagName !== "INPUT";
-        console.log(event.code);
-        if (register && !event.ctrlKey) {
-          switch (event.code) {
-            case "ArrowLeft":
-            case "KeyA":
-              event.preventDefault();
-              panOffset.x = panSpeed / totalzoom;
-              break;
-            case "ArrowRight":
-            case "KeyD":
-              event.preventDefault();
-              panOffset.x = -panSpeed / totalzoom;
-              break;
-            case "ArrowUp":
-            case "KeyW":
-              event.preventDefault();
-              panOffset.y = panSpeed / totalzoom;
-              break;
-            case "ArrowDown":
-            case "KeyS":
-              event.preventDefault();
-              panOffset.y = -panSpeed / totalzoom;
-              break;
-            case "Space":
-              event.preventDefault();
-              event.stopPropagation();
-              if (trackCoM) {
-                trackCoM = false;
-                ui.trackCoM.checked = false;
-              }
-              if (trackNum < bodies.length) {
-                trackBody = bodies[trackNum++];
-                newBody = true;
-              } else {
-                trackBody = null;
-                trackNum = 0;
-                newBody = false;
-              }
-              break;
-            case "Escape":
-              event.preventDefault();
-              trackBody = null;
-              trackNum = 0;
-              newBody = false;
-              break;
-            case "KeyP":
-              ui.toggle.click();
-              break;
-            case "KeyR":
-              ui.randBtn.click();
-              break;
-            case "KeyL":
-              ui.loadBtn.click();
-              break;
-            case "Backspace":
-              ui.clear.click();
-              break;
-            case "Delete":
-              ui.clrOffscreen.click();
-              break;
-            case "Enter":
-              ui.add.click();
-              break;
-            case "KeyE":
-              ui.collide.click();
-              break;
-            case "KeyT":
-              ui.trace.click();
-              break;
-            case "KeyC":
-              // ui.colorByVel.click();
-              ui.inelastic.click();
-              break;
-            case "KeyF":
-              ui.fade.click();
-              break;
-            case "KeyG":
-              // ui.drawGravityStrength.click();
-              ui.gravity.click();
-              break;
-            case "KeyK":
-              ui.electrostatic.click();
-              break;
-            case "KeyB":
-              ui.softbody.click();
-              break;
-            case "KeyY":
-              ui.colorByVel.click();
-              break;
-            case "KeyH":
-              ui.colorByCharge.click();
-              break;
-            case "KeyU":
-            case "KeyV":
-              ui.collapse.innerText = ui.collapse.innerText === ">" ? "<" : ">";
-              if (ui.panel.classList.contains("hidden")) {
-                ui.panel.classList.remove("hidden");
-              } else {
-                ui.panel.classList.add("hidden");
-              }
-              break;
-            case "Home":
-            case "Digit0":
-              pan(
-                collide
-                  ? { x: -currentOffset.x + collideOffset.x, y: -currentOffset.y + collideOffset.y }
-                  : { x: -currentOffset.x, y: -currentOffset.y }
-              );
-              zoom(0);
-              break;
-            case "KeyZ":
-              zoom(1.05);
-              break;
-            case "KeyX":
-              zoom(1 / 1.05);
-              break;
-            case "Digit1":
-              ui.drawVector.click();
-              break;
-            case "Digit2":
-              ui.drawGravity.click();
-              break;
-            case "Digit3":
-              ui.drawCoM.click();
-              break;
-            case "Digit4":
-              ui.trackCoM.click();
-              break;
-            case "Period":
-              timestep = ~~((timestep + 0.05) * 100) / 100;
-              ui.timestep.value = ui.tOut.innerText = timestep;
-              break;
-            case "Comma":
-              timestep = timestep <= 0.05 ? 0 : ~~((timestep - 0.05) * 100) / 100;
-              ui.timestep.value = ui.tOut.innerText = timestep;
-              break;
-          }
-        }
-      };
-      window.onkeyup = (event) => {
-        if (
-          event.code === "ArrowLeft" ||
-          event.code === "ArrowRight" ||
-          event.code === "KeyA" ||
-          event.code === "KeyD"
-        ) {
-          panOffset.x = 0;
-        } else if (
-          event.code === "ArrowUp" ||
-          event.code === "ArrowDown" ||
-          event.code === "KeyW" ||
-          event.code === "KeyS"
-        ) {
-          panOffset.y = 0;
-        }
-      };
-    }
-  }
-}
-
-// body presets
-{
-  /**
-   * Randomly generate bodies based on params
-   * @param {Number} num number of random bodies to generate
-   * @param {Number} minMass minimum mass
-   * @param {Number} maxMass maximum mass
-   * @param {Number} v maximum initial velocity
-   * @param {Boolean} randColors whether or not to randomly color the bodies
-   * @param {Boolean} zeroVel whether or not to set the velocity of the center of mass to 0
-   */
-  function initRandBodies(num, minMass = 3, maxMass = 5, minCharge = 0, maxCharge = 0, v = 0, randColors = true, zeroVel = false) {
-    let xMomentum = 0;
-    let yMomentum = 0;
-    for (let i = 0; i < num - zeroVel; i++) {
-      const mass = randInt(minMass, maxMass);
-      const charge = randInt(minCharge, maxCharge);
-      let r = getRadius(mass);
-      const x = collide
-        ? randInt(-collideOffset.x + currentOffset.x + 2 * r, -collideOffset.x + currentOffset.x + canvas.width - 2 * r)
-        : randInt(center.x - viewport.x / 2 + 2 * r, center.x + viewport.x / 2 - 2 * r);
-      const y = collide
-        ? randInt(-collideOffset.y + currentOffset.y + 2 * r, -collideOffset.y + currentOffset.y + canvas.height - 2 * r)
-        : randInt(center.y - viewport.y / 2 + 2 * r, center.y + viewport.y / 2 - 2 * r);
-      const vx = (Math.random() - 0.5) * 2 * v;
-      const vy = (Math.random() - 0.5) * 2 * v;
-      xMomentum += vx * mass;
-      yMomentum += vy * mass;
-      bodies.push(
-        new Body(x, y, vx, vy, r, 0, randColors ? randColor() : "white", true, charge)
-      );
-    }
-    // set the last body to cancel out momentum of the system to 0
-    if (zeroVel) {
-      const mass = randInt(minMass, maxMass);
-      let r = getRadius(mass);
-      bodies.push(
-        new Body(
-          collide
-            ? randInt(-collideOffset.x + currentOffset.x + 2 * r, -collideOffset.x + currentOffset.x + canvas.width - 2 * r)
-            : randInt(center.x - viewport.x / 2 + 2 * r, center.x + viewport.x / 2 - 2 * r),
-          collide
-            ? randInt(-collideOffset.y + currentOffset.y + 2 * r, -collideOffset.y + currentOffset.y + canvas.height - 2 * r)
-            : randInt(center.y - viewport.y / 2 + 2 * r, center.y + viewport.y / 2 - 2 * r),
-          -xMomentum / mass, -yMomentum / mass, r, 0, randColors ? randColor() : "white"
-        )
-      );
-      xMomentum += -xMomentum / mass;
-      yMomentum += -yMomentum / mass;
-    }
-  }
-
-  /**
-   * Generates a galaxy with num stars in circular orbits around a massive core
-   * @param {Object} centerPos the position of the center
-   * @param {Object} vel initial velocity of the galaxy
-   * @param {Number} num the number of stars
-   * @param {Number} minMass minimum mass of stars
-   * @param {Number} maxMass maximum mass of stars
-   * @param {Number} radius radius of the galaxy
-   * @param {Number} rotDir rotation direction 0 or 1
-   * @param {Boolean} bodyCollide whether or not the stars can collide
-   */
-  function generateGalaxy(
-    centerPos = { x: center.x, y: center.y },
-    vel = { x: 0, y: 0 },
-    num = 500,
-    minMass = 1,
-    maxMass = 2,
-    radius = 500,
-    rotDir = 0,
-    bodyCollide = false
-  ) {
-    // center
-    let centerMass = num * 100;
-    let centerRadius = 10; //getRadius(num * 100);
-    bodies.push(new Body(centerPos.x, centerPos.y, vel.x, vel.y, 10, centerMass));
-    for (let i = 0; i < num; i++) {
-      let mass = randInt(minMass, maxMass);
-      let r = getRadius(mass);
-      let angle = randInt(0, 360);
-      let distance = Math.pow(2, -2 * Math.random()).map(0.25, 1, 0, 1) * radius + centerRadius; //randInt(centerRadius * 2, radius)
-      let ac = (G * centerMass) / (distance * distance);
-      let speed = Math.sqrt(ac * distance);
-      bodies.push(
-        new Body(
-          centerPos.x + distance * Math.cos(angle),
-          centerPos.y + distance * Math.sin(angle),
-          vel.x + speed * Math.sin(-angle) * (rotDir ? 1 : -1),
-          vel.y + speed * Math.cos(-angle) * (rotDir ? 1 : -1),
-          r,
-          0,
-          "white",
-          bodyCollide
-        )
-      );
-    }
-  }
-
-  // set up the newton's cradle demonstration of momentum
-  function initNewtonsCradle(num = 8, initV = 5, mass = 100000) {
-    ui.inelastic.checked = inelastic = false;
-    ui.G.value = G = 0;
-    ui.collide.checked = collide = true;
-    for (let i = 0; i < num - 1; i++) bodies.push(new Body(center.x - i, center.y, 0, 0, 0, mass));
-    bodies.push(new Body(getRadius(mass), center.y, initV, 0, 0, mass));
-  }
-
-  // set up three objects to generate 31415 collisions - see 3blue1brown's video on it
-  function initPiCollisions(initV = 1) {
-    frameDelayMs = 0.1;
-    ui.decoupleFPS.checked = true;
-    ui.inelastic.checked = inelastic = false;
-    ui.gravity.checked = gravity = false;
-    // ui.collide.checked = collide = true;
-    let mass = 10;
-    let ratio = 100000000;
-    timestep = ui.timestep.value = 0.1;
-    canvas.dispatchEvent(new Event("KeyZ"));
-    bodies.push(new Body(center.x * 3.5, center.y, 0, 0, center.x * 2, 1, "default", true, 0, true));
-    bodies.push(new Body(center.x - 150, center.y, 0, 0, 300, mass, "default", true, 0, false, "y"));
-    bodies.push(new Body(center.x - 1000, center.y, initV, 0, 500, mass * ratio, "default", true, 0, false, "y"));
-  }
-
-  // set up a grid of bodies to smash with objects (square packing)
-  function initSquareGrid(spacing = 25, mass = 100, r = 4) { // r = 12 for non-softbody
-    ui.gravity.checked = gravity = false;
-    ui.inelastic.checked = inelastic = false;
-    ui.softbody.checked = softbody = true;
-    ui.CoR.value = ui.CoROut.innerText = CoR = 0;
-    for (let x = spacing / 2; x < window.innerWidth; x += spacing) {
-      for (let y = spacing / 2; y < window.innerHeight; y += spacing) {
-        bodies.push(new Body(x, y, 0, 0, r, mass, "default"));
-      }
-    }
-  }
-
-  // set up a grid of bodies to smash with objects (hexagonal packing)
-  function initHexGrid(spacing = 25, mass = 100, r = 4) { // r = 12 for non-softbody
-    ui.gravity.checked = gravity = false;
-    ui.inelastic.checked = inelastic = false;
-    ui.CoR.value = ui.CoROut.innerText = CoR = 0;
-    ui.softbody.checked = softbody = true;
-    let ySpacing = Math.sqrt(3) * spacing / 2;
-    for (let x = spacing / 2; x < window.innerWidth; x += spacing) {
-      for (let y = spacing / 2, odd = true; y < window.innerHeight; y += ySpacing, odd = !odd) {
-        bodies.push(new Body(x + odd * (spacing / 2), y, 0, 0, r, mass, "default"));
-      }
-    }
-  }
-
-  /**
-   * Generates a solar system, similar to a galaxy but the particles in orbit can collide
-   * @param {Object} centerPos the position of the center
-   * @param {Object} vel initial velocity of the system
-   * @param {Number} num the number of planets
-   * @param {Number} minMass minimum mass of planets
-   * @param {Number} maxMass maximum mass of planets
-   * @param {Number} radius radius of the system
-   * @param {Number} rotDir rotation direction 0 or 1
-   * @param {Boolean} bodyCollide whether or not the planets can collide
-   */
-  function generateSolarSystem(
-    centerPos = { x: center.x, y: center.y },
-    vel = { x: 0, y: 0 },
-    num = 8,
-    minMass = 10000,
-    maxMass = 100000,
-    radius = 10000,
-    rotDir = 0,
-    bodyCollide = true
-  ) {
-    // center
-    let centerMass = maxMass * 100;
-    let centerRadius = getRadius(maxMass * 10000);
-    bodies.push(new Body(centerPos.x, centerPos.y, vel.x, vel.y, 0, centerMass));
-    for (let i = 0; i < num; i++) {
-      let mass = randInt(minMass, maxMass);
-      let r = getRadius(mass);
-      let angle = randInt(0, 360);
-      let distance = randInt(centerRadius * 2, radius);
-      let ac = (G * centerMass) / (distance * distance);
-      let speed = Math.sqrt(ac * distance);
-      bodies.push(
-        new Body(
-          centerPos.x + distance * Math.cos(angle),
-          centerPos.y + distance * Math.sin(angle),
-          vel.x + speed * Math.sin(-angle) * (rotDir ? 1 : -1),
-          vel.y + speed * Math.cos(-angle) * (rotDir ? 1 : -1),
-          r,
-          0,
-          "white",
-          bodyCollide
-        )
-      );
-    }
-  }
-
-  // Sun and 3 planets
-  function sun3PlanetsSystem() {
-    bodies.push(new Body(center.x, center.y, 0, 0, 50, 0, "yellow"));
-    bodies.push(new Body(center.x, center.y + 200, 20, 0, 5, 0, "blue"));
-    bodies.push(new Body(center.x + 300, center.y, 0, -10, 5, 0, "blue"));
-    bodies.push(new Body(center.x - 500, center.y, 0, 8, 5, 0, "blue"));
-  }
-
-  // Binary system with calculated stable orbits
-  function binarySystem(circular = false) {
-    const m1 = randInt(5000, 100000);
-    const m2 = randInt(5000, 100000);
-    const x1 = randInt(100, 500);
-    const x2 = (m1 * x1) / m2;
-    const circularVel = m2 / (m1 + m2) * Math.sqrt(G * m2 / x1);
-    const v1 = circular ? circularVel :
-      randInt(circularVel / 2, circularVel * 1.1);
-    // randInt(Math.cbrt(G * (m2) / (x1 + x2)), Math.sqrt(G * (m2 + m1) / 2 / (x1 + x2)));
-    const v2 = (m1 * v1) / m2;
-
-    bodies.push(new Body(center.x + x1, center.y, 0, v1, 0, m1));
-    bodies.push(new Body(center.x - x2, center.y, 0, -v2, 0, m2));
-
-    // original binary preset
-    // bodies.push(new Body(center.x, center.y + 140, 3, 0, 20, 0, "blue"));
-    // bodies.push(new Body(center.x, center.y - 140, -3, 0, 20, 0, "blue"));
-  }
-
-  // Sun, planets, moons
-  function sunPlanetsMoonsSystem() {
-    bodies.push(new Body(center.x, center.y, 0, 0, 30, 0, "yellow"));
-    bodies.push(new Body(center.x, center.y - 150, 14, 0, 5, 0, "blue"));
-    bodies.push(new Body(center.x, center.y - 170, 11, 0, 1, 0, "white"));
-    bodies.push(new Body(center.x, center.y + 400, -8.7, 0, 5, 0, "blue"));
-    bodies.push(new Body(center.x, center.y + 430, -6.7, 0, 1, 0, "white"));
-  }
-}
 
 /** init form inputs */
 function initParams() {
@@ -785,155 +184,6 @@ function initParams() {
   minMass = parseFloat(ui.minMass.value);
   minCharge = parseFloat(ui.minCharge.value);
   maxCharge = parseFloat(ui.maxCharge.value);
-}
-
-/** update varables based on ui input values */
-function updateSettings() {
-  colorBySpeed = ui.colorByVel.checked;
-  trace = ui.trace.checked;
-  fade = ui.fade.checked;
-  drawGravity = ui.drawGravity.checked;
-  drawGravityStrength = ui.drawGravityStrength.checked;
-  drawGThreshold = ui.drawGThreshold.checked;
-  drawVector = ui.drawVector.checked;
-  collide = ui.collide.checked;
-  drawField = ui.heatmap.checked;
-  drawCoM = ui.drawCoM.checked;
-  trackCoM = ui.trackCoM.checked;
-  globalCollide = ui.globalCollide.checked;
-  drawOffscreen = ui.drawOffscreen.checked;
-  drawMouseVector = ui.drawMouseVector.checked;
-  inelastic = ui.inelastic.checked;
-  gravity = ui.gravity.checked;
-  electrostatic = ui.electrostatic.checked;
-  colorByCharge = ui.colorByCharge.checked;
-  frameDelayMs = ui.decoupleFPS.checked ? 0.1 : 0;
-  softbody = ui.softbody.checked;
-}
-
-/** load a preset */
-function load() {
-  initParams();
-  switch (ui.presets.value) {
-    case "0": // 500 body chaos
-      // ui.G.value = ui.GOut.innerText = 1;
-      ui.drawVector.checked = drawVector = false;
-      ui.drawGravity.checked = drawGravity = false;
-      ui.timestep.value = ui.tOut.innerText = 0.5;
-      ui.numBodies.value = numBodies = 500;
-      ui.maxMass.value = maxMass = 100;
-      ui.minMass.value = minMass = 50;
-      ui.drawGravityStrength.checked = drawGravityStrength = false;
-      initRandBodies(numBodies, minMass, maxMass, minCharge, maxCharge, initVel);
-      break;
-    case "1": // sun and 3 planets
-      ui.collide.checked = false;
-      ui.G.value = ui.GOut.innerText = G = 0.15;
-      ui.gravity.checked = true;
-      sun3PlanetsSystem();
-      break;
-    case "2": // two body system
-      ui.collide.checked = false;
-      ui.gravity.checked = true;
-      // ui.G.value = ui.GOut.innerText = G = 0.15;
-      binarySystem();
-      break;
-    case "3": // two body system (circular)
-      ui.collide.checked = false;
-      ui.gravity.checked = true;
-      // ui.G.value = ui.GOut.innerText = G = 0.15;
-      binarySystem(true);
-      break;
-    case "4": // sun planets and moon
-      ui.collide.checked = false;
-      ui.G.value = ui.GOut.innerText = G = 0.25;
-      ui.gravity.checked = true;
-      sunPlanetsMoonsSystem();
-      break;
-    case "5": // galaxies
-      ui.G.value = ui.GOut.innerText = 1;
-      ui.drawVector.checked = drawVector = false;
-      ui.drawGravity.checked = drawGravity = false;
-      ui.timestep.value = ui.tOut.innerText = timestep = 0.1;
-      ui.drawGravityStrength.checked = drawGravityStrength = false;
-      ui.gravity.checked = true;
-      const g1num = randInt(500, 1000);
-      const g2num = randInt(500, 1000);
-      generateGalaxy(
-        {
-          x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
-          y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
-        },
-        { x: randInt(-1, 1), y: randInt(-1, 1) },
-        g1num,
-        1,
-        2,
-        g1num / 2,
-        0,
-        false
-      );
-      generateGalaxy(
-        {
-          x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
-          y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
-        },
-        { x: randInt(-1, 1), y: randInt(-1, 1) },
-        g2num,
-        1,
-        2,
-        g2num / 2,
-        randInt(0, 2),
-        false
-      );
-      break;
-    case "6": // solar system formation
-      ui.G.value = ui.GOut.innerText = 1;
-      ui.drawVector.checked = drawVector = false;
-      ui.drawGravity.checked = drawGravity = false;
-      ui.timestep.value = ui.tOut.innerText = timestep = 0.25;
-      ui.drawGravityStrength.checked = drawGravityStrength = false;
-      ui.gravity.checked = true;
-      generateGalaxy(
-        {
-          x: center.x,
-          y: center.y,
-        },
-        { x: 0, y: 0 },
-        1500,
-        5,
-        10,
-        1000,
-        0,
-        true
-      );
-      break;
-    case "7":
-      ui.G.value = ui.GOut.innerText = 1;
-      ui.drawVector.checked = drawVector = false;
-      ui.drawGravity.checked = drawGravity = false;
-      ui.timestep.value = ui.tOut.innerText = timestep = 0.25;
-      ui.drawGravityStrength.checked = drawGravityStrength = false;
-      ui.gravity.checked = true;
-      generateSolarSystem({ x: center.x, y: center.y }, { x: 0, y: 0 });
-      break;
-    case "8":
-      initNewtonsCradle();
-      break;
-    case "9":
-      initPiCollisions();
-      break;
-    case "10":
-      initSquareGrid();
-      break;
-    case "11":
-      initHexGrid();
-      break;
-    case "12":
-      //
-      break;
-  }
-  activeBodies = bodies.length;
-  ui.bodyCount.innerText = activeBodies;
 }
 
 /**
@@ -1060,7 +310,7 @@ class Body {
       this.xVel += this.xAccel * timestep;
       this.yVel += this.yAccel * timestep;
 
-      // integrate velocity every frame
+      // change pos based on velocity
       this.xPos += this.xVel * timestep;
       this.yPos += this.yVel * timestep;
 
@@ -1220,7 +470,7 @@ function runSim() {
   bodies.forEach((body, index) => {
     const body1 = body;
     if (drawField && body1.mass > maxBody.mass) maxBody = body1;
-    if (bodies.length > 1 && timestep && (gravity && G || globalCollide)) {
+    if (bodies.length > 1 && timestep && (gravity && G || globalCollide || softbody || electrostatic && K)) {
       for (let i = index + 1; i < bodies.length; i++) {
         const body2 = bodies[i];
 
@@ -1254,13 +504,48 @@ function runSim() {
             // get the components of the force
             xAccel = (g * xDist) / dist;
             yAccel = (g * yDist) / dist;
+
+            // draw gravity strength lines
+            if (drawGravityStrength) {
+              const strength = Math.abs(1 - 10 / (g * body1.mass * body2.mass + 10));
+              const drawThreshold = drawGThreshold ? (trace ? 1e-4 : 1e-2) : 0;
+              // determine whether to draw for better performance
+              if (strength >= drawThreshold) {
+                ctx.beginPath();
+                ctx.strokeStyle =
+                  "rgba(" + (255 - 255 * strength) + ", " + (255 * strength) + ",0 ," + strength + ")";
+                ctx.lineWidth = 1 / totalzoom;
+                ctx.moveTo(body2.xPos, body2.yPos);
+                ctx.lineTo(body1.xPos, body1.yPos);
+                ctx.closePath();
+                ctx.stroke();
+              }
+            }
           }
-          // calculate other force if needed
+
+          // calculate other forces if needed
           if (K != 0 && electrostatic || softbody) {
             // coulomb force
             if (electrostatic) {
               // repel if like charges, attract if opposite charges
               force += electrostatic ? (K * (-body1.charge) * body2.charge) / sqr : 0;
+
+              // draw electrostatic force
+              if (drawKStrength) {
+                const strength = 1 - 10 / (Math.abs(force) + 10);
+                const drawThreshold = drawKThreshold ? (trace ? 1e-4 : 1e-2) : 0;
+                // determine whether to draw for better performance
+                if (strength >= drawThreshold) {
+                  ctx.beginPath();
+                  ctx.strokeStyle =
+                    "rgba(" + (255 - 255 * strength) + ", " + (255 * strength) + ",0 ," + strength + ")";
+                  ctx.lineWidth = 1 / totalzoom;
+                  ctx.moveTo(body2.xPos, body2.yPos);
+                  ctx.lineTo(body1.xPos, body1.yPos);
+                  ctx.closePath();
+                  ctx.stroke();
+                }
+              }
             }
             // softbody physics (spring force based on Hooke's law)
             if (softbody && dist < springEquilPos * 1.2) {
@@ -1272,6 +557,8 @@ function runSim() {
               body2.xVel *= dampening; //(body2.xVel - vCoMX) * 0.99 + vCoMX;
               body2.yVel *= dampening; //(body2.yVel - vCoMY) * 0.99 + vCoMY;
             }
+
+            // add force to force components
             forceX += force * xDist / dist;
             forceY += force * yDist / dist;
           }
@@ -1283,23 +570,6 @@ function runSim() {
           if (!body2.immovable) {
             body2.xAccel -= (xAccel * body1.mass + forceX / body2.mass);
             body2.yAccel -= (yAccel * body1.mass + forceY / body2.mass);
-          }
-
-          // draw gravity strength lines
-          if (drawGravityStrength && gravity && G != 0) {
-            const strength = Math.abs(1 - 10 / (G / sqr * body1.mass * body2.mass + 10));
-            const drawThreshold = drawGThreshold ? (trace ? 1e-4 : 1e-2) : 0;
-            // determine whether to draw for better performance
-            if (strength >= drawThreshold) {
-              ctx.beginPath();
-              ctx.strokeStyle =
-                "rgba(" + (255 - 255 * strength) + ", " + (255 * strength) + ",0 ," + strength + ")";
-              ctx.lineWidth = 1 / totalzoom;
-              ctx.moveTo(body2.xPos, body2.yPos);
-              ctx.lineTo(body1.xPos, body1.yPos);
-              ctx.closePath();
-              ctx.stroke();
-            }
           }
         }
       }
