@@ -7,7 +7,11 @@ A Javascript-based N-body simulation for calculating gravitational and electrost
   - G, K, timestep, mass, velocity, etc.
 - Body tracking to visualize relative velocity
 - Body collisions
-  - Perfectly elastic, inelastic, perfectly inelastic
+  - Elastic, inelastic, perfectly inelastic
+- Forces
+  - Gravity
+  - Electrostatic
+  - Spring (softbody)
 - Conservation laws
   - Momentum, energy, charge
 - Various draw options
@@ -18,12 +22,42 @@ A Javascript-based N-body simulation for calculating gravitational and electrost
   - Center of mass
   - Velocity, acceleration vectors
   - etc.
-- Presets (with some randomization)
+- Presets and generators
   - Planets
   - Planets with moons
   - Galaxy collision
   - Solar system generator
+  - Binary system generator
+  - Soft bodies (hit it with other objects)
+  - Many others
 - Interactive
+
+### Demonstrating physics principles
+#### AP Physics 1
+1. Kinematics
+    - Position, velocity, acceleration - particle motion
+2. Dynamics
+    - Gravitational field (uniform acceleration)
+    - Newton's laws
+    - Spring forces (softbody)
+3. Circular motion and gravitation
+    - Gravity calculated based on Newtonian gravity
+    - Centripetal force and acceleration - galaxy and other orbit generators
+4. Energy
+    - Conservation of energy
+    - Gravitational potential energy
+5. Momentum
+    - Conservation of momentum
+    - Elastic and inelastic collisions
+6. Simple harmonic motion
+    - Springs (softbody)
+#### AP Physics 2
+3. Electrostatics
+    - Electric force
+    - Conservation of charge
+    - Electric field and potential Soon(tm)
+5. Magnetism
+    - Magnetic fields and Lorentz force Soon(tm)
 
 ## Controls
 - U/V: toggle sidebar
