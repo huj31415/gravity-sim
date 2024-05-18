@@ -1,35 +1,93 @@
 // events
 
+/**
+ * Finds the body nearest to and overlapping the given coordinate
+ * @param {Number} x the x coordinate
+ * @param {Number} y the y coordinate
+ * @returns the index of the body if found, otherwise -1
+ */
+function findNearest(x, y) {
+  let nearest = -1;
+  let nearestDistSqr = Infinity;
+  bodies.forEach((body, index) => {
+    let xDist = body.xPos - x, yDist = body.yPos - y;
+    let distanceSqr = xDist * xDist + yDist * yDist;
+    if (distanceSqr < nearestDistSqr && distanceSqr < body.radius * body.radius + 100 / totalzoom) {
+      nearestDistSqr = distanceSqr;
+      nearest = index;
+    }
+  });
+  return nearest;
+}
+
+/**
+ * Zooms the canvas using transformations, then adjusts viewport values
+ * @param {Number} zoomfactor the factor to zoom by 
+ */
+function zoom(zoomfactor = 0) {
+  if (zoomfactor == 0) {
+    // reset zoom
+    zoomfactor = 1 / totalzoom;
+    totalzoom = 1;
+    viewport.x = canvas.width;
+    viewport.y = canvas.height;
+  } else {
+    // adjust zoom
+    totalzoom *= zoomfactor;
+    viewport.x /= zoomfactor;
+    viewport.y /= zoomfactor;
+  }
+  // transformation
+  ctx.transform(
+    zoomfactor,
+    0,
+    0,
+    zoomfactor,
+    (-(zoomfactor - 1) * canvas.width) / 2,
+    (-(zoomfactor - 1) * canvas.height) / 2
+  );
+  ui.viewport.innerText = ~~(viewport.x) + " x " + ~~(viewport.y);
+  ctx.fillStyle = "rgba(0, 0, 0, 1)";
+  ctx.fillRect(
+    center.x - viewport.x / 2,
+    center.y - viewport.y / 2,
+    viewport.x,
+    viewport.y
+  );
+  ui.zoom.innerText = ~~(totalzoom * 10000) / 100;
+}
+
+/** update varables based on ui input values */
+function updateSettings() {
+  colorBySpeed = ui.colorByVel.checked;
+  trace = ui.trace.checked;
+  fade = ui.fade.checked;
+  drawGravity = ui.drawGravity.checked;
+  drawGravityStrength = ui.drawGravityStrength.checked;
+  drawGThreshold = ui.drawGThreshold.checked;
+  drawVector = ui.drawVector.checked;
+  collide = ui.collide.checked;
+  drawField = ui.heatmap.checked;
+  drawCoM = ui.drawCoM.checked;
+  trackCoM = ui.trackCoM.checked;
+  globalCollide = ui.globalCollide.checked;
+  drawOffscreen = ui.drawOffscreen.checked;
+  drawMouseVector = ui.drawMouseVector.checked;
+  inelastic = ui.inelastic.checked;
+  gravity = ui.gravity.checked;
+  electrostatic = ui.electrostatic.checked;
+  colorByCharge = ui.colorByCharge.checked;
+  frameDelayMs = ui.decoupleFPS.checked ? 0.1 : 0;
+  softbody = ui.softbody.checked;
+  drawKStrength = ui.drawKStrength.checked;
+  drawKThreshold = ui.drawKThreshold.checked;
+  drawSStrength = ui.drawSStrength.checked;
+}
+
 // form event listeners
 {
   // button listeners
   {
-    /** update varables based on ui input values */
-    function updateSettings() {
-      colorBySpeed = ui.colorByVel.checked;
-      trace = ui.trace.checked;
-      fade = ui.fade.checked;
-      drawGravity = ui.drawGravity.checked;
-      drawGravityStrength = ui.drawGravityStrength.checked;
-      drawGThreshold = ui.drawGThreshold.checked;
-      drawVector = ui.drawVector.checked;
-      collide = ui.collide.checked;
-      drawField = ui.heatmap.checked;
-      drawCoM = ui.drawCoM.checked;
-      trackCoM = ui.trackCoM.checked;
-      globalCollide = ui.globalCollide.checked;
-      drawOffscreen = ui.drawOffscreen.checked;
-      drawMouseVector = ui.drawMouseVector.checked;
-      inelastic = ui.inelastic.checked;
-      gravity = ui.gravity.checked;
-      electrostatic = ui.electrostatic.checked;
-      colorByCharge = ui.colorByCharge.checked;
-      frameDelayMs = ui.decoupleFPS.checked ? 0.1 : 0;
-      softbody = ui.softbody.checked;
-      drawKStrength = ui.drawKStrength.checked;
-      drawKThreshold = ui.drawKThreshold.checked;
-    }
-
     // detect and update based on settings changes
     ui.panel.onclick = (event) => {
       // buttons
@@ -174,7 +232,7 @@
   // mouse events
   {
     canvas.onmousedown = (event) => {
-      if (event.ctrlKey || event.altKey) {
+      if (event.ctrlKey) {
         bodies.push(
           new Body(
             ui.xp.value
@@ -196,6 +254,13 @@
 
         activeBodies += 1;
         ui.bodyCount.innerText = activeBodies;
+      } else if (event.altKey) {
+        event.preventDefault();
+        remove(null, findNearest(
+          (event.clientX / canvas.width) * viewport.x + center.x - viewport.x / 2,
+          (event.clientY / canvas.height) * viewport.y + center.y - viewport.y / 2
+        ));
+        ui.bodyCount.innerText = activeBodies = bodies.length;
       } else {
         canvas.addEventListener("mousemove", handleMouseMove);
       }
@@ -237,6 +302,9 @@
       console.log(event.code);
       if (register && !event.ctrlKey) {
         switch (event.code) {
+          case "AltLeft":
+            event.preventDefault();
+            break;
           case "ArrowLeft":
           case "KeyA":
             event.preventDefault();

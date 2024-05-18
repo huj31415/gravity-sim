@@ -1,4 +1,4 @@
-// todo: implement electrostatic and magnetic (?) fields
+// todo: implement electrostatic and magnetic (?) fields, fix gravity line positions
 let frameDelayMs = 0; // Chromebook Simulator (or for debug purposes): 0 for default requestAnimationFrame fps
 
 // object containing the user interface elements
@@ -68,6 +68,7 @@ const ui = {
   dampening: document.getElementById("dampening"),
   dampOut: document.getElementById("dampOut"),
   springEquilPos: document.getElementById("softbodyEquilPos"),
+  drawSStrength: document.getElementById("drawSStrength"),
 };
 
 // utilities
@@ -163,7 +164,8 @@ let colorBySpeed = ui.colorByVel.checked,
   colorByCharge = ui.colorByCharge.checked,
   drawKStrength = ui.drawKStrength.checked,
   drawKThreshold = ui.drawKThreshold.checked,
-  softbody = ui.softbody.checked;
+  softbody = ui.softbody.checked,
+  drawSStrength = ui.drawSStrength.checked;
 
 // initialize the ui inputs and then start the draw loop
 initParams();
@@ -192,24 +194,11 @@ function initParams() {
  * @param {Number} id id of the value to remove
  * @returns the input array without the removed body
  */
-function remove(body) {
-  const index = bodies.indexOf(body); //bodies.findIndex((body) => body.id === id);
+function remove(body, i = 0) {
+  const index = body ? bodies.indexOf(body) : i; //bodies.findIndex((body) => body.id === id);
   if (index != -1) {
     bodies.splice(index, 1);
-  } else {
-    console.error("Could not find id ", id);
   }
-}
-
-/**
- * Generates random integers
- * @param {Number} min minimum inclusive
- * @param {Number} max maximum exclusive
- */
-function randInt(min, max) {
-  min = Math.ceil(min);
-  max = ~~max;
-  return Math.floor(Math.random() * (max - min) + min); // The maximum is exclusive and the minimum is inclusive
 }
 
 /**
@@ -289,7 +278,6 @@ class Body {
   /** Draw the body onto the canvas */
   draw() {
     let drawColor = this.color;
-
     // change the color based on speed
     if (colorByCharge) {
       drawColor = "rgb(" + (128 + this.charge * 10) + ", " + (128 - Math.abs(this.charge * 10)) + ", " + (128 - this.charge * 10) + ")";
@@ -300,65 +288,6 @@ class Body {
       );
       let hue = Math.max(240 - 10 * speed, 0);
       drawColor = "hsl(" + hue + ", 100%, 50%)";
-    }
-    // Update the position of the body
-    if (!this.immovable) {
-      this.xPrev = this.xPos;
-      this.yPrev = this.yPos;
-
-      // implement acceleration
-      this.xVel += this.xAccel * timestep;
-      this.yVel += this.yAccel * timestep;
-
-      // change pos based on velocity
-      this.xPos += this.xVel * timestep;
-      this.yPos += this.yVel * timestep;
-
-      // reset acceleration
-      this.xAccel = 0;
-      this.yAccel = uniformg;
-
-      // edge collision
-      if (collide) {
-        const xOffset = -collideOffset.x + currentOffset.x;
-        const yOffset = -collideOffset.y + currentOffset.y;
-        if (
-          this.xPos >= xOffset + canvas.width - this.radius ||
-          this.xPos <= xOffset + this.radius
-        ) {
-          // increment collision
-          collisionCount += 1;
-          ui.collisionCount.innerText = collisionCount;
-
-          // reverse velocity and implement CoR
-          this.xVel = CoR * -this.xVel;
-          this.yVel *= CoR;
-
-          // set position within box, visual glitch but accurate
-          if (this.xPos >= xOffset + canvas.width - this.radius) {
-            this.xPos = 2 * (xOffset + canvas.width - this.radius) - this.xPos;
-          } else {
-            this.xPos = 2 * (xOffset + this.radius) - this.xPos;
-          }
-        }
-        if (
-          this.yPos >= yOffset + canvas.height - this.radius ||
-          this.yPos <= yOffset + this.radius
-        ) {
-          // increment collision
-          collisionCount += 1;
-          ui.collisionCount.innerText = collisionCount;
-
-          // reverse velocity and implement CoR
-          this.xVel *= CoR;
-          this.yVel = CoR * -this.yVel;
-
-          // set position within box, visual glitch but accurate
-          if (this.yPos >= yOffset + canvas.height - this.radius)
-            this.yPos = 2 * (yOffset + canvas.height - this.radius) - this.yPos;
-          else this.yPos = 2 * (yOffset + this.radius) - this.yPos;
-        }
-      }
     }
 
     // Draw the body
@@ -459,10 +388,72 @@ class Body {
         }
       }
     }
+
+    // Update the position of the body
+    if (!this.immovable) {
+      this.xPrev = this.xPos;
+      this.yPrev = this.yPos;
+
+      // implement acceleration
+      this.xVel += this.xAccel * timestep;
+      this.yVel += this.yAccel * timestep;
+
+      // change pos based on velocity
+      this.xPos += this.xVel * timestep;
+      this.yPos += this.yVel * timestep;
+
+      // reset acceleration
+      this.xAccel = 0;
+      this.yAccel = uniformg;
+
+      // edge collision
+      if (collide) {
+        const xOffset = -collideOffset.x + currentOffset.x;
+        const yOffset = -collideOffset.y + currentOffset.y;
+        if (
+          this.xPos >= xOffset + canvas.width - this.radius ||
+          this.xPos <= xOffset + this.radius
+        ) {
+          // increment collision
+          collisionCount += 1;
+          ui.collisionCount.innerText = collisionCount;
+
+          // reverse velocity and implement CoR
+          this.xVel = CoR * -this.xVel;
+          this.yVel *= CoR;
+
+          // set position within box, visual glitch but accurate
+          if (this.xPos >= xOffset + canvas.width - this.radius) {
+            this.xPos = 2 * (xOffset + canvas.width - this.radius) - this.xPos;
+          } else {
+            this.xPos = 2 * (xOffset + this.radius) - this.xPos;
+          }
+        }
+        if (
+          this.yPos >= yOffset + canvas.height - this.radius ||
+          this.yPos <= yOffset + this.radius
+        ) {
+          // increment collision
+          collisionCount += 1;
+          ui.collisionCount.innerText = collisionCount;
+
+          // reverse velocity and implement CoR
+          this.xVel *= CoR;
+          this.yVel = CoR * -this.yVel;
+
+          // set position within box, visual glitch but accurate
+          if (this.yPos >= yOffset + canvas.height - this.radius)
+            this.yPos = 2 * (yOffset + canvas.height - this.radius) - this.yPos;
+          else this.yPos = 2 * (yOffset + this.radius) - this.yPos;
+        }
+      }
+    }
+
   }
 }
 
-/** Calculate forces between each body, then draw them.
+/**
+ * Calculate forces between each body, then draw them.
  * This is where the physics is
 */
 function runSim() {
@@ -494,7 +485,7 @@ function runSim() {
         } else {
           // calculate acceleration based on forces
           const dist = Math.sqrt(sqr);
-          let xAccel = 0, yAccel = 0, forceX = 0, forceY = 0, force = 0;
+          let xAccel = 0, yAccel = 0, forceX = 0, forceY = 0, kForce = 0, sForce = 0;
 
           // calculate gravity if needed
           if (G != 0 && gravity && !(body1.immovable && body2.immovable)) {
@@ -528,17 +519,17 @@ function runSim() {
             // coulomb force
             if (electrostatic) {
               // repel if like charges, attract if opposite charges
-              force += electrostatic ? (K * (-body1.charge) * body2.charge) / sqr : 0;
+              kForce += electrostatic ? (K * (-body1.charge) * body2.charge) / sqr : 0;
 
               // draw electrostatic force
-              if (drawKStrength) {
-                const strength = 1 - 10 / (Math.abs(force) + 10);
+              if (drawKStrength && kForce != 0) {
+                const strength = Math.sign(kForce) * (1 - 10 / (Math.abs(kForce) + 10));
                 const drawThreshold = drawKThreshold ? (trace ? 1e-4 : 1e-2) : 0;
                 // determine whether to draw for better performance
-                if (strength >= drawThreshold) {
+                if (Math.abs(strength) >= drawThreshold) {
                   ctx.beginPath();
                   ctx.strokeStyle =
-                    "rgba(" + (255 - 255 * strength) + ", " + (255 * strength) + ",0 ," + strength + ")";
+                    "rgba(" + (strength > 0 ? 0 : 255) + ", " + (strength > 0 ? 255 : 0) + ",0 ," + Math.abs(strength) + ")";
                   ctx.lineWidth = 1 / totalzoom;
                   ctx.moveTo(body2.xPos, body2.yPos);
                   ctx.lineTo(body1.xPos, body1.yPos);
@@ -550,14 +541,32 @@ function runSim() {
             // softbody physics (spring force based on Hooke's law)
             if (softbody && dist < springEquilPos * 1.2) {
               let springDist = dist - springEquilPos;
-              force += springDist * springConst;
+              sForce += springDist * springConst;
               // dampening
               body1.xVel *= dampening; //(body1.xVel - vCoMX) * 0.99 + vCoMX;
               body1.yVel *= dampening; //(body1.yVel - vCoMY) * 0.99 + vCoMY;
               body2.xVel *= dampening; //(body2.xVel - vCoMX) * 0.99 + vCoMX;
               body2.yVel *= dampening; //(body2.yVel - vCoMY) * 0.99 + vCoMY;
+
+              // draw spring force
+              if (drawSStrength && sForce != 0) {
+                const strength = Math.sign(sForce) * (1 - 10 / (Math.abs(sForce) + 10));
+                // const drawThreshold = drawKThreshold ? (trace ? 1e-4 : 1e-2) : 0;
+                // determine whether to draw for better performance
+                // if (Math.abs(strength) >= drawThreshold) {
+                  ctx.beginPath();
+                  ctx.strokeStyle =
+                    "rgba(" + (strength > 0 ? 0 : 255) + ", " + (strength > 0 ? 255 : 0) + ",0 ," + Math.abs(strength) + ")";
+                  ctx.lineWidth = 1 / totalzoom;
+                  ctx.moveTo(body2.xPos, body2.yPos);
+                  ctx.lineTo(body1.xPos, body1.yPos);
+                  ctx.closePath();
+                  ctx.stroke();
+                // }
+              }
             }
 
+            let force = kForce + sForce;
             // add force to force components
             forceX += force * xDist / dist;
             forceY += force * yDist / dist;
@@ -825,8 +834,8 @@ function calcCoM() {
   let CoM = { x: 0, y: 0 };
   let mass = 0;
   bodies.forEach((body) => {
-    CoM.x += body.xPos * body.mass;
-    CoM.y += body.yPos * body.mass;
+    CoM.x += body.xPrev * body.mass;
+    CoM.y += body.yPrev * body.mass;
     mass += body.mass;
   });
   CoM.x /= mass;
@@ -854,43 +863,6 @@ function pan(offset = { x: 0, y: 0 }, clrTrails = true) {
   });
 
   ui.offset.innerText = Math.floor(currentOffset.x) + " Y=" + Math.floor(currentOffset.y);
-}
-
-/**
- * Zooms the canvas using transformations, then adjusts viewport values
- * @param {Number} zoomfactor the factor to zoom by 
- */
-function zoom(zoomfactor = 0) {
-  if (zoomfactor == 0) {
-    // reset zoom
-    zoomfactor = 1 / totalzoom;
-    totalzoom = 1;
-    viewport.x = canvas.width;
-    viewport.y = canvas.height;
-  } else {
-    // adjust zoom
-    totalzoom *= zoomfactor;
-    viewport.x /= zoomfactor;
-    viewport.y /= zoomfactor;
-  }
-  // transformation
-  ctx.transform(
-    zoomfactor,
-    0,
-    0,
-    zoomfactor,
-    (-(zoomfactor - 1) * canvas.width) / 2,
-    (-(zoomfactor - 1) * canvas.height) / 2
-  );
-  ui.viewport.innerText = ~~(viewport.x) + " x " + ~~(viewport.y);
-  ctx.fillStyle = "rgba(0, 0, 0, 1)";
-  ctx.fillRect(
-    center.x - viewport.x / 2,
-    center.y - viewport.y / 2,
-    viewport.x,
-    viewport.y
-  );
-  ui.zoom.innerText = ~~(totalzoom * 10000) / 100;
 }
 
 /**

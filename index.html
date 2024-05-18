@@ -68,7 +68,7 @@
     </div>
     <div id="addbodyparams">
       <hr />
-      <p class="header">Add a body: Ctrl+click / Alt+click</p>
+      <p class="header">Add a body: Ctrl+click</p>
       <div>
         <input type="number" id="mass" name="mass" value="1000" step="100" />
         <label for="mass">Mass</label>
@@ -254,6 +254,10 @@
         <label for="drawKThreshold">Electrostatic draw threshold</label>
       </div>
       <div>
+        <input type="checkbox" id="drawSStrength" name="drawSStrength" />
+        <label for="drawSStrength">Draw spring force strength</label>
+      </div>
+      <div>
         <input type="checkbox" id="drawCoM" name="drawCoM" />
         <label for="drawCoM">Draw CoM (3)</label>
       </div>
@@ -266,7 +270,7 @@
       <hr />
       <p>
         Controls<br />
-        Left Shift/Ctrl: adjust timestep<br />
+        Period/Comma: adjust timestep<br />
         U/V: toggle sidebar<br />
         Arrows/WASD/Mouse: pan view<br />
         Space: cycle tracked body<br />

@@ -1,5 +1,15 @@
 // body presets
-
+/**
+ * Generates random integers
+ * @param {Number} min minimum inclusive
+ * @param {Number} max maximum exclusive
+ * @returns the generated random number
+ */
+function randInt(min, max) {
+  min = Math.ceil(min);
+  max = ~~max;
+  return Math.floor(Math.random() * (max - min) + min); // The maximum is exclusive and the minimum is inclusive
+}
 /** load a preset */
 function load() {
   initParams();
