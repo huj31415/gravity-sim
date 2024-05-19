@@ -186,10 +186,10 @@ function updateSettings() {
 
     ui.uniformg.addEventListener("input", (event) => {
       uniformg = parseFloat(event.target.value);
-      if (uniformg) {
-        collide = true;
-        ui.collide.checked = true;
-      }
+      // if (uniformg) {
+      //   collide = true;
+      //   ui.collide.checked = true;
+      // }
     });
 
     ui.K.addEventListener("input", (event) => {

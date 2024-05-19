@@ -461,15 +461,18 @@ function runSim() {
   bodies.forEach((body, index) => {
     const body1 = body;
     if (drawField && body1.mass > maxBody.mass) maxBody = body1;
-    if (bodies.length > 1 && timestep && (gravity && G || globalCollide || softbody || electrostatic && K)) {
+    if (bodies.length > 1
+      && (((gravity && G || softbody || electrostatic && K || globalCollide) && !paused)
+        || (drawGravityStrength || drawKStrength || drawSStrength))
+    ) {
       for (let i = index + 1; i < bodies.length; i++) {
         const body2 = bodies[i];
 
-        // calc gravity between body and bodies[i], then add forces
         const xDist = body2.xPos - body1.xPos;
         const yDist = body2.yPos - body1.yPos;
 
-        const distThreshSqr = (body2.radius + body1.radius) * (body2.radius + body1.radius) + 1;
+        const minDist = body1.radius + body2.radius;
+        const distThreshSqr = minDist * minDist + 1;
         const sqr = Math.max(xDist * xDist + yDist * yDist, distThreshSqr);
 
         // check if bodies are colliding
@@ -480,7 +483,7 @@ function runSim() {
           body1.id != body2.id
         ) {
           // collide the bodies
-          if (globalCollide && body2.collide && body1.collide)
+          if (globalCollide && body2.collide && body1.collide && !paused)
             collision(body1, body2);
         } else {
           // calculate acceleration based on forces
@@ -515,7 +518,7 @@ function runSim() {
           }
 
           // calculate other forces if needed
-          if (K != 0 && electrostatic || softbody) {
+          if ((K != 0 && electrostatic || softbody) && !(body1.immovable && body2.immovable)) {
             // coulomb force
             if (electrostatic) {
               // repel if like charges, attract if opposite charges
@@ -549,20 +552,19 @@ function runSim() {
               body2.yVel *= dampening; //(body2.yVel - vCoMY) * 0.99 + vCoMY;
 
               // draw spring force
-              if (drawSStrength && sForce != 0) {
+              if (drawSStrength) {
                 const strength = Math.sign(sForce) * (1 - 10 / (Math.abs(sForce) + 10));
-                // const drawThreshold = drawKThreshold ? (trace ? 1e-4 : 1e-2) : 0;
-                // determine whether to draw for better performance
-                // if (Math.abs(strength) >= drawThreshold) {
-                  ctx.beginPath();
-                  ctx.strokeStyle =
-                    "rgba(" + (strength > 0 ? 0 : 255) + ", " + (strength > 0 ? 255 : 0) + ",0 ," + Math.abs(strength) + ")";
-                  ctx.lineWidth = 1 / totalzoom;
-                  ctx.moveTo(body2.xPos, body2.yPos);
-                  ctx.lineTo(body1.xPos, body1.yPos);
-                  ctx.closePath();
-                  ctx.stroke();
-                // }
+                const scaledStrength = 127.5 * strength;
+                // draw
+                ctx.beginPath();
+                ctx.strokeStyle =
+                  // "rgba(" + (strength > 0 ? 0 : 255) + ", " + (strength > 0 ? 255 : 0) + ",0 ," + Math.abs(strength) + ")";
+                  "rgba(" + (127.5 - scaledStrength) + ", " + (127.5 + scaledStrength) + ",0 ," + (127.5 + Math.abs(scaledStrength)) + ")";
+                ctx.lineWidth = 1 / totalzoom;
+                ctx.moveTo(body2.xPos, body2.yPos);
+                ctx.lineTo(body1.xPos, body1.yPos);
+                ctx.closePath();
+                ctx.stroke();
               }
             }
 
