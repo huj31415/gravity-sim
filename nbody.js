@@ -1,4 +1,4 @@
-// todo: implement electrostatic and magnetic (?) fields, fix gravity line positions
+// todo: implement electrostatic and magnetic (?) fields, rotating reference frame tracking
 let frameDelayMs = 0; // Chromebook Simulator (or for debug purposes): 0 for default requestAnimationFrame fps
 
 // object containing the user interface elements
@@ -69,6 +69,8 @@ const ui = {
   dampOut: document.getElementById("dampOut"),
   springEquilPos: document.getElementById("softbodyEquilPos"),
   drawSStrength: document.getElementById("drawSStrength"),
+  rotate: document.getElementById("rotate"),
+  rOut: document.getElementById("rOut"),
 };
 
 // utilities
@@ -135,6 +137,7 @@ let zoomfactor = 1;
 let totalzoom = 1;
 let viewport = { x: canvas.width, y: canvas.height };
 let mouseX, mouseY;
+let currentAngleOffset = 0;
 
 // heatmap
 let maxBody;
@@ -199,6 +202,14 @@ function remove(body, i = 0) {
   if (index != -1) {
     bodies.splice(index, 1);
   }
+}
+
+function circle(x = 0, y = 0, r = 5, drawColor = "gray") {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2, true);
+  ctx.closePath();
+  ctx.fillStyle = drawColor;
+  ctx.fill();
 }
 
 /**
@@ -310,7 +321,7 @@ class Body {
         Math.abs(bodyPos.x / canvas.width) > Math.abs(bodyPos.y / canvas.height)
           ? ctx.lineTo(center.x + x, center.y + slope * x)
           : ctx.lineTo(center.x + y / slope, center.y + y);
-        ctx.closePath();
+        // ctx.closePath();
         ctx.stroke();
       } else {
         if (trackBody != this && trace && !(collide && trackBody) && !this.immovable) {
@@ -321,37 +332,18 @@ class Body {
             ctx.strokeStyle = drawColor;
             ctx.moveTo(this.xPos, this.yPos);
             ctx.lineTo(this.xPrev, this.yPrev);
-            ctx.closePath();
+            // ctx.closePath();
             ctx.stroke();
           }
-          ctx.beginPath();
-          ctx.arc(this.xPrev, this.yPrev, this.radius, 0, Math.PI * 2, true);
-          ctx.closePath();
-          ctx.fillStyle = drawColor;
-          ctx.fill();
+          circle(this.xPrev, this.yPrev, this.radius, drawColor);
         }
 
         // draw the body
-        ctx.beginPath();
-        ctx.arc(this.xPos, this.yPos, this.radius, 0, Math.PI * 2, true);
-        ctx.closePath();
-        ctx.fillStyle = drawColor;
-        ctx.fill();
+        circle(this.xPos, this.yPos, this.radius, drawColor);
 
         // center
         if (this.radius > 3) {
-          ctx.beginPath();
-          ctx.arc(
-            this.xPos,
-            this.yPos,
-            this.radius < 1.5 ? this.radius : 1.5,
-            0,
-            Math.PI * 2,
-            true
-          );
-          ctx.closePath();
-          ctx.fillStyle = "black";
-          ctx.fill();
+          circle(this.xPos, this.yPos, this.radius < 1.5 ? this.radius : 1.5, "black");
         }
 
         // black outline for field visualization
@@ -372,7 +364,7 @@ class Body {
           ctx.lineWidth = 1 / totalzoom;
           ctx.moveTo(this.xPos, this.yPos);
           ctx.lineTo(this.xPos + mult * this.xVel, this.yPos + mult * this.yVel);
-          ctx.closePath();
+          // ctx.closePath();
           ctx.stroke();
         }
         // acceleration vector
@@ -383,7 +375,7 @@ class Body {
           ctx.strokeStyle = "red";
           ctx.moveTo(this.xPos, this.yPos);
           ctx.lineTo(this.xPos + mult * this.xAccel, this.yPos + mult * this.yAccel);
-          ctx.closePath();
+          // ctx.closePath();
           ctx.stroke();
         }
       }
@@ -511,7 +503,7 @@ function runSim() {
                 ctx.lineWidth = 1 / totalzoom;
                 ctx.moveTo(body2.xPos, body2.yPos);
                 ctx.lineTo(body1.xPos, body1.yPos);
-                ctx.closePath();
+                // ctx.closePath();
                 ctx.stroke();
               }
             }
@@ -536,7 +528,7 @@ function runSim() {
                   ctx.lineWidth = 1 / totalzoom;
                   ctx.moveTo(body2.xPos, body2.yPos);
                   ctx.lineTo(body1.xPos, body1.yPos);
-                  ctx.closePath();
+                  // ctx.closePath();
                   ctx.stroke();
                 }
               }
@@ -563,7 +555,7 @@ function runSim() {
                 ctx.lineWidth = 1 / totalzoom;
                 ctx.moveTo(body2.xPos, body2.yPos);
                 ctx.lineTo(body1.xPos, body1.yPos);
-                ctx.closePath();
+                // ctx.closePath();
                 ctx.stroke();
               }
             }
@@ -826,7 +818,7 @@ function drawPointField() {
   ctx.lineWidth = 1 / totalzoom;
   ctx.moveTo(x, y);
   ctx.lineTo(x + vector.x * 2, y + vector.y * 2);
-  ctx.closePath();
+  // ctx.closePath();
   ctx.stroke();
 }
 
@@ -865,6 +857,38 @@ function pan(offset = { x: 0, y: 0 }, clrTrails = true) {
   });
 
   ui.offset.innerText = Math.floor(currentOffset.x) + " Y=" + Math.floor(currentOffset.y);
+}
+
+function rotate(offset = Math.PI, clrTrails = false) {
+  currentAngleOffset += offset;
+  if (clrTrails) {
+    continuous = false;
+    clearTrails = true;
+  }
+  if (Math.abs(offset % Math.PI) < 1e-3) {
+
+    // break it down into pi/2 to avoid tan asymptote
+    for (let i = 0; i < offset / Math.PI * 2; i++) {
+      rotate(Math.PI / 2);
+    }
+  } else {
+    // faster skew for angles less than pi
+    bodies.forEach((body) => {
+      // find skew values
+      const xSkew = -Math.tan(offset / 2);
+      const ySkew = Math.sin(offset);
+
+      // adjust positions
+      body.xPos += xSkew * (body.yPos - center.y);
+      body.yPos += ySkew * (body.xPos - center.x);
+      body.xPos += xSkew * (body.yPos - center.y);
+      
+      // adjust velocities
+      body.xVel += xSkew * (body.yVel);
+      body.yVel += ySkew * (body.xVel);
+      body.xVel += xSkew * (body.yVel);
+    });
+  }
 }
 
 /**
@@ -957,11 +981,7 @@ function draw() {
   // draw CoM
   if (bodies.length && drawCoM) {
     CoM = calcCoM();
-    ctx.beginPath();
-    ctx.arc(CoM.x, CoM.y, 2 / totalzoom, 0, Math.PI * 2, true);
-    ctx.closePath();
-    ctx.fillStyle = "white";
-    ctx.fill();
+    circle(CoM.x, CoM.y, 2 / totalzoom, "white");
     if (trackCoM) {
       pan({ x: center.x - CoM.x, y: center.y - CoM.y }, false);
     }
@@ -1000,7 +1020,7 @@ function updateGraphs(interval) {
     fpsCtx.lineWidth = 1;
     fpsCtx.moveTo(xCoord % fpsGraph.width, fpsGraph.height);
     fpsCtx.lineTo(xCoord % fpsGraph.width, fpsGraph.height - fps);
-    fpsCtx.closePath();
+    // fpsCtx.closePath();
     fpsCtx.stroke();
     fpsCtx.fillStyle = "rgba(0, 0, 0, 0.02)";
     fpsCtx.fillRect(0, 0, (xCoord % fpsGraph.width) - 2, fpsGraph.height);
@@ -1016,7 +1036,7 @@ function updateGraphs(interval) {
     bodyCtx.lineWidth = 1;
     bodyCtx.moveTo(xCoord % bodyGraph.width, bodyGraph.height);
     bodyCtx.lineTo(xCoord % bodyGraph.width, bodyGraph.height - activeBodies / 8);
-    bodyCtx.closePath();
+    // bodyCtx.closePath();
     bodyCtx.stroke();
     bodyCtx.fillStyle = "rgba(0, 0, 0, 0.02)";
     bodyCtx.fillRect(0, 0, (xCoord % bodyGraph.width) - 2, bodyGraph.height);

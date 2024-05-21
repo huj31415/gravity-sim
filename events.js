@@ -20,6 +20,8 @@ function findNearest(x, y) {
   return nearest;
 }
 
+const degToRad = (deg) => deg / 180 * Math.PI;
+const radToDeg = (rad) => rad / Math.PI * 180;
 /**
  * Zooms the canvas using transformations, then adjusts viewport values
  * @param {Number} zoomfactor the factor to zoom by 
@@ -162,6 +164,11 @@ function updateSettings() {
 
   // input listeners
   {
+    ui.rotate.addEventListener("input", (event) => {
+      let rad = degToRad(event.target.value);
+      rotate(rad - currentAngleOffset);
+      ui.rOut.innerText = ~~(radToDeg(currentAngleOffset) * 100) / 100;
+    });
     ui.trace.addEventListener("input", () => {
       if (ui.trace.checked) {
         ui.heatmap.checked = drawField = false;
