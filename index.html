@@ -19,9 +19,14 @@
       <p>Collisions: <span id="collisionCount">0</span></p>
       <p>Viewport: <span id="viewport">0 &times; 0</span></p>
       <p>Offset: X=<span id="offset">0 Y=0</span> | Zoom: <span id="zoom">100</span>%</p>
+      <p>Rotation: <span id="rOut">0</span>&deg;</p>
       <div>
-        <input type="range" id="rotate" name="rotate" value="0" max="360" min="-360" step="0.01" width="400px" />
-        <label for="rotate">Rotation (<span id="rOut">0</span>)</label>
+        <input type="range" id="rotate" name="rotate" value="0" max="180" min="-180" step="0.01" width="400px" />
+        <label for="rotate">Rotation offset</label>
+      </div>
+      <div>
+        <input type="number" id="rotateRate" name="rotateRate" value="0" step="0.01" width="400px" />
+        <label for="rotateRate">Rotation rate</label>
       </div>
     </div>
     <div id="graphs">
@@ -70,73 +75,9 @@
         <button id="toggle" class="fullwidth">Pause / Play (p)</button>
       </div>
     </div>
-    <div id="addbodyparams">
-      <hr />
-      <p class="header">Add a body: Ctrl+click</p>
-      <div>
-        <input type="number" id="mass" name="mass" value="1000" step="100" />
-        <label for="mass">Mass</label>
-      </div>
-      <div>
-        <input type="number" id="charge" name="charge" value="0" />
-        <label for="charge">Charge</label>
-      </div>
-      <div>
-        <input type="number" id="radius" name="radius" value="0" />
-        <label for="radius">Radius (0=auto)</label>
-      </div>
-      <div>
-        <input type="number" id="xPos" name="xPos" value="" />
-        <label for="xPos">X (blank for mouse)</label>
-      </div>
-      <div>
-        <input type="number" id="yPos" name="yPos" value="" />
-        <label for="yPos">Y (blank for mouse)</label>
-      </div>
-      <div>
-        <input type="number" id="Vx" name="Vx" value="0" />
-        <label for="Vx">Vx</label>
-      </div>
-      <div>
-        <input type="number" id="Vy" name="Vy" value="0" />
-        <label for="Vy">Vy</label>
-      </div>
-      <div>
-        <input type="checkbox" id="immovable" name="immovable">
-        <label for="immovable">Immovable object</label>
-      </div>
-    </div>
-    <div id="randbodyparams">
-      <hr />
-      <p class="header">Random body generation params</p>
-      <div>
-        <input type="number" id="num" name="num" value="500" width="400px" />
-        <label for="num">Number of objects</label>
-      </div>
-      <div>
-        <input type="number" id="maxSize" name="maxSize" value="100" step="100" width="400px" />
-        <label for="maxSize">Max mass</label>
-      </div>
-      <div>
-        <input type="number" id="minSize" name="minSize" value="50" step="100" width="400px" />
-        <label for="minSize">Min mass</label>
-      </div>
-      <div>
-        <input type="number" id="maxCharge" name="maxCharge" value="5" width="400px" />
-        <label for="maxCharge">Max charge</label>
-      </div>
-      <div>
-        <input type="number" id="minCharge" name="minCharge" value="-5" width="400px" />
-        <label for="minCharge">Min charge</label>
-      </div>
-      <div>
-        <input type="number" id="initVel" name="initVel" value="3" min="0" width="400px" />
-        <label for="initVel">Max init speed</label>
-      </div>
-    </div>
     <div id="simparams">
       <hr />
-      <p class="header">Global simulation params</p>
+      <p class="header">Global simulation settings</p>
       <div>
         <input type="range" id="timestep" name="timestep" value="0.5" max="2" min="0" step="0.01" width="400px" />
         <label for="timestep">Timestep (<span id="tOut">0.5</span>)</label>
@@ -146,11 +87,11 @@
         <label for="gravity">Gravity (g)</label>
       </div>
       <div>
-        <input type="number" id="g" name="g" value="1" max="2" min="-2" step=".1" width="400px" /> <!-- default 1-->
+        <input type="number" id="g" name="g" value="1" step=".1" width="400px" />
         <label for="g">G constant</label>
       </div>
       <div>
-        <input type="number" id="uniformg" name="uniformg" value="0.00" max="1" min="-1" step=".05" width="400px" /> <!-- default 0-->
+        <input type="number" id="uniformg" name="uniformg" value="0.00" step=".05" width="400px" /> <!-- default 0-->
         <label for="uniformg">Uniform g</label>
       </div>
       <div>
@@ -158,7 +99,7 @@
         <label for="electrostatic">Electrostatic forces (k)</label>
       </div>
       <div>
-        <input type="number" id="K" name="K" value="500000" max="10000000" min="-10000000" step="10000" width="400px" />
+        <input type="number" id="K" name="K" value="500000" step="10000" width="400px" />
         <label for="K">k constant (<span id="KOut">50000</span>)</label>
       </div>
       <div>
@@ -166,11 +107,11 @@
         <label for="softbody">Pseudo-softbody forces (b)</label>
       </div>
       <div>
-        <input type="number" id="springConst" name="springConst" value="100" max="1000" min="0" step="10" width="400px" />
+        <input type="number" id="springConst" name="springConst" value="100" min="0" step="10" width="400px" />
         <label for="springConst">Spring constant</label>
       </div>
       <div>
-        <input type="number" id="softbodyEquilPos" name="softbodyEquilPos" value="25" max="1000" min="0" step="1" width="400px" />
+        <input type="number" id="softbodyEquilPos" name="softbodyEquilPos" value="25" min="0" step="1" width="400px" />
         <label for="softbodyEquilPos">Spring equilibrium</label>
       </div>
       <div>
@@ -198,9 +139,100 @@
         <label for="decoupleFPS">Decouple sim rate from FPS</label>
       </div>
     </div>
+    <div id="addbodyparams">
+      <hr />
+      <p class="header">Add a body: Ctrl+click</p>
+      <div>
+        <input type="number" id="mass" name="mass" value="1000" step="100" min="0" />
+        <label for="mass">Mass</label>
+      </div>
+      <div>
+        <input type="number" id="charge" name="charge" value="0" />
+        <label for="charge">Charge</label>
+      </div>
+      <div>
+        <input type="number" id="radius" name="radius" value="0" min="0" />
+        <label for="radius">Radius (0=auto)</label>
+      </div>
+      <div>
+        <input type="number" id="xPos" name="xPos" value="" />
+        <label for="xPos">X (blank for mouse)</label>
+      </div>
+      <div>
+        <input type="number" id="yPos" name="yPos" value="" />
+        <label for="yPos">Y (blank for mouse)</label>
+      </div>
+      <div>
+        <input type="number" id="Vx" name="Vx" value="0" min="0" />
+        <label for="Vx">Vx</label>
+      </div>
+      <div>
+        <input type="number" id="Vy" name="Vy" value="0" min="0" />
+        <label for="Vy">Vy</label>
+      </div>
+      <div>
+        <input type="checkbox" id="immovable" name="immovable">
+        <label for="immovable">Immovable object</label>
+      </div>
+    </div>
+    <div id="randbodyparams">
+      <hr />
+      <p class="header">Random body generation settings</p>
+      <div>
+        <input type="number" id="num" name="num" value="500" width="400px" />
+        <label for="num">Number of objects</label>
+      </div>
+      <div>
+        <input type="number" id="maxSize" name="maxSize" value="100" step="100" width="400px" />
+        <label for="maxSize">Max mass</label>
+      </div>
+      <div>
+        <input type="number" id="minSize" name="minSize" value="50" step="100" width="400px" />
+        <label for="minSize">Min mass</label>
+      </div>
+      <div>
+        <input type="number" id="maxCharge" name="maxCharge" value="5" width="400px" />
+        <label for="maxCharge">Max charge</label>
+      </div>
+      <div>
+        <input type="number" id="minCharge" name="minCharge" value="-5" width="400px" />
+        <label for="minCharge">Min charge</label>
+      </div>
+      <div>
+        <input type="number" id="initVel" name="initVel" value="3" min="0" width="400px" />
+        <label for="initVel">Max init speed</label>
+      </div>
+    </div>
+    <div id="resonanceparams">
+      <hr>
+      <p class="header">Resonant orbit generator settings</p>
+      <div>
+        <input type="text" id="res" name="res" value="1,2,4" width="400px" />
+        <label for="res">Resonances</label>
+      </div>
+      <div>
+        <input type="text" id="resOffset" name="resOffset" value="0,0,0" width="400px" />
+        <label for="resOffset">Offsets (* 90&deg;)</label>
+      </div>
+      <div>
+        <input type="number" id="resMass" name="resMass" value="1000000" step="10000" min="0" width="400px" />
+        <label for="resMass">Central mass</label>
+      </div>
+      <div>
+        <input type="number" id="resSMA" name="resSMA" value="6" step="0.5" min="0" width="400px" />
+        <label for="resMSMA">Min SMA (*R<sub>center</sub>)</label>
+      </div>
+      <div>
+        <input type="checkbox" id="restrictSMA" name="restrictSMA" />
+        <label for="restrictSMA">Set minimum SMA</label>
+      </div>
+      <div>
+        <button id="generateRes" class="fullwidth">Generate</button>
+      </div>
+    </div>
     <div id="drawparams">
       <hr />
-      <p class="header">Draw params</p>
+      <p class="header">Draw settings</p>
       <div>
         <input type="range" id="fadeStrength" name="fadeStrength" value="0.05" max="1" min="0.01" step="0.01" width="400px" />
         <label for="fadeStrength">Fade strength (<span id="fadeOutput">0.05</span>)</label>
@@ -274,6 +306,7 @@
       <hr />
       <p>
         Controls<br />
+        Alt+click: delete body<br />
         Period/Comma: adjust timestep<br />
         U/V: toggle sidebar<br />
         Arrows/WASD/Mouse: pan view<br />

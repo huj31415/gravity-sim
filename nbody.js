@@ -8,18 +8,31 @@ const ui = {
   timestep: document.getElementById("timestep"),
   tOut: document.getElementById("tOut"),
   numBodies: document.getElementById("num"),
+  // draw settings
   trace: document.getElementById("trace"),
+  continuous: document.getElementById("continuous"),
   fade: document.getElementById("fade"),
+  fadeStrength: document.getElementById("fadeStrength"),
+  fadeOutput: document.getElementById("fadeOutput"),
   drawVector: document.getElementById("vectors"),
   drawGravity: document.getElementById("drawG"),
   drawGravityStrength: document.getElementById("drawGStrength"),
   drawGThreshold: document.getElementById("drawGThreshold"),
-  continuous: document.getElementById("continuous"),
+  heatmap: document.getElementById("heatmap"),
+  drawCoM: document.getElementById("drawCoM"),
+  trackCoM: document.getElementById("trackCoM"),
+  colorByVel: document.getElementById("colorByVel"),
+  drawOffscreen: document.getElementById("drawOffscreen"),
+  drawMouseVector: document.getElementById("drawMouseVector"),
+  // gravity settings
   G: document.getElementById("g"),
+  uniformg: document.getElementById("uniformg"),
+  gravity: document.getElementById("gravity"),
   collide: document.getElementById("collide"),
   maxMass: document.getElementById("maxSize"),
   minMass: document.getElementById("minSize"),
   initVel: document.getElementById("initVel"),
+  // buttons
   randBtn: document.getElementById("rand"),
   loadBtn: document.getElementById("loadPreset"),
   presets: document.getElementById("presets"),
@@ -27,30 +40,26 @@ const ui = {
   clear: document.getElementById("clear"),
   toggle: document.getElementById("toggle"),
   clrOffscreen: document.getElementById("clrOffscreen"),
-  collisionCount: document.getElementById("collisionCount"),
-  bodyCount: document.getElementById("bodyCount"),
-  fps: document.getElementById("fps"),
+  // stats
   offset: document.getElementById("offset"),
   viewport: document.getElementById("viewport"),
   zoom: document.getElementById("zoom"),
+  collisionCount: document.getElementById("collisionCount"),
+  bodyCount: document.getElementById("bodyCount"),
+  fps: document.getElementById("fps"),
+  // body add settings
   mass: document.getElementById("mass"),
   radius: document.getElementById("radius"),
   xp: document.getElementById("xPos"),
   yp: document.getElementById("yPos"),
   vx: document.getElementById("Vx"),
   vy: document.getElementById("Vy"),
-  heatmap: document.getElementById("heatmap"),
-  drawCoM: document.getElementById("drawCoM"),
-  trackCoM: document.getElementById("trackCoM"),
-  colorByVel: document.getElementById("colorByVel"),
+  // collision settings
   globalCollide: document.getElementById("globalCollide"),
-  drawOffscreen: document.getElementById("drawOffscreen"),
-  fadeStrength: document.getElementById("fadeStrength"),
-  fadeOutput: document.getElementById("fadeOutput"),
-  drawMouseVector: document.getElementById("drawMouseVector"),
   inelastic: document.getElementById("collideType"),
   CoR: document.getElementById("CoR"),
   CoROut: document.getElementById("CoROut"),
+  // electrostatic settings
   maxCharge: document.getElementById("maxCharge"),
   minCharge: document.getElementById("minCharge"),
   charge: document.getElementById("charge"),
@@ -59,18 +68,26 @@ const ui = {
   K: document.getElementById("K"),
   drawKStrength: document.getElementById("drawKStrength"),
   drawKThreshold: document.getElementById("drawKThreshold"),
-  uniformg: document.getElementById("uniformg"),
-  gravity: document.getElementById("gravity"),
   immovable: document.getElementById("immovable"),
   decoupleFPS: document.getElementById("decoupleFPS"),
+  // softbody settings
   softbody: document.getElementById("softbody"),
   springConst: document.getElementById("springConst"),
   dampening: document.getElementById("dampening"),
   dampOut: document.getElementById("dampOut"),
   springEquilPos: document.getElementById("softbodyEquilPos"),
   drawSStrength: document.getElementById("drawSStrength"),
+  // rotate settings
   rotate: document.getElementById("rotate"),
   rOut: document.getElementById("rOut"),
+  rotateRate: document.getElementById("rotateRate"),
+  // resonant orbit settings
+  res: document.getElementById("res"),
+  resOffset: document.getElementById("resOffset"),
+  resMass: document.getElementById("resMass"),
+  resSMA: document.getElementById("resSMA"),
+  restrictSMA: document.getElementById("restrictSMA"),
+  generateRes: document.getElementById("generateRes")
 };
 
 // utilities
@@ -78,6 +95,9 @@ const ui = {
 const getRadius = (mass) => Math.abs(Math.cbrt((mass * (3 / 4)) / Math.PI));
 // generate a random hex color
 const randColor = () => "#" + (~~(Math.random() * (16777215 - 5592405) + 5592405)).toString(16);
+
+const degToRad = (deg) => (deg / 180) * Math.PI;
+const radToDeg = (rad) => (rad / Math.PI) * 180;
 
 // initialize main canvas
 const canvas = document.getElementById("canvas", { alpha: false });
@@ -113,7 +133,16 @@ let bodies = [];
 let G = ui.G.value;
 let K = ui.K.value;
 const Gconst = 6.6743 * Math.pow(10, -11);
-let numBodies, maxMass, minMass, initVel, timestep, oldTimestep, CoM, maxCharge, minCharge, uniformg;
+let numBodies,
+  maxMass,
+  minMass,
+  initVel,
+  timestep,
+  oldTimestep,
+  CoM,
+  maxCharge,
+  minCharge,
+  uniformg;
 let continuous = true;
 let CoR = 1;
 let springConst = 100;
@@ -123,7 +152,8 @@ let springEquilPos = 25;
 // tracking variables
 let collisionCount = (frameCount = bodyCount = activeBodies = 0);
 let lastTime = performance.now();
-let clearTrails = false, paused = false;
+let clearTrails = false,
+  paused = false;
 
 // interactive variables
 let panOffset = { x: 0, y: 0 };
@@ -138,6 +168,9 @@ let totalzoom = 1;
 let viewport = { x: canvas.width, y: canvas.height };
 let mouseX, mouseY;
 let currentAngleOffset = 0;
+let rotationRate = parseFloat(ui.rotateRate.value);
+let rotateTarget,
+  rotateTrackNum = 0;
 
 // heatmap
 let maxBody;
@@ -291,7 +324,14 @@ class Body {
     let drawColor = this.color;
     // change the color based on speed
     if (colorByCharge) {
-      drawColor = "rgb(" + (128 + this.charge * 10) + ", " + (128 - Math.abs(this.charge * 10)) + ", " + (128 - this.charge * 10) + ")";
+      drawColor =
+        "rgb(" +
+        (128 + this.charge * 10) +
+        ", " +
+        (128 - Math.abs(this.charge * 10)) +
+        ", " +
+        (128 - this.charge * 10) +
+        ")";
     } else if (colorBySpeed) {
       let speed = Math.hypot(
         this.xVel - (trackBody ? trackBody.xVel : 0),
@@ -440,22 +480,24 @@ class Body {
         }
       }
     }
-
   }
 }
 
 /**
  * Calculate forces between each body, then draw them.
  * This is where the physics is
-*/
+ */
 function runSim() {
   // iterate through all combinations of bodies and add force to body total
   bodies.forEach((body, index) => {
     const body1 = body;
     if (drawField && body1.mass > maxBody.mass) maxBody = body1;
-    if (bodies.length > 1
-      && (((gravity && G || softbody || electrostatic && K || globalCollide) && !paused)
-        || (drawGravityStrength || drawKStrength || drawSStrength))
+    if (
+      bodies.length > 1 &&
+      ((((gravity && G) || softbody || (electrostatic && K) || globalCollide) && !paused) ||
+        drawGravityStrength ||
+        drawKStrength ||
+        drawSStrength)
     ) {
       for (let i = index + 1; i < bodies.length; i++) {
         const body2 = bodies[i];
@@ -475,12 +517,16 @@ function runSim() {
           body1.id != body2.id
         ) {
           // collide the bodies
-          if (globalCollide && body2.collide && body1.collide && !paused)
-            collision(body1, body2);
+          if (globalCollide && body2.collide && body1.collide && !paused) collision(body1, body2);
         } else {
           // calculate acceleration based on forces
           const dist = Math.sqrt(sqr);
-          let xAccel = 0, yAccel = 0, forceX = 0, forceY = 0, kForce = 0, sForce = 0;
+          let xAccel = 0,
+            yAccel = 0,
+            forceX = 0,
+            forceY = 0,
+            kForce = 0,
+            sForce = 0;
 
           // calculate gravity if needed
           if (G != 0 && gravity && !(body1.immovable && body2.immovable)) {
@@ -499,7 +545,13 @@ function runSim() {
               if (strength >= drawThreshold) {
                 ctx.beginPath();
                 ctx.strokeStyle =
-                  "rgba(" + (255 - 255 * strength) + ", " + (255 * strength) + ",0 ," + strength + ")";
+                  "rgba(" +
+                  (255 - 255 * strength) +
+                  ", " +
+                  255 * strength +
+                  ",0 ," +
+                  strength +
+                  ")";
                 ctx.lineWidth = 1 / totalzoom;
                 ctx.moveTo(body2.xPos, body2.yPos);
                 ctx.lineTo(body1.xPos, body1.yPos);
@@ -510,11 +562,11 @@ function runSim() {
           }
 
           // calculate other forces if needed
-          if ((K != 0 && electrostatic || softbody) && !(body1.immovable && body2.immovable)) {
+          if (((K != 0 && electrostatic) || softbody) && !(body1.immovable && body2.immovable)) {
             // coulomb force
             if (electrostatic) {
               // repel if like charges, attract if opposite charges
-              kForce += electrostatic ? (K * (-body1.charge) * body2.charge) / sqr : 0;
+              kForce += electrostatic ? (K * -body1.charge * body2.charge) / sqr : 0;
 
               // draw electrostatic force
               if (drawKStrength && kForce != 0) {
@@ -524,7 +576,13 @@ function runSim() {
                 if (Math.abs(strength) >= drawThreshold) {
                   ctx.beginPath();
                   ctx.strokeStyle =
-                    "rgba(" + (strength > 0 ? 0 : 255) + ", " + (strength > 0 ? 255 : 0) + ",0 ," + Math.abs(strength) + ")";
+                    "rgba(" +
+                    (strength > 0 ? 0 : 255) +
+                    ", " +
+                    (strength > 0 ? 255 : 0) +
+                    ",0 ," +
+                    Math.abs(strength) +
+                    ")";
                   ctx.lineWidth = 1 / totalzoom;
                   ctx.moveTo(body2.xPos, body2.yPos);
                   ctx.lineTo(body1.xPos, body1.yPos);
@@ -551,7 +609,13 @@ function runSim() {
                 ctx.beginPath();
                 ctx.strokeStyle =
                   // "rgba(" + (strength > 0 ? 0 : 255) + ", " + (strength > 0 ? 255 : 0) + ",0 ," + Math.abs(strength) + ")";
-                  "rgba(" + (127.5 - scaledStrength) + ", " + (127.5 + scaledStrength) + ",0 ," + (127.5 + Math.abs(scaledStrength)) + ")";
+                  "rgba(" +
+                  (127.5 - scaledStrength) +
+                  ", " +
+                  (127.5 + scaledStrength) +
+                  ",0 ," +
+                  (127.5 + Math.abs(scaledStrength)) +
+                  ")";
                 ctx.lineWidth = 1 / totalzoom;
                 ctx.moveTo(body2.xPos, body2.yPos);
                 ctx.lineTo(body1.xPos, body1.yPos);
@@ -562,17 +626,17 @@ function runSim() {
 
             let force = kForce + sForce;
             // add force to force components
-            forceX += force * xDist / dist;
-            forceY += force * yDist / dist;
+            forceX += (force * xDist) / dist;
+            forceY += (force * yDist) / dist;
           }
           // apply the forces
           if (!body1.immovable) {
-            body1.xAccel += (xAccel * body2.mass + forceX / body1.mass);
-            body1.yAccel += (yAccel * body2.mass + forceY / body1.mass);
+            body1.xAccel += xAccel * body2.mass + forceX / body1.mass;
+            body1.yAccel += yAccel * body2.mass + forceY / body1.mass;
           }
           if (!body2.immovable) {
-            body2.xAccel -= (xAccel * body1.mass + forceX / body2.mass);
-            body2.yAccel -= (yAccel * body1.mass + forceY / body2.mass);
+            body2.xAccel -= xAccel * body1.mass + forceX / body2.mass;
+            body2.yAccel -= yAccel * body1.mass + forceY / body2.mass;
           }
         }
       }
@@ -596,7 +660,14 @@ function merge(body1, body2) {
   // merge masses and calculate corresponding radius and velocity based on momentum
   // color of new body is inherited from the larger
   const mass = body1.mass + body2.mass;
-  const larger = (body1.immovable || body2.immovable) ? (body1.immovable ? body1 : body2) : (body1.mass > body2.mass ? body1 : body2);
+  const larger =
+    body1.immovable || body2.immovable
+      ? body1.immovable
+        ? body1
+        : body2
+      : body1.mass > body2.mass
+      ? body1
+      : body2;
   const smaller = larger === body1 ? body2 : body1;
 
   // if one is immovable, merge into that one
@@ -632,9 +703,17 @@ function collision(body1, body2) {
   collisionCount += 1;
   ui.collisionCount.innerText = collisionCount;
   if (inelastic) merge(body1, body2); // combine the bodies into one
-  else { // calculate non-perfectly inelastic collisions
+  else {
+    // calculate non-perfectly inelastic collisions
     // larger and smaller bodies
-    const larger = (body1.immovable || body2.immovable) ? (body1.immovable ? body1 : body2) : (body1.mass > body2.mass ? body1 : body2);
+    const larger =
+      body1.immovable || body2.immovable
+        ? body1.immovable
+          ? body1
+          : body2
+        : body1.mass > body2.mass
+        ? body1
+        : body2;
     const smaller = larger === body1 ? body2 : body1;
 
     // initial separation
@@ -655,14 +734,14 @@ function collision(body1, body2) {
       const midpointY = (larger.yPos * smaller.mass + smaller.yPos * larger.mass) / totalMass;
 
       // move the bodies to just touch each other
-      larger.xPos = midpointX + (larger.radius) * xPosDistAbs / d;
-      larger.yPos = midpointY + (larger.radius) * yPosDistAbs / d;
-      smaller.xPos = midpointX - (smaller.radius) * 1.1 * xPosDistAbs / d;
-      smaller.yPos = midpointY - (smaller.radius) * 1.1 * yPosDistAbs / d;
+      larger.xPos = midpointX + (larger.radius * xPosDistAbs) / d;
+      larger.yPos = midpointY + (larger.radius * yPosDistAbs) / d;
+      smaller.xPos = midpointX - (smaller.radius * 1.1 * xPosDistAbs) / d;
+      smaller.yPos = midpointY - (smaller.radius * 1.1 * yPosDistAbs) / d;
     } else {
       // just move smaller
-      smaller.xPos = larger.xPos - (larger.radius + smaller.radius) * xPosDistAbs / d;
-      smaller.yPos = larger.yPos - (larger.radius + smaller.radius) * yPosDistAbs / d;
+      smaller.xPos = larger.xPos - ((larger.radius + smaller.radius) * xPosDistAbs) / d;
+      smaller.yPos = larger.yPos - ((larger.radius + smaller.radius) * yPosDistAbs) / d;
     }
 
     // Intiial velocity of the center of mass
@@ -696,8 +775,8 @@ function collision(body1, body2) {
       v1finalXrel = -v1relX;
       v2finalXrel = 0;
     } else {
-      v1finalXrel = (massDiff * v1relX + 2 * body2.mass * v2relX) / (totalMass);
-      v2finalXrel = (2 * body1.mass * v1relX - massDiff * v2relX) / (totalMass);
+      v1finalXrel = (massDiff * v1relX + 2 * body2.mass * v2relX) / totalMass;
+      v2finalXrel = (2 * body1.mass * v1relX - massDiff * v2relX) / totalMass;
     }
 
     // precompute these values
@@ -746,9 +825,9 @@ function calcFieldAtPoint(x, y, res = 0, hypot = false) {
   return hypot
     ? Math.hypot(xPot, yPot)
     : {
-      x: xPot,
-      y: yPot,
-    };
+        x: xPot,
+        y: yPot,
+      };
 }
 
 /**
@@ -859,17 +938,37 @@ function pan(offset = { x: 0, y: 0 }, clrTrails = true) {
   ui.offset.innerText = Math.floor(currentOffset.x) + " Y=" + Math.floor(currentOffset.y);
 }
 
+/**
+ * Track body by panning and zeroing velocity
+ * @param {Body} body the body to track
+ */
+function track(body) {
+  if (newBody) {
+    // place the tracked body in the center
+    pan({
+      x: center.x - body.xPos, // - currentOffset.x,
+      y: center.y - body.yPos, // - currentOffset.y,
+    });
+  }
+  // follow the body
+  pan({ x: -body.xVel * timestep, y: -body.yVel * timestep }, false);
+  newBody = false;
+}
+
 function rotate(offset = Math.PI, clrTrails = false) {
   currentAngleOffset += offset;
+  ui.rOut.innerText = ui.rotate.value = ~~(radToDeg(currentAngleOffset) * 100) / 100;
   if (clrTrails) {
     continuous = false;
     clearTrails = true;
   }
   if (Math.abs(offset % Math.PI) < 1e-3) {
-
-    // break it down into pi/2 to avoid tan asymptote
-    for (let i = 0; i < offset / Math.PI * 2; i++) {
-      rotate(Math.PI / 2);
+    // invert bodies
+    if (Math.abs(((offset / Math.PI) % 2) - 1) < 1e-3) {
+      bodies.forEach((body) => {
+        body.xPos = 2 * center.x - body.xPos;
+        body.yPos = 2 * center.y - body.yPos;
+      });
     }
   } else {
     // faster skew for angles less than pi
@@ -882,37 +981,29 @@ function rotate(offset = Math.PI, clrTrails = false) {
       body.xPos += xSkew * (body.yPos - center.y);
       body.yPos += ySkew * (body.xPos - center.x);
       body.xPos += xSkew * (body.yPos - center.y);
-      
+
       // adjust velocities
-      body.xVel += xSkew * (body.yVel);
-      body.yVel += ySkew * (body.xVel);
-      body.xVel += xSkew * (body.yVel);
+      body.xVel += xSkew * body.yVel;
+      body.yVel += ySkew * body.xVel;
+      body.xVel += xSkew * body.yVel;
     });
   }
 }
 
-/**
- * Track body by panning and zeroing velocity
- * @param {Body} body the body to track
- */
-function track(body) {
-  if (newBody) {
-    // place the tracked body in the center
-    pan({
-      x: center.x - body.xPos,// - currentOffset.x,
-      y: center.y - body.yPos,// - currentOffset.y,
-    });
+function rotateTrack(target = null) {
+  if (!target || !trackBody || target == trackBody) rotationRate = 0;
+  else {
+    // todo: get velocity perpendicular to radius
+    // rotationRate = -Math.hypot(target.xVel - trackBody.xVel, target.yVel - trackBody.yVel) * timestep / Math.hypot(target.xPos - center.x, target.yPos - center.x);
+    rotationRate = -Math.atan2(target.yPos - center.y, target.xPos - center.x) - Math.atan2(target.yPos + target.yVel * timestep - center.y, target.xPos + target.xVel * timestep - center.x);
+    // rotationRate = -Math.sqrt(G * trackBody.mass / Math.hypot(target.xPos - center.x, target.yPos - center.x)) / Math.hypot(target.xPos - center.x, target.yPos - center.x);
   }
-  // follow the body
-  pan({ x: -body.xVel * timestep, y: -body.yVel * timestep }, false);
-  newBody = false;
 }
 
 /** draw and animate */
 function draw() {
   continuous = true;
   let continueTrace = trace;
-
   debug = false;
   if (debug) {
     trace = false;
@@ -927,6 +1018,8 @@ function draw() {
   if (!maxBody && bodies[0]) maxBody = bodies[0];
   else if (!bodies[0]) maxBody = null;
 
+  rotate(rotationRate);
+  // if (rotateTarget) rotateTrack(rotateTarget);
   // check draw settings and draw stuff
   {
     if (trackBody) track(trackBody);

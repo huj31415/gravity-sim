@@ -132,7 +132,6 @@ function load() {
   ui.bodyCount.innerText = activeBodies;
 }
 
-
 /**
  * Randomly generate bodies based on params
  * @param {Number} num number of random bodies to generate
@@ -142,7 +141,16 @@ function load() {
  * @param {Boolean} randColors whether or not to randomly color the bodies
  * @param {Boolean} zeroVel whether or not to set the velocity of the center of mass to 0
  */
-function initRandBodies(num, minMass = 3, maxMass = 5, minCharge = 0, maxCharge = 0, v = 0, randColors = true, zeroVel = false) {
+function initRandBodies(
+  num,
+  minMass = 3,
+  maxMass = 5,
+  minCharge = 0,
+  maxCharge = 0,
+  v = 0,
+  randColors = true,
+  zeroVel = false
+) {
   let xMomentum = 0;
   let yMomentum = 0;
   for (let i = 0; i < num - zeroVel; i++) {
@@ -150,18 +158,22 @@ function initRandBodies(num, minMass = 3, maxMass = 5, minCharge = 0, maxCharge 
     const charge = randInt(minCharge, maxCharge);
     let r = getRadius(mass);
     const x = collide
-      ? randInt(-collideOffset.x + currentOffset.x + 2 * r, -collideOffset.x + currentOffset.x + canvas.width - 2 * r)
+      ? randInt(
+        -collideOffset.x + currentOffset.x + 2 * r,
+        -collideOffset.x + currentOffset.x + canvas.width - 2 * r
+      )
       : randInt(center.x - viewport.x / 2 + 2 * r, center.x + viewport.x / 2 - 2 * r);
     const y = collide
-      ? randInt(-collideOffset.y + currentOffset.y + 2 * r, -collideOffset.y + currentOffset.y + canvas.height - 2 * r)
+      ? randInt(
+        -collideOffset.y + currentOffset.y + 2 * r,
+        -collideOffset.y + currentOffset.y + canvas.height - 2 * r
+      )
       : randInt(center.y - viewport.y / 2 + 2 * r, center.y + viewport.y / 2 - 2 * r);
     const vx = (Math.random() - 0.5) * 2 * v;
     const vy = (Math.random() - 0.5) * 2 * v;
     xMomentum += vx * mass;
     yMomentum += vy * mass;
-    bodies.push(
-      new Body(x, y, vx, vy, r, 0, randColors ? randColor() : "white", true, charge)
-    );
+    bodies.push(new Body(x, y, vx, vy, r, 0, randColors ? randColor() : "white", true, charge));
   }
   // set the last body to cancel out momentum of the system to 0
   if (zeroVel) {
@@ -170,12 +182,22 @@ function initRandBodies(num, minMass = 3, maxMass = 5, minCharge = 0, maxCharge 
     bodies.push(
       new Body(
         collide
-          ? randInt(-collideOffset.x + currentOffset.x + 2 * r, -collideOffset.x + currentOffset.x + canvas.width - 2 * r)
+          ? randInt(
+            -collideOffset.x + currentOffset.x + 2 * r,
+            -collideOffset.x + currentOffset.x + canvas.width - 2 * r
+          )
           : randInt(center.x - viewport.x / 2 + 2 * r, center.x + viewport.x / 2 - 2 * r),
         collide
-          ? randInt(-collideOffset.y + currentOffset.y + 2 * r, -collideOffset.y + currentOffset.y + canvas.height - 2 * r)
+          ? randInt(
+            -collideOffset.y + currentOffset.y + 2 * r,
+            -collideOffset.y + currentOffset.y + canvas.height - 2 * r
+          )
           : randInt(center.y - viewport.y / 2 + 2 * r, center.y + viewport.y / 2 - 2 * r),
-        -xMomentum / mass, -yMomentum / mass, r, 0, randColors ? randColor() : "white"
+        -xMomentum / mass,
+        -yMomentum / mass,
+        r,
+        0,
+        randColors ? randColor() : "white"
       )
     );
     xMomentum += -xMomentum / mass;
@@ -252,11 +274,14 @@ function initPiCollisions(initV = 1) {
   canvas.dispatchEvent(new Event("KeyZ"));
   bodies.push(new Body(center.x * 3.5, center.y, 0, 0, center.x * 2, 1, "default", true, 0, true));
   bodies.push(new Body(center.x - 150, center.y, 0, 0, 300, mass, "default", true, 0, false, "y"));
-  bodies.push(new Body(center.x - 1000, center.y, initV, 0, 500, mass * ratio, "default", true, 0, false, "y"));
+  bodies.push(
+    new Body(center.x - 1000, center.y, initV, 0, 500, mass * ratio, "default", true, 0, false, "y")
+  );
 }
 
 // set up a grid of bodies to smash with objects (square packing)
-function initSquareGrid(spacing = 25, mass = 100, r = 4) { // r = 12 for non-softbody
+function initSquareGrid(spacing = 25, mass = 100, r = 4) {
+  // r = 12 for non-softbody
   ui.gravity.checked = gravity = false;
   ui.inelastic.checked = inelastic = false;
   ui.softbody.checked = softbody = true;
@@ -272,7 +297,8 @@ function initSquareGrid(spacing = 25, mass = 100, r = 4) { // r = 12 for non-sof
 }
 
 // set up a grid of bodies to smash with objects (hexagonal packing)
-function initHexGrid(spacing = 25, mass = 100, r = 4) { // r = 12 for non-softbody
+function initHexGrid(spacing = 25, mass = 100, r = 4) {
+  // r = 12 for non-softbody
   ui.gravity.checked = gravity = false;
   ui.inelastic.checked = inelastic = false;
   ui.CoR.value = ui.CoROut.innerText = CoR = 0;
@@ -280,7 +306,7 @@ function initHexGrid(spacing = 25, mass = 100, r = 4) { // r = 12 for non-softbo
   ui.springConst.value = springConst = 100;
   ui.springEquilPos.value = springEquilPos = 25;
 
-  let ySpacing = Math.sqrt(3) * spacing / 2;
+  let ySpacing = (Math.sqrt(3) * spacing) / 2;
   for (let x = spacing / 2; x < window.innerWidth; x += spacing) {
     for (let y = spacing / 2, odd = true; y < window.innerHeight; y += ySpacing, odd = !odd) {
       bodies.push(new Body(x + odd * (spacing / 2), y, 0, 0, r, mass, "default"));
@@ -349,9 +375,8 @@ function binarySystem(circular = false) {
   const m2 = randInt(5000, 100000);
   const x1 = randInt(100, 500);
   const x2 = (m1 * x1) / m2;
-  const circularVel = m2 / (m1 + m2) * Math.sqrt(G * m2 / x1);
-  const v1 = circular ? circularVel :
-    randInt(circularVel / 2, circularVel * 1.1);
+  const circularVel = (m2 / (m1 + m2)) * Math.sqrt((G * m2) / x1);
+  const v1 = circular ? circularVel : randInt(circularVel / 2, circularVel * 1.1);
   // randInt(Math.cbrt(G * (m2) / (x1 + x2)), Math.sqrt(G * (m2 + m1) / 2 / (x1 + x2)));
   const v2 = (m1 * v1) / m2;
 
@@ -371,3 +396,58 @@ function sunPlanetsMoonsSystem() {
   bodies.push(new Body(center.x, center.y + 400, -8.7, 0, 5, 0, "blue"));
   bodies.push(new Body(center.x, center.y + 430, -6.7, 0, 1, 0, "white"));
 }
+
+/**
+ * Generates a system of resonant orbits
+ * @param {Number} mass Mass of the central body
+ * @param {Array<Number>} ratios Ratios of orbital periods (ascending order)
+ * @param {Array<Number>} offsets Amount of 90 deg. offsets for each body (clockwise) Must be same length as ratios
+ */
+function generateResonance(mass = 1e5, ratios = [1, 2], offsets = null, adjustSize = false) {
+  ui.timestep.value = timestep = 0.1;
+  ui.trace.checked = trace = true;
+  // fill array if not given
+  if (!offsets) offsets = new Array(ratios.length).fill(0);
+
+  // sort the array
+  ratios.sort(function(a, b){return a - b})//.reverse(); console.log(ratios)
+
+  // add the central body
+  bodies.push(new Body(center.x, center.y, 0, 0, 0, mass));
+
+  // calculate base orbit properties
+  let orbitMass = mass / 1e5;
+  let baseRadius = getRadius(mass) * 5;
+  let basePeriod = 2 * Math.PI * Math.sqrt(baseRadius ** 3 / (G * (mass + orbitMass)));
+
+  // adjustment factor for setting minimum SMA size to baseRadius
+  let factor = 1;
+
+  // add the bodies
+  ratios.forEach((period, index) => {
+    let o = (offsets[index] | 0) % 4; // ratios.indexOf(period)
+    let radius;
+    if (index == 0) {
+      // set the innermost body to orbit at baseRadius
+      radius = baseRadius;
+
+      // if needed adjust all orbits so that ratios like [57, 63] are a reasonable size
+      if (adjustSize) factor = baseRadius / Math.cbrt((G * mass * (basePeriod * period) ** 2) / (4 * Math.PI ** 2));
+    } else {
+      // calculate radius based on period
+      radius = factor * Math.cbrt((G * mass * (basePeriod * period) ** 2) / (4 * Math.PI ** 2));
+    }
+    // calculate velocity based on radius
+    let velocity = Math.sign(period) * Math.sqrt((G * mass) / radius);
+
+    // adjust for angle offset
+    let x = (o == 1 || o == 3) ? 0 : (o == 0 ? radius : -radius);
+    let y = (o == 0 || o == 2) ? 0 : (o == 1 ? radius : -radius);
+    let vx = (o == 0 || o == 2) ? 0 : (o == 1 ? -velocity : velocity);
+    let vy = (o == 1 || o == 3) ? 0 : (o == 0 ? velocity : -velocity);
+
+    // add the body
+    bodies.push(new Body(center.x + x, center.y + y, vx, vy, 0, orbitMass));
+  });
+}
+// generateResonance(1e6, [2, 7], [], true)//[8, 13]

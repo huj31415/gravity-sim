@@ -30,6 +30,7 @@ A Javascript-based N-body simulation for calculating gravitational and electrost
   - Binary system generator
   - Soft bodies (hit it with other objects)
   - Many others
+- Resonant orbit generator
 - Interactive
 
 ### Demonstrating physics principles
@@ -74,7 +75,6 @@ A Javascript-based N-body simulation for calculating gravitational and electrost
 
 ## Planned
 - EM forces
-- Resonant orbit generator
 - Particle trajectory prediction
 - Move calculations to gpu (especially field calcs)
 - Implement optimized algorithms

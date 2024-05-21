@@ -10,7 +10,8 @@ function findNearest(x, y) {
   let nearest = -1;
   let nearestDistSqr = Infinity;
   bodies.forEach((body, index) => {
-    let xDist = body.xPos - x, yDist = body.yPos - y;
+    let xDist = body.xPos - x,
+      yDist = body.yPos - y;
     let distanceSqr = xDist * xDist + yDist * yDist;
     if (distanceSqr < nearestDistSqr && distanceSqr < body.radius * body.radius + 100 / totalzoom) {
       nearestDistSqr = distanceSqr;
@@ -20,11 +21,9 @@ function findNearest(x, y) {
   return nearest;
 }
 
-const degToRad = (deg) => deg / 180 * Math.PI;
-const radToDeg = (rad) => rad / Math.PI * 180;
 /**
  * Zooms the canvas using transformations, then adjusts viewport values
- * @param {Number} zoomfactor the factor to zoom by 
+ * @param {Number} zoomfactor the factor to zoom by
  */
 function zoom(zoomfactor = 0) {
   if (zoomfactor == 0) {
@@ -48,14 +47,9 @@ function zoom(zoomfactor = 0) {
     (-(zoomfactor - 1) * canvas.width) / 2,
     (-(zoomfactor - 1) * canvas.height) / 2
   );
-  ui.viewport.innerText = ~~(viewport.x) + " x " + ~~(viewport.y);
+  ui.viewport.innerText = ~~viewport.x + " x " + ~~viewport.y;
   ctx.fillStyle = "rgba(0, 0, 0, 1)";
-  ctx.fillRect(
-    center.x - viewport.x / 2,
-    center.y - viewport.y / 2,
-    viewport.x,
-    viewport.y
-  );
+  ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
   ui.zoom.innerText = ~~(totalzoom * 10000) / 100;
 }
 
@@ -146,6 +140,14 @@ function updateSettings() {
             ui.timestep.value = timestep;
           }
           break;
+        case ui.generateRes:
+          let mass = parseFloat(ui.resMass.value);
+          let res = ui.res.value.split(",").map((n) => parseInt(n));
+          let offsets = ui.resOffset.value.split(",").map((n) => parseInt(n));
+          let restrictSMA = ui.restrictSMA.checked;
+
+          generateResonance(mass, res, offsets, restrictSMA);
+          break;
       }
       // update settings
       updateSettings();
@@ -166,21 +168,26 @@ function updateSettings() {
   {
     ui.rotate.addEventListener("input", (event) => {
       let rad = degToRad(event.target.value);
-      rotate(rad - currentAngleOffset);
-      ui.rOut.innerText = ~~(radToDeg(currentAngleOffset) * 100) / 100;
+      rotate(rad - currentAngleOffset, trace);
+      ui.collide.checked = collide = false;
     });
+
+    ui.rotateRate.addEventListener("input", (event) => {
+      if (event.target.value) rotationRate = degToRad(parseFloat(event.target.value));
+    });
+
     ui.trace.addEventListener("input", () => {
       if (ui.trace.checked) {
         ui.heatmap.checked = drawField = false;
       }
     });
     ui.timestep.addEventListener("input", (event) => {
-      ui.tOut.innerText = parseFloat(event.target.value);
-      timestep = parseFloat(event.target.value);
+      ui.tOut.innerText = event.target.value;
+      timestep = event.target.value;
     });
     ui.CoR.addEventListener("input", (event) => {
       ui.CoROut.innerText = parseFloat(event.target.value);
-      CoR = parseFloat(event.target.value);
+      if (event.target.value) CoR = parseFloat(event.target.value);
     });
     ui.fadeStrength.addEventListener("input", (event) => {
       ui.fadeOutput.innerText = parseFloat(event.target.value);
@@ -188,11 +195,11 @@ function updateSettings() {
     });
 
     ui.G.addEventListener("input", (event) => {
-      G = parseFloat(event.target.value);
+      if (event.target.value) G = parseFloat(event.target.value);
     });
 
     ui.uniformg.addEventListener("input", (event) => {
-      uniformg = parseFloat(event.target.value);
+      if (event.target.value) uniformg = parseFloat(event.target.value);
       // if (uniformg) {
       //   collide = true;
       //   ui.collide.checked = true;
@@ -200,24 +207,24 @@ function updateSettings() {
     });
 
     ui.K.addEventListener("input", (event) => {
-      K = parseFloat(event.target.value);
+      if (event.target.value) K = parseFloat(event.target.value);
     });
 
     ui.springConst.addEventListener("input", (event) => {
-      springConst = parseInt(event.target.value);
+      if (event.target.value) springConst = parseInt(event.target.value);
     });
 
     ui.dampening.addEventListener("input", (event) => {
-      ui.dampOut.innerText = parseFloat(event.target.value);
-      dampening = 1 - parseFloat(event.target.value);
+      ui.dampOut.innerText = event.target.value;
+      dampening = 1 - event.target.value;
     });
 
     ui.springEquilPos.addEventListener("input", (event) => {
-      springEquilPos = parseInt(event.target.value);
+      if (event.target.value) springEquilPos = parseInt(event.target.value);
     });
 
     ui.initVel.addEventListener("input", (event) => {
-      initVel = parseFloat(event.target.value);
+      if (event.target.value) initVel = parseFloat(event.target.value);
     });
 
     ui.heatmap.addEventListener("input", () => {
@@ -263,10 +270,13 @@ function updateSettings() {
         ui.bodyCount.innerText = activeBodies;
       } else if (event.altKey) {
         event.preventDefault();
-        remove(null, findNearest(
-          (event.clientX / canvas.width) * viewport.x + center.x - viewport.x / 2,
-          (event.clientY / canvas.height) * viewport.y + center.y - viewport.y / 2
-        ));
+        remove(
+          null,
+          findNearest(
+            (event.clientX / canvas.width) * viewport.x + center.x - viewport.x / 2,
+            (event.clientY / canvas.height) * viewport.y + center.y - viewport.y / 2
+          )
+        );
         ui.bodyCount.innerText = activeBodies = bodies.length;
       } else {
         canvas.addEventListener("mousemove", handleMouseMove);
@@ -307,7 +317,8 @@ function updateSettings() {
       const activeElement = document.activeElement;
       const register = activeElement.tagName !== "INPUT";
       console.log(event.code);
-      if (register && !event.ctrlKey) {
+      if (register) {
+        // && !event.ctrlKey
         switch (event.code) {
           case "AltLeft":
             event.preventDefault();
@@ -335,36 +346,68 @@ function updateSettings() {
           case "Space":
             event.preventDefault();
             event.stopPropagation();
-            if (trackCoM) {
-              trackCoM = false;
-              ui.trackCoM.checked = false;
+            if (trackBody && (event.ctrlKey || event.altKey)) {
+              if (rotateTrackNum < bodies.length) {
+                rotateTarget = bodies[rotateTrackNum++];
+                if (rotateTarget === trackBody) rotateTarget = bodies[rotateTrackNum++];
+                // rotationRate =
+                //   -Math.atan2(
+                //     rotateTarget.yPos - trackBody.yPos,
+                //     rotateTarget.xPos - trackBody.xPos
+                //   ) -
+                //   Math.atan2(
+                //     rotateTarget.yPos + rotateTarget.yVel * timestep - trackBody.yPos,
+                //     rotateTarget.xPos + rotateTarget.xVel * timestep - trackBody.xPos
+                //   );
+              } else {
+                rotateTarget = null;
+                rotateTrackNum = 0;
+                rotationRate = 0;
+              }
+            } else {
+              if (trackCoM) {
+                trackCoM = false;
+                ui.trackCoM.checked = false;
+              }
+              if (trackNum < bodies.length) {
+                trackBody = bodies[trackNum++];
+                newBody = true;
+              } else {
+                trackBody = null;
+                trackNum = 0;
+                newBody = false;
+              }
             }
-            if (trackNum < bodies.length) {
-              trackBody = bodies[trackNum++];
-              newBody = true;
+            break;
+          case "Escape":
+            event.preventDefault();
+            if (rotationRate || rotateTarget) {
+              rotateTarget = null;
+              rotateTrackNum = 0;
+              rotationRate = 0;
+              currentAngleOffset = 0;
             } else {
               trackBody = null;
               trackNum = 0;
               newBody = false;
             }
             break;
-          case "Escape":
-            event.preventDefault();
-            trackBody = null;
-            trackNum = 0;
-            newBody = false;
-            break;
           case "KeyP":
             ui.toggle.click();
             break;
           case "KeyR":
-            ui.randBtn.click();
+            if (!event.ctrlKey) ui.randBtn.click();
             break;
           case "KeyL":
             ui.loadBtn.click();
             break;
           case "Backspace":
             ui.clear.click();
+            rotateTarget = null;
+            rotateTrackNum = 0;
+            rotationRate = 0;
+            currentAngleOffset = 0;
+            ui.rOut.innerText = ui.rotate.value = 0;
             break;
           case "Delete":
             ui.clrOffscreen.click();
@@ -418,6 +461,7 @@ function updateSettings() {
                 : { x: -currentOffset.x, y: -currentOffset.y }
             );
             zoom(0);
+            rotate(-currentAngleOffset);
             break;
           case "KeyZ":
             zoom(1.05);
