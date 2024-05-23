@@ -130,8 +130,7 @@ function updateSettings() {
           ui.bodyCount.innerText = activeBodies;
           break;
         case ui.toggle:
-          paused = !paused;
-          if (timestep) {
+          if (!paused) {
             oldTimestep = timestep;
             timestep = 0;
             ui.timestep.value = 0;
@@ -139,14 +138,14 @@ function updateSettings() {
             timestep = oldTimestep;
             ui.timestep.value = timestep;
           }
+          paused = !paused;
           break;
         case ui.generateRes:
           let mass = parseFloat(ui.resMass.value);
           let res = ui.res.value.split(",").map((n) => parseInt(n));
           let offsets = ui.resOffset.value.split(",").map((n) => parseInt(n));
-          let restrictSMA = ui.restrictSMA.checked;
 
-          generateResonance(mass, res, offsets, restrictSMA);
+          generateResonance(mass, res, offsets);
           break;
       }
       // update settings
@@ -401,14 +400,6 @@ function updateSettings() {
           case "KeyL":
             ui.loadBtn.click();
             break;
-          case "Backspace":
-            ui.clear.click();
-            rotateTarget = null;
-            rotateTrackNum = 0;
-            rotationRate = 0;
-            currentAngleOffset = 0;
-            ui.rOut.innerText = ui.rotate.value = 0;
-            break;
           case "Delete":
             ui.clrOffscreen.click();
             break;
@@ -452,6 +443,20 @@ function updateSettings() {
             } else {
               ui.panel.classList.add("hidden");
             }
+            break;
+          case "Backspace":
+            ui.clear.click();
+            rotateTarget = null;
+            rotateTrackNum = 0;
+            rotationRate = 0;
+            currentAngleOffset = 0;
+            ui.rOut.innerText = ui.rotate.value = 0;
+            rotate(-currentAngleOffset);
+            pan(
+              collide
+                ? { x: -currentOffset.x + collideOffset.x, y: -currentOffset.y + collideOffset.y }
+                : { x: -currentOffset.x, y: -currentOffset.y }
+            );
             break;
           case "Home":
           case "Digit0":

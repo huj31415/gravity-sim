@@ -91,7 +91,12 @@ button#toggleSettings {
   height: 2em;
 }
 
-p, #graphs {
-    margin-block: 0;
-    padding-left: 5px;
+p,
+#graphs {
+  margin-block: 0;
+  padding-left: 5px;
+}
+
+p.header {
+  font-weight: 600;
 }

@@ -403,7 +403,7 @@ function sunPlanetsMoonsSystem() {
  * @param {Array<Number>} ratios Ratios of orbital periods (ascending order)
  * @param {Array<Number>} offsets Amount of 90 deg. offsets for each body (clockwise) Must be same length as ratios
  */
-function generateResonance(mass = 1e5, ratios = [1, 2], offsets = null, adjustSize = false) {
+function generateResonance(mass = 1e5, ratios = [1, 2], offsets = null) {
   ui.timestep.value = timestep = 0.1;
   ui.trace.checked = trace = true;
   // fill array if not given
@@ -421,7 +421,7 @@ function generateResonance(mass = 1e5, ratios = [1, 2], offsets = null, adjustSi
   let basePeriod = 2 * Math.PI * Math.sqrt(baseRadius ** 3 / (G * (mass + orbitMass)));
 
   // adjustment factor for setting minimum SMA size to baseRadius
-  let factor = 1;
+  let factor;
 
   // add the bodies
   ratios.forEach((period, index) => {
@@ -432,7 +432,7 @@ function generateResonance(mass = 1e5, ratios = [1, 2], offsets = null, adjustSi
       radius = baseRadius;
 
       // if needed adjust all orbits so that ratios like [57, 63] are a reasonable size
-      if (adjustSize) factor = baseRadius / Math.cbrt((G * mass * (basePeriod * period) ** 2) / (4 * Math.PI ** 2));
+      factor = baseRadius / Math.cbrt((G * mass * (basePeriod * period) ** 2) / (4 * Math.PI ** 2));
     } else {
       // calculate radius based on period
       radius = factor * Math.cbrt((G * mass * (basePeriod * period) ** 2) / (4 * Math.PI ** 2));
@@ -450,4 +450,3 @@ function generateResonance(mass = 1e5, ratios = [1, 2], offsets = null, adjustSi
     bodies.push(new Body(center.x + x, center.y + y, vx, vy, 0, orbitMass));
   });
 }
-// generateResonance(1e6, [2, 7], [], true)//[8, 13]

@@ -21,12 +21,12 @@
       <p>Offset: X=<span id="offset">0 Y=0</span> | Zoom: <span id="zoom">100</span>%</p>
       <p>Rotation: <span id="rOut">0</span>&deg;</p>
       <div>
-        <input type="range" id="rotate" name="rotate" value="0" max="180" min="-180" step="0.01" width="400px" />
+        <input type="range" id="rotate" name="rotate" value="0" max="180" min="-180" step="1" width="400px" />
         <label for="rotate">Rotation offset</label>
       </div>
       <div>
-        <input type="number" id="rotateRate" name="rotateRate" value="0" step="0.01" width="400px" />
-        <label for="rotateRate">Rotation rate</label>
+        <input type="number" id="rotateRate" name="rotateRate" value="0" step="0.001" width="400px" />
+        <label for="rotateRate">Rotation rate (&deg;/s)</label>
       </div>
     </div>
     <div id="graphs">
@@ -42,10 +42,10 @@
     </div>
     <div id="simcontrols">
       <hr />
-      <div>
+      <!-- <div>
         <button id="rand">Random (r)</button>
         <button id="add">Add rand body (enter)</button>
-      </div>
+      </div> -->
       <div>
         <button id="clear">Clear bodies (bksp)</button>
         <button id="clrOffscreen">Clear offscreen (del)</button>
@@ -174,6 +174,9 @@
         <input type="checkbox" id="immovable" name="immovable">
         <label for="immovable">Immovable object</label>
       </div>
+      <div>
+        <button id="add" class="fullwidth">Add (enter)</button>
+      </div>
     </div>
     <div id="randbodyparams">
       <hr />
@@ -202,6 +205,9 @@
         <input type="number" id="initVel" name="initVel" value="3" min="0" width="400px" />
         <label for="initVel">Max init speed</label>
       </div>
+      <div>
+        <button id="rand" class="fullwidth">Generate (r)</button>
+      </div>
     </div>
     <div id="resonanceparams">
       <hr>
@@ -223,10 +229,6 @@
         <label for="resMSMA">Min SMA (*R<sub>center</sub>)</label>
       </div>
       <div>
-        <input type="checkbox" id="restrictSMA" name="restrictSMA" />
-        <label for="restrictSMA">Set minimum SMA</label>
-      </div>
-      <div>
         <button id="generateRes" class="fullwidth">Generate</button>
       </div>
     </div>
@@ -234,7 +236,8 @@
       <hr />
       <p class="header">Draw settings</p>
       <div>
-        <input type="range" id="fadeStrength" name="fadeStrength" value="0.05" max="1" min="0.01" step="0.01" width="400px" />
+        <input type="range" id="fadeStrength" name="fadeStrength" value="0.05" max="1" min="0.01" step="0.01"
+          width="400px" />
         <label for="fadeStrength">Fade strength (<span id="fadeOutput">0.05</span>)</label>
       </div>
       <div>
@@ -304,8 +307,8 @@
     </div>
     <div id="controls">
       <hr />
+      <p class="header">Controls</p>
       <p>
-        Controls<br />
         Alt+click: delete body<br />
         Period/Comma: adjust timestep<br />
         U/V: toggle sidebar<br />

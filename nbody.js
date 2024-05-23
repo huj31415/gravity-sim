@@ -86,7 +86,6 @@ const ui = {
   resOffset: document.getElementById("resOffset"),
   resMass: document.getElementById("resMass"),
   resSMA: document.getElementById("resSMA"),
-  restrictSMA: document.getElementById("restrictSMA"),
   generateRes: document.getElementById("generateRes")
 };
 
@@ -96,8 +95,8 @@ const getRadius = (mass) => Math.abs(Math.cbrt((mass * (3 / 4)) / Math.PI));
 // generate a random hex color
 const randColor = () => "#" + (~~(Math.random() * (16777215 - 5592405) + 5592405)).toString(16);
 
-const degToRad = (deg) => (deg / 180) * Math.PI;
-const radToDeg = (rad) => (rad / Math.PI) * 180;
+const degToRad = (deg) => deg * Math.PI / 180;
+const radToDeg = (rad) => rad / Math.PI * 180;
 
 // initialize main canvas
 const canvas = document.getElementById("canvas", { alpha: false });
@@ -138,7 +137,7 @@ let numBodies,
   minMass,
   initVel,
   timestep,
-  oldTimestep,
+  oldTimestep = 0,
   CoM,
   maxCharge,
   minCharge,
@@ -372,7 +371,6 @@ class Body {
             ctx.strokeStyle = drawColor;
             ctx.moveTo(this.xPos, this.yPos);
             ctx.lineTo(this.xPrev, this.yPrev);
-            // ctx.closePath();
             ctx.stroke();
           }
           circle(this.xPrev, this.yPrev, this.radius, drawColor);
@@ -404,7 +402,6 @@ class Body {
           ctx.lineWidth = 1 / totalzoom;
           ctx.moveTo(this.xPos, this.yPos);
           ctx.lineTo(this.xPos + mult * this.xVel, this.yPos + mult * this.yVel);
-          // ctx.closePath();
           ctx.stroke();
         }
         // acceleration vector
@@ -415,7 +412,6 @@ class Body {
           ctx.strokeStyle = "red";
           ctx.moveTo(this.xPos, this.yPos);
           ctx.lineTo(this.xPos + mult * this.xAccel, this.yPos + mult * this.yAccel);
-          // ctx.closePath();
           ctx.stroke();
         }
       }
@@ -488,6 +484,7 @@ class Body {
  * This is where the physics is
  */
 function runSim() {
+  let springEquilSqr = springEquilPos * springEquilPos;
   // iterate through all combinations of bodies and add force to body total
   bodies.forEach((body, index) => {
     const body1 = body;
@@ -519,6 +516,7 @@ function runSim() {
           // collide the bodies
           if (globalCollide && body2.collide && body1.collide && !paused) collision(body1, body2);
         } else {
+          if (softbody && !gravity && !electrostatic && (sqr > springEquilSqr * 1.44)) continue;
           // calculate acceleration based on forces
           const dist = Math.sqrt(sqr);
           let xAccel = 0,
@@ -555,7 +553,6 @@ function runSim() {
                 ctx.lineWidth = 1 / totalzoom;
                 ctx.moveTo(body2.xPos, body2.yPos);
                 ctx.lineTo(body1.xPos, body1.yPos);
-                // ctx.closePath();
                 ctx.stroke();
               }
             }
@@ -586,7 +583,6 @@ function runSim() {
                   ctx.lineWidth = 1 / totalzoom;
                   ctx.moveTo(body2.xPos, body2.yPos);
                   ctx.lineTo(body1.xPos, body1.yPos);
-                  // ctx.closePath();
                   ctx.stroke();
                 }
               }
@@ -652,8 +648,6 @@ function runSim() {
  * @param {Body} body2 the second body
  */
 function merge(body1, body2) {
-  // collisionCount += 1;
-  // ui.collisionCount.innerText = collisionCount;
   activeBodies = bodies.length - 1;
   ui.bodyCount.innerText = activeBodies;
 
@@ -666,8 +660,8 @@ function merge(body1, body2) {
         ? body1
         : body2
       : body1.mass > body2.mass
-      ? body1
-      : body2;
+        ? body1
+        : body2;
   const smaller = larger === body1 ? body2 : body1;
 
   // if one is immovable, merge into that one
@@ -712,8 +706,8 @@ function collision(body1, body2) {
           ? body1
           : body2
         : body1.mass > body2.mass
-        ? body1
-        : body2;
+          ? body1
+          : body2;
     const smaller = larger === body1 ? body2 : body1;
 
     // initial separation
@@ -825,9 +819,9 @@ function calcFieldAtPoint(x, y, res = 0, hypot = false) {
   return hypot
     ? Math.hypot(xPot, yPot)
     : {
-        x: xPot,
-        y: yPot,
-      };
+      x: xPot,
+      y: yPot,
+    };
 }
 
 /**
@@ -856,7 +850,6 @@ function drawFullField() {
   // calculate for every res*res block of pixels
   for (let y = center.y - viewport.y / 2, py = 0; y < center.y + viewport.y / 2; y += res, py++) {
     for (let x = center.x - viewport.x / 2, px = 0; x < center.x + viewport.x / 2; x += res, px++) {
-      // const vector = calcFieldAtPoint(x, y, res);
       const potential = calcFieldAtPoint(x, y, res, true); //Math.hypot(vector.x, vector.y);
       let rgbColor = [0, 0, 0.2];
       if (potential >= 0.05) {
@@ -897,7 +890,6 @@ function drawPointField() {
   ctx.lineWidth = 1 / totalzoom;
   ctx.moveTo(x, y);
   ctx.lineTo(x + vector.x * 2, y + vector.y * 2);
-  // ctx.closePath();
   ctx.stroke();
 }
 
@@ -946,8 +938,8 @@ function track(body) {
   if (newBody) {
     // place the tracked body in the center
     pan({
-      x: center.x - body.xPos, // - currentOffset.x,
-      y: center.y - body.yPos, // - currentOffset.y,
+      x: center.x - body.xPrev,
+      y: center.y - body.yPrev
     });
   }
   // follow the body
@@ -962,16 +954,17 @@ function rotate(offset = Math.PI, clrTrails = false) {
     continuous = false;
     clearTrails = true;
   }
-  if (Math.abs(offset % Math.PI) < 1e-3) {
-    // invert bodies
-    if (Math.abs(((offset / Math.PI) % 2) - 1) < 1e-3) {
+  if (Math.abs(offset % Math.PI) < 1e-6) {
+    // flip bodies over center
+    if (Math.abs(((offset / Math.PI) % 2) - 1) < 1e-6) {
       bodies.forEach((body) => {
         body.xPos = 2 * center.x - body.xPos;
         body.yPos = 2 * center.y - body.yPos;
       });
     }
   } else {
-    // faster skew for angles less than pi
+    // faster skew for angles != pi
+    // see Matt Parker's video
     bodies.forEach((body) => {
       // find skew values
       const xSkew = -Math.tan(offset / 2);
@@ -1018,8 +1011,9 @@ function draw() {
   if (!maxBody && bodies[0]) maxBody = bodies[0];
   else if (!bodies[0]) maxBody = null;
 
-  rotate(rotationRate);
+  if (!paused) rotate(rotationRate);
   // if (rotateTarget) rotateTrack(rotateTarget);
+
   // check draw settings and draw stuff
   {
     if (trackBody) track(trackBody);
@@ -1086,7 +1080,7 @@ function draw() {
     clearTrails = false;
   }
 
-  // call the loop again
+  // call the loop again and draw the next frame
   frameDelayMs ? setTimeout(draw, frameDelayMs) : requestAnimationFrame(draw);
 }
 
