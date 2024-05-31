@@ -100,8 +100,24 @@ function updateSettings() {
         case ui.add:
           activeBodies += 1;
           ui.bodyCount.innerText = activeBodies;
-          initParams();
-          initRandBodies(1, minMass, maxMass, minCharge, maxCharge, initVel);
+          bodies.push(
+            new Body(
+              ui.xp.value
+                ? center.x - viewport.x / 2 + parseInt(ui.xp.value)
+                : center.x,
+              ui.yp.value
+                ? center.y - viewport.y / 2 + parseInt(ui.yp.value)
+                : center.y,
+              parseInt(ui.vx.value),
+              parseInt(ui.vy.value),
+              parseInt(ui.radius.value ? ui.radius.value : getRadius(ui.mass.value)),
+              parseInt(ui.mass.value),
+              randColor(),
+              true,
+              parseInt(ui.charge.value),
+              ui.immovable.checked
+            )
+          );
           break;
         case ui.clear:
           bodies = [];
@@ -220,6 +236,7 @@ function updateSettings() {
 
     ui.springEquilPos.addEventListener("input", (event) => {
       if (event.target.value) springEquilPos = parseInt(event.target.value);
+      springEquilSqr = springEquilPos * springEquilPos;
     });
 
     ui.initVel.addEventListener("input", (event) => {
@@ -264,9 +281,6 @@ function updateSettings() {
             ui.immovable.checked
           )
         );
-
-        activeBodies += 1;
-        ui.bodyCount.innerText = activeBodies;
       } else if (event.altKey) {
         event.preventDefault();
         remove(
@@ -358,6 +372,7 @@ function updateSettings() {
                 //     rotateTarget.yPos + rotateTarget.yVel * timestep - trackBody.yPos,
                 //     rotateTarget.xPos + rotateTarget.xVel * timestep - trackBody.xPos
                 //   );
+
               } else {
                 rotateTarget = null;
                 rotateTrackNum = 0;
@@ -421,13 +436,25 @@ function updateSettings() {
             break;
           case "KeyG":
             // ui.drawGravityStrength.click();
-            ui.gravity.click();
+            if (event.altKey || event.ctrlKey) {
+              event.preventDefault();
+              ui.drawGravityStrength.click();
+            }
+            else ui.gravity.click();
             break;
           case "KeyK":
-            ui.electrostatic.click();
+            if (event.altKey || event.ctrlKey) {
+              event.preventDefault();
+              ui.drawKStrength.click();
+            }
+            else ui.electrostatic.click();
             break;
           case "KeyB":
-            ui.softbody.click();
+            if (event.altKey || event.ctrlKey) {
+              event.preventDefault();
+              ui.drawSStrength.click();
+            }
+            else ui.softbody.click();
             break;
           case "KeyY":
             ui.colorByVel.click();
@@ -446,6 +473,9 @@ function updateSettings() {
             break;
           case "Backspace":
             ui.clear.click();
+            trackBody = null;
+            trackNum = 0;
+            newBody = false;
             rotateTarget = null;
             rotateTrackNum = 0;
             rotationRate = 0;
@@ -460,6 +490,9 @@ function updateSettings() {
             break;
           case "Home":
           case "Digit0":
+            trackBody = null;
+            trackNum = 0;
+            newBody = false;
             pan(
               collide
                 ? { x: -currentOffset.x + collideOffset.x, y: -currentOffset.y + collideOffset.y }

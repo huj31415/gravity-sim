@@ -26,7 +26,7 @@
       </div>
       <div>
         <input type="number" id="rotateRate" name="rotateRate" value="0" step="0.001" width="400px" />
-        <label for="rotateRate">Rotation rate (&deg;/s)</label>
+        <label for="rotateRate">Rotation rate (&deg;/fr)</label>
       </div>
     </div>
     <div id="graphs">
@@ -99,8 +99,8 @@
         <label for="electrostatic">Electrostatic forces (k)</label>
       </div>
       <div>
-        <input type="number" id="K" name="K" value="500000" step="10000" width="400px" />
-        <label for="K">k constant (<span id="KOut">50000</span>)</label>
+        <input type="number" id="K" name="K" value="5000" step="1000" width="400px" />
+        <label for="K">k constant</label>
       </div>
       <div>
         <input type="checkbox" id="softbody" name="softbody" />
@@ -213,7 +213,7 @@
       <hr>
       <p class="header">Resonant orbit generator settings</p>
       <div>
-        <input type="text" id="res" name="res" value="1,2,4" width="400px" />
+        <input type="text" id="res" name="res" value="7,12,17" width="400px" />
         <label for="res">Resonances</label>
       </div>
       <div>
@@ -270,7 +270,7 @@
       </div>
       <div>
         <input type="checkbox" id="drawGStrength" name="drawGStrength" />
-        <label for="drawGStrength">Draw gravity strength</label>
+        <label for="drawGStrength">Draw gravity strength (Ctrl/Alt+G)</label>
       </div>
       <div>
         <input type="checkbox" id="drawGThreshold" name="drawGThreshold" checked />
@@ -286,7 +286,7 @@
       </div>
       <div>
         <input type="checkbox" id="drawKStrength" name="drawKStrength" />
-        <label for="drawKStrength">Draw electrostatic strength</label>
+        <label for="drawKStrength">Draw electrostatic strength (Ctrl/Alt+K)</label>
       </div>
       <div>
         <input type="checkbox" id="drawKThreshold" name="drawKThreshold" checked />
@@ -294,7 +294,7 @@
       </div>
       <div>
         <input type="checkbox" id="drawSStrength" name="drawSStrength" checked />
-        <label for="drawSStrength">Draw spring force strength</label>
+        <label for="drawSStrength">Draw spring force (Ctrl/Alt+B)</label>
       </div>
       <div>
         <input type="checkbox" id="drawCoM" name="drawCoM" />

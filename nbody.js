@@ -86,7 +86,7 @@ const ui = {
   resOffset: document.getElementById("resOffset"),
   resMass: document.getElementById("resMass"),
   resSMA: document.getElementById("resSMA"),
-  generateRes: document.getElementById("generateRes")
+  generateRes: document.getElementById("generateRes"),
 };
 
 // utilities
@@ -95,8 +95,8 @@ const getRadius = (mass) => Math.abs(Math.cbrt((mass * (3 / 4)) / Math.PI));
 // generate a random hex color
 const randColor = () => "#" + (~~(Math.random() * (16777215 - 5592405) + 5592405)).toString(16);
 
-const degToRad = (deg) => deg * Math.PI / 180;
-const radToDeg = (rad) => rad / Math.PI * 180;
+const degToRad = (deg) => (deg * Math.PI) / 180;
+const radToDeg = (rad) => (rad / Math.PI) * 180;
 
 // initialize main canvas
 const canvas = document.getElementById("canvas", { alpha: false });
@@ -147,6 +147,7 @@ let CoR = 1;
 let springConst = 100;
 let dampening = 0.99;
 let springEquilPos = 25;
+let springEquilSqr = springEquilPos * springEquilPos;
 
 // tracking variables
 let collisionCount = (frameCount = bodyCount = activeBodies = 0);
@@ -296,8 +297,8 @@ class Body {
     this.xPos = this.xPrev = xPos;
     this.yPos = this.yPrev = yPos;
 
-    this.xVel = xVel;
-    this.yVel = yVel;
+    this.xVel = immovable ? 0 : xVel;
+    this.yVel = immovable ? 0 : yVel;
 
     this.xAccel = 0;
     this.yAccel = 0;
@@ -484,17 +485,22 @@ class Body {
  * This is where the physics is
  */
 function runSim() {
-  let springEquilSqr = springEquilPos * springEquilPos;
   // iterate through all combinations of bodies and add force to body total
   bodies.forEach((body, index) => {
     const body1 = body;
+
+    // conditions
+    const grav = gravity && G, soft = softbody && springConst, elec = electrostatic && K;
+    const forces = grav || soft || elec;
+
+    // for max field strength calibration
     if (drawField && body1.mass > maxBody.mass) maxBody = body1;
+
+    // do calculations if needed
     if (
       bodies.length > 1 &&
-      ((((gravity && G) || softbody || (electrostatic && K) || globalCollide) && !paused) ||
-        drawGravityStrength ||
-        drawKStrength ||
-        drawSStrength)
+      ((!paused && (forces || globalCollide)) ||
+        paused && forces && (drawGravityStrength || drawKStrength || drawSStrength))
     ) {
       for (let i = index + 1; i < bodies.length; i++) {
         const body2 = bodies[i];
@@ -508,15 +514,15 @@ function runSim() {
 
         // check if bodies are colliding
         if (
-          sqr == distThreshSqr &&
+          sqr <= distThreshSqr &&
           bodies.includes(body1) &&
           bodies.includes(body2) &&
           body1.id != body2.id
         ) {
           // collide the bodies
-          if (globalCollide && body2.collide && body1.collide && !paused) collision(body1, body2);
-        } else {
-          if (softbody && !gravity && !electrostatic && (sqr > springEquilSqr * 1.44)) continue;
+          if (globalCollide && body2.collide && body1.collide && !paused) collision(body1, body2); // && globalCollide
+        }
+        else if (grav || elec || (soft && sqr <= springEquilSqr * 1.44)) {
           // calculate acceleration based on forces
           const dist = Math.sqrt(sqr);
           let xAccel = 0,
@@ -625,6 +631,7 @@ function runSim() {
             forceX += (force * xDist) / dist;
             forceY += (force * yDist) / dist;
           }
+
           // apply the forces
           if (!body1.immovable) {
             body1.xAccel += xAccel * body2.mass + forceX / body1.mass;
@@ -930,6 +937,14 @@ function pan(offset = { x: 0, y: 0 }, clrTrails = true) {
   ui.offset.innerText = Math.floor(currentOffset.x) + " Y=" + Math.floor(currentOffset.y);
 }
 
+function pan2(offset = { x: 0, y: 0 }, clrTrails = true) {
+  ctx.translate(offset.x, offset.y);
+  currentOffset.x += offset.x;
+  currentOffset.y += offset.y;
+  // center.x -= offset.x;
+  // center.y -= offset.y;
+}
+
 /**
  * Track body by panning and zeroing velocity
  * @param {Body} body the body to track
@@ -939,7 +954,7 @@ function track(body) {
     // place the tracked body in the center
     pan({
       x: center.x - body.xPrev,
-      y: center.y - body.yPrev
+      y: center.y - body.yPrev,
     });
   }
   // follow the body
@@ -965,11 +980,13 @@ function rotate(offset = Math.PI, clrTrails = false) {
   } else {
     // faster skew for angles != pi
     // see Matt Parker's video
-    bodies.forEach((body) => {
-      // find skew values
-      const xSkew = -Math.tan(offset / 2);
-      const ySkew = Math.sin(offset);
 
+    // find skew values
+    const xSkew = -Math.tan(offset / 2);
+    const ySkew = Math.sin(offset);
+
+    // skew each body with velocity
+    bodies.forEach((body) => {
       // adjust positions
       body.xPos += xSkew * (body.yPos - center.y);
       body.yPos += ySkew * (body.xPos - center.x);
@@ -988,8 +1005,14 @@ function rotateTrack(target = null) {
   else {
     // todo: get velocity perpendicular to radius
     // rotationRate = -Math.hypot(target.xVel - trackBody.xVel, target.yVel - trackBody.yVel) * timestep / Math.hypot(target.xPos - center.x, target.yPos - center.x);
-    rotationRate = -Math.atan2(target.yPos - center.y, target.xPos - center.x) - Math.atan2(target.yPos + target.yVel * timestep - center.y, target.xPos + target.xVel * timestep - center.x);
-    // rotationRate = -Math.sqrt(G * trackBody.mass / Math.hypot(target.xPos - center.x, target.yPos - center.x)) / Math.hypot(target.xPos - center.x, target.yPos - center.x);
+    // rotationRate = -Math.atan2(target.yPos - center.y, target.xPos - center.x) - Math.atan2(target.yPos + target.yVel * timestep - center.y, target.xPos + target.xVel * timestep - center.x);
+    rotationRate =
+      -Math.atan2(target.yPrev - center.y, target.xPrev - center.x) -
+      Math.atan2(target.yPos - center.y, target.xPos - center.x);
+    rotationRate =
+      -Math.sqrt(
+        (G * trackBody.mass) / Math.hypot(target.xPos - center.x, target.yPos - center.x)
+      ) / Math.hypot(target.xPos - center.x, target.yPos - center.x);
   }
 }
 
@@ -1012,7 +1035,7 @@ function draw() {
   else if (!bodies[0]) maxBody = null;
 
   if (!paused) rotate(rotationRate);
-  // if (rotateTarget) rotateTrack(rotateTarget);
+  if (rotateTarget) rotateTrack(rotateTarget);
 
   // check draw settings and draw stuff
   {

@@ -120,9 +120,15 @@ function load() {
       break;
     case "10":
       initSquareGrid();
+      ui.mass.value = 1e6;
+      ui.radius.value = 30;
+      ui.vx.value = 50;
       break;
     case "11":
       initHexGrid();
+      ui.mass.value = 1e6;
+      ui.radius.value = 30;
+      ui.vx.value = 50;
       break;
     case "12":
       //
@@ -297,6 +303,7 @@ function initSquareGrid(spacing = 25, mass = 100, r = 4) {
 }
 
 // set up a grid of bodies to smash with objects (hexagonal packing)
+// cool stuff happens when you load, turn off softbody forces and collision, and briefly turn on gravity
 function initHexGrid(spacing = 25, mass = 100, r = 4) {
   // r = 12 for non-softbody
   ui.gravity.checked = gravity = false;
@@ -329,9 +336,9 @@ function generateSolarSystem(
   centerPos = { x: center.x, y: center.y },
   vel = { x: 0, y: 0 },
   num = 8,
-  minMass = 10000,
-  maxMass = 100000,
-  radius = 10000,
+  minMass = 1000,
+  maxMass = 10000,
+  radius = 5000,
   rotDir = 0,
   bodyCollide = true
 ) {
