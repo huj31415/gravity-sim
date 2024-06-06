@@ -354,7 +354,17 @@ function updateSettings() {
           case "ArrowDown":
           case "KeyS":
             event.preventDefault();
-            panOffset.y = -panSpeed / totalzoom;
+            if (event.ctrlKey) {
+              // save the canvas image
+              const dl = document.createElement('a');
+              // Add the name of the file to the link
+              dl.download = "nbody-" + Date.now() + ".png";
+              // Attach the data to the link
+              dl.href = canvas.toDataURL();
+              dl.click();
+            } else {
+              panOffset.y = -panSpeed / totalzoom;
+            }
             break;
           case "Space":
             event.preventDefault();

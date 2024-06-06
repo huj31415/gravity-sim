@@ -235,9 +235,13 @@
     <div id="drawparams">
       <hr />
       <p class="header">Draw settings</p>
-      <div>
+      <div title="Each body leaves a trail behind it">
         <input type="checkbox" id="trace" name="trace" />
         <label for="trace">Trace paths (may reduce FPS) (t)</label>
+      </div>
+      <div title="Whether to fade out body tracks">
+        <input type="checkbox" id="fade" name="fade" checked />
+        <label for="fade">Fade paths (f)</label>
       </div>
       <div title="How long the tracks are when tracing bodies">
         <input type="range" id="fadeStrength" name="fadeStrength" value="0.05" max="1" min="0.01" step="0.01"
@@ -255,10 +259,6 @@
       <div>
         <input type="checkbox" id="colorByCharge" name="colorByCharge" />
         <label for="colorByCharge">Color bodies by charge (h)</label>
-      </div>
-      <div>
-        <input type="checkbox" id="fade" name="fade" checked />
-        <label for="fade">Fade paths (f)</label>
       </div>
       <div title="Direction the body is moving in">
         <input type="checkbox" id="vectors" name="vectors" />
@@ -284,7 +284,7 @@
         <input type="checkbox" id="heatmap" name="heatmap" />
         <label for="heatmap">Show gravitational field (SLOW)</label>
       </div>
-      <div title="Draw lines indicating strength of coulomb force between each body">
+      <div title="Draw lines indicating strength of coulomb force between each body: red = repulsive, green = attractive">
         <input type="checkbox" id="drawKStrength" name="drawKStrength" />
         <label for="drawKStrength">Draw electrostatic strength (Ctrl/Alt+K)</label>
       </div>
@@ -292,7 +292,7 @@
         <input type="checkbox" id="drawKThreshold" name="drawKThreshold" checked />
         <label for="drawKThreshold">Electrostatic draw threshold</label>
       </div>
-      <div>
+      <div title="Draw lines indicating strength of spring force between each body: red = repulsive, green = attractive">
         <input type="checkbox" id="drawSStrength" name="drawSStrength" checked />
         <label for="drawSStrength">Draw spring force (Ctrl/Alt+B)</label>
       </div>
@@ -309,6 +309,8 @@
       <hr />
       <p class="header">Controls</p>
       <p>
+        Shortcuts are listed next to the options<br />
+        Ctrl+s: Save current screen as image<br />
         Alt+click: delete body<br />
         Period/Comma: adjust timestep<br />
         U/V: toggle sidebar<br />

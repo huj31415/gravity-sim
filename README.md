@@ -37,6 +37,7 @@ A Javascript-based N-body simulation for calculating interactions between an arb
     - Hex grid
   - Many others
 - Resonant orbit generator
+- Save as image
 
 ### Physics principles
 #### AP Physics 1
@@ -68,6 +69,7 @@ A Javascript-based N-body simulation for calculating interactions between an arb
     - Magnetic fields and Lorentz force Soon(tm)?
 
 ## Controls
+- Ctrl+s: save image
 - U/V: toggle sidebar
 - Arrows/WASD/Mouse: pan view
 - Space: cycle tracked body
