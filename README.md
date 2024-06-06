@@ -108,13 +108,15 @@ With gravitational strength indicators (pause + trace on for long exposure effec
 ![Colliding galaxies 4](.github/galaxies-4.png)
 ![Colliding galaxies 5](.github/galaxies-5.png)
 
-### Resonant orbit generator (example: 8:13 resonance)
+### Resonant orbit generator
 Inertial reference frame
 ![Inertial frame](.github/res-8-13-center.png)
 Tracking inner body
 ![Inner body frame](.github/res-8-13-inner.png)
 Tracking outer body
 ![Outer body frame](.github/res-8-13-outer.png)
+7:12:17 resonance tracking outer body
+![7:12:17 resonance outer body frame](.github/res-7-12-17-outer.png)
 
 ### Soft body approximation
 Pressure waves

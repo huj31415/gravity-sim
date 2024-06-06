@@ -1,7 +1,7 @@
 // todo: implement electrostatic and magnetic (?) fields, rotating reference frame tracking
 let frameDelayMs = 0; // Chromebook Simulator (or for debug purposes): 0 for default requestAnimationFrame fps
 
-// object containing the user interface elements
+// object containing the user interface elements for easy access
 const ui = {
   panel: document.getElementById("settings"),
   collapse: document.getElementById("toggleSettings"),
@@ -101,17 +101,16 @@ const radToDeg = (rad) => (rad / Math.PI) * 180;
 // initialize main canvas
 const canvas = document.getElementById("canvas", { alpha: false });
 const ctx = canvas.getContext("2d");
-canvas.height = window.innerHeight;
-canvas.width = window.innerWidth;
-ui.viewport.innerText = canvas.width + " x " + canvas.height;
 let center = { x: canvas.width / 2, y: canvas.height / 2 };
+let viewport = { x: canvas.width, y: canvas.height };
 
 // make the canvas size responsive
-window.onresize = () => {
+window.onresize = window.onload = () => {
   canvas.height = window.innerHeight;
   canvas.width = window.innerWidth;
   ui.viewport.innerText = canvas.width + " x " + canvas.height;
-  center = { x: canvas.width / 2, y: canvas.height / 2 };
+  center.x = canvas.width / 2;
+  center.y = canvas.height / 2;
   viewport.x = canvas.width / totalzoom;
   viewport.y = canvas.height / totalzoom;
 };
@@ -165,7 +164,6 @@ let trackNum = 0;
 let newBody = false;
 let zoomfactor = 1;
 let totalzoom = 1;
-let viewport = { x: canvas.width, y: canvas.height };
 let mouseX, mouseY;
 let currentAngleOffset = 0;
 let rotationRate = parseFloat(ui.rotateRate.value);
@@ -237,6 +235,13 @@ function remove(body, i = 0) {
   }
 }
 
+/**
+ * Draw a circle onto the canvas
+ * @param {Number} x x coordinate of circle
+ * @param {Number} y y coordinate of circle
+ * @param {Number} r radius of circle
+ * @param {String} drawColor the color of the circle
+ */
 function circle(x = 0, y = 0, r = 5, drawColor = "gray") {
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2, true);
@@ -505,16 +510,19 @@ function runSim() {
       for (let i = index + 1; i < bodies.length; i++) {
         const body2 = bodies[i];
 
+        // initial distance
         const xDist = body2.xPos - body1.xPos;
         const yDist = body2.yPos - body1.yPos;
 
+        // minimum distance for collision
         const minDist = body1.radius + body2.radius;
         const distThreshSqr = minDist * minDist + 1;
+        // squared straight line distance
         const sqr = Math.max(xDist * xDist + yDist * yDist, distThreshSqr);
 
         // check if bodies are colliding
         if (
-          sqr <= distThreshSqr &&
+          sqr == distThreshSqr &&
           bodies.includes(body1) &&
           bodies.includes(body2) &&
           body1.id != body2.id
@@ -534,14 +542,14 @@ function runSim() {
 
           // calculate gravity if needed
           if (G != 0 && gravity && !(body1.immovable && body2.immovable)) {
-            // precalculate g / r^2
+            // precalculate g / r^2 for efficiency
             const g = G / sqr;
 
-            // get the components of the force
+            // get the x and y components of the force using similar triangles
             xAccel = (g * xDist) / dist;
             yAccel = (g * yDist) / dist;
 
-            // draw gravity strength lines
+            // draw gravity strength lines if needed
             if (drawGravityStrength) {
               const strength = Math.abs(1 - 10 / (g * body1.mass * body2.mass + 10));
               const drawThreshold = drawGThreshold ? (trace ? 1e-4 : 1e-2) : 0;
@@ -565,14 +573,14 @@ function runSim() {
           }
 
           // calculate other forces if needed
-          if (((K != 0 && electrostatic) || softbody) && !(body1.immovable && body2.immovable)) {
+          if (((K && electrostatic) || softbody) && !(body1.immovable && body2.immovable)) {
             // coulomb force
             if (electrostatic) {
-              // repel if like charges, attract if opposite charges
+              // repel (negative) if like charges, attract (positive) if opposite charges
               kForce += electrostatic ? (K * -body1.charge * body2.charge) / sqr : 0;
 
-              // draw electrostatic force
-              if (drawKStrength && kForce != 0) {
+              // draw electrostatic force lines
+              if (drawKStrength && kForce) {
                 const strength = Math.sign(kForce) * (1 - 10 / (Math.abs(kForce) + 10));
                 const drawThreshold = drawKThreshold ? (trace ? 1e-4 : 1e-2) : 0;
                 // determine whether to draw for better performance
@@ -595,7 +603,9 @@ function runSim() {
             }
             // softbody physics (spring force based on Hooke's law)
             if (softbody && dist < springEquilPos * 1.2) {
+              // get displacement relative to equilibrium
               let springDist = dist - springEquilPos;
+              // calculate force
               sForce += springDist * springConst;
               // dampening
               body1.xVel *= dampening; //(body1.xVel - vCoMX) * 0.99 + vCoMX;
@@ -603,7 +613,7 @@ function runSim() {
               body2.xVel *= dampening; //(body2.xVel - vCoMX) * 0.99 + vCoMX;
               body2.yVel *= dampening; //(body2.yVel - vCoMY) * 0.99 + vCoMY;
 
-              // draw spring force
+              // draw spring force lines
               if (drawSStrength) {
                 const strength = Math.sign(sForce) * (1 - 10 / (Math.abs(sForce) + 10));
                 const scaledStrength = 127.5 * strength;
@@ -626,13 +636,14 @@ function runSim() {
               }
             }
 
-            let force = kForce + sForce;
+            // total coulomb and spring force
+            const force = kForce + sForce;
             // add force to force components
             forceX += (force * xDist) / dist;
             forceY += (force * yDist) / dist;
           }
 
-          // apply the forces
+          // apply the forces if the body is movable
           if (!body1.immovable) {
             body1.xAccel += xAccel * body2.mass + forceX / body1.mass;
             body1.yAccel += yAccel * body2.mass + forceY / body1.mass;
@@ -660,7 +671,11 @@ function merge(body1, body2) {
 
   // merge masses and calculate corresponding radius and velocity based on momentum
   // color of new body is inherited from the larger
+
+  // get total mass
   const mass = body1.mass + body2.mass;
+
+  // determine larger and smaller body
   const larger =
     body1.immovable || body2.immovable
       ? body1.immovable
@@ -677,12 +692,12 @@ function merge(body1, body2) {
     larger.xVel = (body1.getMomentum().x + body2.getMomentum().x) / mass;
     larger.yVel = (body1.getMomentum().y + body2.getMomentum().y) / mass;
 
-    // move to cg
+    // move the body to center of mass
     larger.xPos = (body1.xPos * body1.mass + body2.xPos * body2.mass) / mass;
     larger.yPos = (body1.yPos * body1.mass + body2.yPos * body2.mass) / mass;
   }
 
-  // if the density has been manually set, don't change it
+  // if the density has been manually set, don't change the size
   if (Math.abs(larger.radius - getRadius(larger.mass)) < 0.1) larger.radius = getRadius(mass);
   // Conserve mass and charge
   larger.mass = mass;
@@ -703,10 +718,11 @@ function collision(body1, body2) {
   // increment collision counter
   collisionCount += 1;
   ui.collisionCount.innerText = collisionCount;
+
   if (inelastic) merge(body1, body2); // combine the bodies into one
-  else {
-    // calculate non-perfectly inelastic collisions
-    // larger and smaller bodies
+
+  else { // calculate non-perfectly inelastic collisions
+    // determine larger and smaller bodies
     const larger =
       body1.immovable || body2.immovable
         ? body1.immovable
@@ -721,8 +737,10 @@ function collision(body1, body2) {
     const xPosDist = body2.xPos - body1.xPos;
     const yPosDist = body2.yPos - body1.yPos;
 
+    // absolute value of separation
     const xPosDistAbs = larger.xPos - smaller.xPos;
     const yPosDistAbs = larger.yPos - smaller.yPos;
+    // straight line distance
     const d = Math.max(Math.sqrt(xPosDist * xPosDist + yPosDist * yPosDist), 0.0001);
 
     const totalMass = body1.mass + body2.mass;
@@ -730,22 +748,22 @@ function collision(body1, body2) {
 
     // set the bodies to not touch
     if (!larger.immovable && larger.mass - smaller.mass * 2 <= 0) {
-      // set the bodies to just touch to avoid intersecting
+      // calculate midpoint as the center of mass
       const midpointX = (larger.xPos * smaller.mass + smaller.xPos * larger.mass) / totalMass;
       const midpointY = (larger.yPos * smaller.mass + smaller.yPos * larger.mass) / totalMass;
 
-      // move the bodies to just touch each other
+      // move both bodies to avoid intersecting each other
       larger.xPos = midpointX + (larger.radius * xPosDistAbs) / d;
       larger.yPos = midpointY + (larger.radius * yPosDistAbs) / d;
       smaller.xPos = midpointX - (smaller.radius * 1.1 * xPosDistAbs) / d;
       smaller.yPos = midpointY - (smaller.radius * 1.1 * yPosDistAbs) / d;
     } else {
-      // just move smaller
+      // just move the smaller body
       smaller.xPos = larger.xPos - ((larger.radius + smaller.radius) * xPosDistAbs) / d;
       smaller.yPos = larger.yPos - ((larger.radius + smaller.radius) * yPosDistAbs) / d;
     }
 
-    // Intiial velocity of the center of mass
+    // Initial velocity of the center of mass = total momentum / total mass
     const vCoMX = (body1.getMomentum().x + body2.getMomentum().x) / totalMass;
     const vCoMY = (body1.getMomentum().y + body2.getMomentum().y) / totalMass;
 
@@ -769,6 +787,7 @@ function collision(body1, body2) {
     // calculate final velocities in rotated frame, changing the component perpendicular to collision
     let v1finalXrel;
     let v2finalXrel;
+    // bounce only one if either is immovable
     if (body1.immovable) {
       v1finalXrel = 0;
       v2finalXrel = -v2relX;
@@ -776,24 +795,31 @@ function collision(body1, body2) {
       v1finalXrel = -v1relX;
       v2finalXrel = 0;
     } else {
+      // bounce both using conservation of momentum and mass
       v1finalXrel = (massDiff * v1relX + 2 * body2.mass * v2relX) / totalMass;
       v2finalXrel = (2 * body1.mass * v1relX - massDiff * v2relX) / totalMass;
     }
 
-    // precompute these values
+    // precompute these values for efficiency
     const cosPhi = Math.cos(phi);
     const sinPhi = Math.sin(phi);
 
     // switch back to original frame and get final velocities, then implement new velocity with CoR if not immovable
     if (!body1.immovable) {
+      // calculate final velocities by rotating the frame to original coordinates
       const v1xFinal = cosPhi * v1finalXrel - sinPhi * v1relY;
       const v1yFinal = sinPhi * v1finalXrel + cosPhi * v1relY;
+
+      // implement CoR using velocity relative to CoM
       body1.xVel = vCoMX + CoR * (v1xFinal - vCoMX);
       if (body1.lockAxis != "y") body1.yVel = vCoMY + CoR * (v1yFinal - vCoMY);
     }
     if (!body2.immovable) {
+      // calculate final velocities by rotating the frame to original coordinates
       const v2xFinal = cosPhi * v2finalXrel - sinPhi * v2relY;
       const v2yFinal = sinPhi * v2finalXrel + cosPhi * v2relY;
+
+      // implement CoR using velocity relative to CoM
       body2.xVel = vCoMX + CoR * (v2xFinal - vCoMX);
       if (body2.lockAxis != "y") body2.yVel = vCoMY + CoR * (v2yFinal - vCoMY);
     }
@@ -977,9 +1003,11 @@ function rotate(offset = Math.PI, clrTrails = false) {
         body.yPos = 2 * center.y - body.yPos;
       });
     }
+    // otherwise don't do anything
   } else {
-    // faster skew for angles != pi
-    // see Matt Parker's video
+    // faster rotation using only translation for angles != pi
+    // see Stand-up Maths video for a proof and explanation
+    // https://www.youtube.com/watch?v=1LCEiVDHJmc
 
     // find skew values
     const xSkew = -Math.tan(offset / 2);
@@ -1000,6 +1028,7 @@ function rotate(offset = Math.PI, clrTrails = false) {
   }
 }
 
+// still doesn't work
 function rotateTrack(target = null) {
   if (!target || !trackBody || target == trackBody) rotationRate = 0;
   else {
@@ -1083,7 +1112,7 @@ function draw() {
       collideOffset.x = collideOffset.y = 0;
     }
   }
-  // loop through bodies, draw and update
+  // loop through bodies, calculate physics, draw and update
   runSim();
   if (continueTrace) trace = true;
   if (drawMouseVector) drawPointField();

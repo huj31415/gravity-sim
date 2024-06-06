@@ -78,7 +78,7 @@
     <div id="simparams">
       <hr />
       <p class="header">Global simulation settings</p>
-      <div>
+      <div title="The rate of simulation, higher is faster but less accurate">
         <input type="range" id="timestep" name="timestep" value="0.5" max="2" min="0" step="0.01" width="400px" />
         <label for="timestep">Timestep (<span id="tOut">0.5</span>)</label>
       </div>
@@ -90,8 +90,8 @@
         <input type="number" id="g" name="g" value="1" step=".1" width="400px" />
         <label for="g">G constant</label>
       </div>
-      <div>
-        <input type="number" id="uniformg" name="uniformg" value="0.00" step=".05" width="400px" /> <!-- default 0-->
+      <div title="Uniform downward acceleration">
+        <input type="number" id="uniformg" name="uniformg" value="0.00" step=".05" width="400px" />
         <label for="uniformg">Uniform g</label>
       </div>
       <div>
@@ -110,31 +110,31 @@
         <input type="number" id="springConst" name="springConst" value="100" min="0" step="10" width="400px" />
         <label for="springConst">Spring constant</label>
       </div>
-      <div>
+      <div title="The distance where the spring force is 0">
         <input type="number" id="softbodyEquilPos" name="softbodyEquilPos" value="25" min="0" step="1" width="400px" />
         <label for="softbodyEquilPos">Spring equilibrium</label>
       </div>
-      <div>
+      <div title="Reduce velocity every frame">
         <input type="range" id="dampening" name="dampening" value="0.01" max="1" min="0" step="0.01" width="400px" />
         <label for="dampening">Dampening (<span id="dampOut">0.01</span>)</label>
       </div>
-      <div>
+      <div title="Create a box to contain the bodies">
         <input type="checkbox" id="collide" name="collide" />
         <label for="collide">Edge collide (e)</label>
       </div>
-      <div>
+      <div title="Whether to calculate particle collisions">
         <input type="checkbox" id="globalCollide" name="globalCollide" checked />
         <label for="globalCollide">Simulate particle collisions</label>
       </div>
-      <div>
+      <div title="Ratio of relative initial vs final velocity after collision">
         <input type="range" id="CoR" name="CoR" value="1" max="2" min="0" step="0.1" width="400px" />
         <label for="CoR">Restitution coeff (<span id="CoROut">1</span>)</label>
       </div>
-      <div>
+      <div title="Whether to combine bodies during collision">
         <input type="checkbox" id="collideType" name="collideType" checked />
         <label for="collideType">Combine bodies (c)</label>
       </div>
-      <div>
+      <div title="Speed up simulation without sacrificing accuracy">
         <input type="checkbox" id="decoupleFPS" name="decoupleFPS" />
         <label for="decoupleFPS">Decouple sim rate from FPS</label>
       </div>
@@ -212,19 +212,19 @@
     <div id="resonanceparams">
       <hr>
       <p class="header">Resonant orbit generator settings</p>
-      <div>
+      <div title="Ratios of orbital periods">
         <input type="text" id="res" name="res" value="7,12,17" width="400px" />
         <label for="res">Resonances</label>
       </div>
-      <div>
+      <div title="Initial angular offset">
         <input type="text" id="resOffset" name="resOffset" value="0,0,0" width="400px" />
         <label for="resOffset">Offsets (* 90&deg;)</label>
       </div>
-      <div>
+      <div title="Mass of the central body">
         <input type="number" id="resMass" name="resMass" value="1000000" step="10000" min="0" width="400px" />
         <label for="resMass">Central mass</label>
       </div>
-      <div>
+      <div title="The orbital radius of the innermost planet, in multiples of the central body's radius">
         <input type="number" id="resSMA" name="resSMA" value="6" step="0.5" min="0" width="400px" />
         <label for="resMSMA">Min SMA (*R<sub>center</sub>)</label>
       </div>
@@ -236,11 +236,15 @@
       <hr />
       <p class="header">Draw settings</p>
       <div>
+        <input type="checkbox" id="trace" name="trace" />
+        <label for="trace">Trace paths (may reduce FPS) (t)</label>
+      </div>
+      <div title="How long the tracks are when tracing bodies">
         <input type="range" id="fadeStrength" name="fadeStrength" value="0.05" max="1" min="0.01" step="0.01"
           width="400px" />
         <label for="fadeStrength">Fade strength (<span id="fadeOutput">0.05</span>)</label>
       </div>
-      <div>
+      <div title="Pointers to offscreen bodies">
         <input type="checkbox" id="drawOffscreen" name="drawOffscreen" checked />
         <label for="drawOffscreen">Draw offscreen indicators</label>
       </div>
@@ -253,26 +257,22 @@
         <label for="colorByCharge">Color bodies by charge (h)</label>
       </div>
       <div>
-        <input type="checkbox" id="trace" name="trace" />
-        <label for="trace">Trace paths (may reduce FPS) (t)</label>
-      </div>
-      <div>
         <input type="checkbox" id="fade" name="fade" checked />
         <label for="fade">Fade paths (f)</label>
       </div>
-      <div>
+      <div title="Direction the body is moving in">
         <input type="checkbox" id="vectors" name="vectors" />
         <label for="vectors">Draw motion vectors (blue) (1)</label>
       </div>
-      <div>
+      <div title="Direction of net force/accel">
         <input type="checkbox" id="drawG" name="drawG" />
         <label for="drawG">Draw acceleration vectors (red) (2)</label>
       </div>
-      <div>
+      <div title="Draw lines indicating strength of gravity between each body">
         <input type="checkbox" id="drawGStrength" name="drawGStrength" />
         <label for="drawGStrength">Draw gravity strength (Ctrl/Alt+G)</label>
       </div>
-      <div>
+      <div title="Cull weak corce lines for performance">
         <input type="checkbox" id="drawGThreshold" name="drawGThreshold" checked />
         <label for="drawGThreshold">Gravity draw threshold</label>
       </div>
@@ -284,11 +284,11 @@
         <input type="checkbox" id="heatmap" name="heatmap" />
         <label for="heatmap">Show gravitational field (SLOW)</label>
       </div>
-      <div>
+      <div title="Draw lines indicating strength of coulomb force between each body">
         <input type="checkbox" id="drawKStrength" name="drawKStrength" />
         <label for="drawKStrength">Draw electrostatic strength (Ctrl/Alt+K)</label>
       </div>
-      <div>
+      <div title="Cull weak force lines for performance">
         <input type="checkbox" id="drawKThreshold" name="drawKThreshold" checked />
         <label for="drawKThreshold">Electrostatic draw threshold</label>
       </div>
