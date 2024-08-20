@@ -181,79 +181,77 @@ function updateSettings() {
 
   // input listeners
   {
-    ui.rotate.addEventListener("input", (event) => {
+    ui.rotate.oninput = (event) => {
       let rad = degToRad(event.target.value);
       rotate(rad - currentAngleOffset, trace);
       ui.collide.checked = collide = false;
-    });
+    };
 
-    ui.rotateRate.addEventListener("input", (event) => {
+    ui.rotateRate.oninput = (event) => {
       if (event.target.value) rotationRate = degToRad(parseFloat(event.target.value));
-    });
+    };
 
-    ui.trace.addEventListener("input", () => {
+    ui.trace.oninput = () => {
       if (ui.trace.checked) {
         ui.heatmap.checked = drawField = false;
       }
-    });
-    ui.timestep.addEventListener("input", (event) => {
+    };
+    ui.timestep.oninput = (event) => {
       ui.tOut.innerText = event.target.value;
       timestep = event.target.value;
-    });
-    ui.CoR.addEventListener("input", (event) => {
+    };
+    ui.CoR.oninput = (event) => {
       ui.CoROut.innerText = parseFloat(event.target.value);
       if (event.target.value) CoR = parseFloat(event.target.value);
-    });
-    ui.fadeStrength.addEventListener("input", (event) => {
+    };
+    ui.fadeStrength.oninput = (event) => {
       ui.fadeOutput.innerText = parseFloat(event.target.value);
       fadeStrength = parseFloat(event.target.value);
-    });
-
-    ui.G.addEventListener("input", (event) => {
+    };
+    ui.G.oninput = (event) => {
       if (event.target.value) G = parseFloat(event.target.value);
-    });
+    };
 
-    ui.uniformg.addEventListener("input", (event) => {
+    ui.uniformg.oninput = (event) => {
       if (event.target.value) uniformg = parseFloat(event.target.value);
       // if (uniformg) {
       //   collide = true;
       //   ui.collide.checked = true;
       // }
-    });
+    };
 
-    ui.K.addEventListener("input", (event) => {
+    ui.K.oninput = (event) => {
       if (event.target.value) K = parseFloat(event.target.value);
-    });
+    };
 
-    ui.springConst.addEventListener("input", (event) => {
+    ui.springConst.oninput = (event) => {
       if (event.target.value) springConst = parseInt(event.target.value);
-    });
-
-    ui.dampening.addEventListener("input", (event) => {
+    };
+    ui.dampening.oninput = (event) => {
       ui.dampOut.innerText = event.target.value;
       dampening = 1 - event.target.value;
-    });
+    };
 
-    ui.springEquilPos.addEventListener("input", (event) => {
+    ui.springEquilPos.oninput = (event) => {
       if (event.target.value) springEquilPos = parseInt(event.target.value);
       springEquilSqr = springEquilPos * springEquilPos;
-    });
+    };
 
-    ui.initVel.addEventListener("input", (event) => {
+    ui.initVel.oninput = (event) => {
       if (event.target.value) initVel = parseFloat(event.target.value);
-    });
+    };
 
-    ui.heatmap.addEventListener("input", () => {
+    ui.heatmap.oninput = () => {
       ui.trace.checked = trace = false;
       ui.drawGravityStrength.checked = drawGravityStrength = false;
       ui.drawVector.checked = drawVector = false;
       ui.drawGravity.checked = drawGravity = false;
-    });
+    };
 
-    ui.trackCoM.addEventListener("input", () => {
+    ui.trackCoM.oninput = () => {
       ui.drawCoM.checked = true;
       trackCoM = ui.trackCoM.checked;
-    });
+    };
   }
 }
 
