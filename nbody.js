@@ -528,7 +528,7 @@ function runSim() {
           body1.id != body2.id
         ) {
           // collide the bodies
-          if (globalCollide && body2.collide && body1.collide && !paused) collision(body1, body2); // && globalCollide
+          if (globalCollide && (body1.collide || body2.collide) && !paused) collision(body1, body2); // && globalCollide
         }
         else if (grav || elec || (soft && sqr <= springEquilSqr * 1.44)) {
           // calculate acceleration based on forces

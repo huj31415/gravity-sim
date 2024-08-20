@@ -50,17 +50,19 @@ function load() {
       ui.G.value = 1;
       ui.drawVector.checked = drawVector = false;
       ui.drawGravity.checked = drawGravity = false;
-      ui.timestep.value = ui.tOut.innerText = timestep = 0.1;
+      if (paused) ui.timestep.value = oldTimestep = 0.1;
+      else ui.timestep.value = ui.tOut.innerText = timestep = 0.1;
       ui.drawGravityStrength.checked = drawGravityStrength = false;
       ui.gravity.checked = true;
       const g1num = randInt(500, 1000);
       const g2num = randInt(500, 1000);
+      const v = 5;
       generateGalaxy(
         {
           x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
           y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
         },
-        { x: randInt(-1, 1), y: randInt(-1, 1) },
+        { x: randInt(-v, v), y: randInt(-v, v) },
         g1num,
         1,
         2,
@@ -73,7 +75,7 @@ function load() {
           x: randInt(center.x - viewport.x / 2, center.x + viewport.x / 2),
           y: randInt(center.y - viewport.y / 2, center.y + viewport.y / 2),
         },
-        { x: randInt(-1, 1), y: randInt(-1, 1) },
+        { x: randInt(-v, v), y: randInt(-v, v) },
         g2num,
         1,
         2,
@@ -221,28 +223,40 @@ function initRandBodies(
  * @param {Number} radius radius of the galaxy
  * @param {Number} rotDir rotation direction 0 or 1
  * @param {Boolean} bodyCollide whether or not the stars can collide
+ * @param {Number} exp The exponent for the distance probability distribution function
+ * @param {Boolean} spiral whether the galaxy should be a perfect spiral or random
+ * @param {Boolean} thickArms whether the arms should be thickened
+ * @param {Number} arms Number of arms for the spiral galaxy
  */
 function generateGalaxy(
   centerPos = { x: center.x, y: center.y },
   vel = { x: 0, y: 0 },
   num = 500,
   minMass = 1,
-  maxMass = 2,
+  maxMass = 5,
   radius = 500,
   rotDir = 0,
-  bodyCollide = false
+  bodyCollide = false,
+  exp = 5,
+  spiral = true,//false
+  thickArms = true,
+  arms = randInt(2, 5)
 ) {
   // center
-  let centerMass = num * 100;
-  let centerRadius = 10; //getRadius(num * 100);
-  bodies.push(new Body(centerPos.x, centerPos.y, vel.x, vel.y, 10, centerMass));
+  let centerMass = 1e5;
+  let centerRadius = 5; //getRadius(num * 100);
+  bodies.push(new Body(centerPos.x, centerPos.y, vel.x, vel.y, centerRadius, centerMass, "default", true));
   for (let i = 0; i < num; i++) {
-    let mass = randInt(minMass, maxMass);
+    let mass = spiral ? (minMass + maxMass) / 2 : randInt(minMass, maxMass);
     let r = getRadius(mass);
-    let angle = randInt(0, 360);
-    let distance = Math.pow(2, -2 * Math.random()).map(0.25, 1, 0, 1) * radius + centerRadius; //randInt(centerRadius * 2, radius)
-    let ac = (G * centerMass) / (distance * distance);
-    let speed = Math.sqrt(ac * distance);
+    let angle = spiral ? (i * Math.PI * (2 / arms + Math.sign(rotDir - 0.5) * Math.PI / num)) : randInt(0, 314);
+    let input = i.map(0, num, 0, radius) / radius; // input to distance probability distribution
+    let distance = centerRadius + 10 + radius * (((2 ** (-exp * (input - 1)) - 1) / (2 ** exp - 1))); //randInt(centerRadius * 2, radius)
+    if (spiral && thickArms) {
+      angle *= (1 + (Math.random() - 0.5) * 0.005); // random offset to spiral arms to add thickness
+      distance *= (1 + (Math.random() - 0.5) * 0.1);
+    }
+    let speed = Math.sqrt(G * centerMass / distance);
     bodies.push(
       new Body(
         centerPos.x + distance * Math.cos(angle),
@@ -250,7 +264,7 @@ function generateGalaxy(
         vel.x + speed * Math.sin(-angle) * (rotDir ? 1 : -1),
         vel.y + speed * Math.cos(-angle) * (rotDir ? 1 : -1),
         r,
-        0,
+        mass,
         "white",
         bodyCollide
       )
