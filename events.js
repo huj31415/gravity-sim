@@ -63,7 +63,8 @@ function updateSettings() {
   drawGThreshold = ui.drawGThreshold.checked;
   drawVector = ui.drawVector.checked;
   collide = ui.collide.checked;
-  drawField = ui.heatmap.checked;
+  drawGField = ui.heatmap.checked;
+  drawEPot = ui.epot.checked;
   drawCoM = ui.drawCoM.checked;
   trackCoM = ui.trackCoM.checked;
   globalCollide = ui.globalCollide.checked;
@@ -193,7 +194,7 @@ function updateSettings() {
 
     ui.trace.oninput = () => {
       if (ui.trace.checked) {
-        ui.heatmap.checked = drawField = false;
+        ui.heatmap.checked = drawGField = false;
       }
     };
     ui.timestep.oninput = (event) => {
@@ -255,7 +256,12 @@ function updateSettings() {
 
     ui.integrator.oninput = (event) => {
       integrator = parseInt(event.target.value);
-      if (integrator == Integrators.VERLET) alert("May not be stable in some scenarios such as rotating reference frames");
+      if (integrator == Integrators.VERLET) alert(
+        ```
+        May not be stable in some scenarios such as rotating reference frames,
+        does not work for collisions and changing timesteps
+        ```
+      );
     };
   }
 }

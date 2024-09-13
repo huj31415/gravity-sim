@@ -9,17 +9,13 @@ const ui = {
   tOut: document.getElementById("tOut"),
   numBodies: document.getElementById("num"),
   integrator: document.getElementById("integrator"),
+  decoupleFPS: document.getElementById("decoupleFPS"),
   // draw settings
   trace: document.getElementById("trace"),
   continuous: document.getElementById("continuous"),
   fade: document.getElementById("fade"),
   fadeStrength: document.getElementById("fadeStrength"),
   fadeOutput: document.getElementById("fadeOutput"),
-  drawVector: document.getElementById("vectors"),
-  drawGravity: document.getElementById("drawG"),
-  drawGravityStrength: document.getElementById("drawGStrength"),
-  drawGThreshold: document.getElementById("drawGThreshold"),
-  heatmap: document.getElementById("heatmap"),
   drawCoM: document.getElementById("drawCoM"),
   trackCoM: document.getElementById("trackCoM"),
   colorByVel: document.getElementById("colorByVel"),
@@ -30,9 +26,11 @@ const ui = {
   uniformg: document.getElementById("uniformg"),
   gravity: document.getElementById("gravity"),
   collide: document.getElementById("collide"),
-  maxMass: document.getElementById("maxSize"),
-  minMass: document.getElementById("minSize"),
-  initVel: document.getElementById("initVel"),
+  drawVector: document.getElementById("vectors"),
+  drawGravity: document.getElementById("drawG"),
+  drawGravityStrength: document.getElementById("drawGStrength"),
+  drawGThreshold: document.getElementById("drawGThreshold"),
+  heatmap: document.getElementById("heatmap"),
   // buttons
   randBtn: document.getElementById("rand"),
   loadBtn: document.getElementById("loadPreset"),
@@ -55,6 +53,10 @@ const ui = {
   yp: document.getElementById("yPos"),
   vx: document.getElementById("Vx"),
   vy: document.getElementById("Vy"),
+  immovable: document.getElementById("immovable"),
+  maxMass: document.getElementById("maxSize"),
+  minMass: document.getElementById("minSize"),
+  initVel: document.getElementById("initVel"),
   // collision settings
   globalCollide: document.getElementById("globalCollide"),
   inelastic: document.getElementById("collideType"),
@@ -69,8 +71,7 @@ const ui = {
   K: document.getElementById("K"),
   drawKStrength: document.getElementById("drawKStrength"),
   drawKThreshold: document.getElementById("drawKThreshold"),
-  immovable: document.getElementById("immovable"),
-  decoupleFPS: document.getElementById("decoupleFPS"),
+  epot: document.getElementById("epot"),
   // softbody settings
   softbody: document.getElementById("softbody"),
   springConst: document.getElementById("springConst"),
@@ -179,8 +180,8 @@ let rotateTarget,
   rotateTrackNum = 0;
 
 // heatmap
-let maxBody;
-const minPotential = 0;
+let maxBody, maxBodyE;
+const minField = 0;
 const heatmapRes = 4;
 let minL = 0.1;
 
@@ -197,7 +198,8 @@ let colorBySpeed = ui.colorByVel.checked,
   drawGThreshold = ui.drawGThreshold.checked,
   drawVector = ui.drawVector.checked,
   collide = ui.collide.checked,
-  drawField = ui.heatmap.checked,
+  drawGField = ui.heatmap.checked,
+  drawEPot = ui.epot.checked,
   drawCoM = ui.drawCoM.checked,
   trackCoM = ui.trackCoM.checked,
   globalCollide = ui.globalCollide.checked,
@@ -320,8 +322,8 @@ class Body {
     this.xAccel = 0;
     this.yAccel = 0;
 
-    this.xAccelP = 0;
-    this.yAccelP = 0;
+    this.xAccelPrev = 0;
+    this.yAccelPrev = 0;
 
     this.radius = r ? r : getRadius(mass);
     this.mass = mass ? mass : (4 / 3) * Math.PI * (r * r * r);
@@ -348,27 +350,27 @@ class Body {
   /** Draw the body onto the canvas */
   draw() {
     let drawColor = this.color;
-    // change the color based on speed
-    if (colorByCharge) {
-      drawColor =
-        "rgb(" +
-        (128 + this.charge * 10) +
-        ", " +
-        (128 - Math.abs(this.charge * 10)) +
-        ", " +
-        (128 - this.charge * 10) +
-        ")";
-    } else if (colorBySpeed) {
-      let speed = Math.hypot(
-        this.xVel - (trackBody ? trackBody.xVel : 0),
-        this.yVel - (trackBody ? trackBody.yVel : 0)
-      );
-      let hue = Math.max(240 - 10 * speed, 0);
-      drawColor = "hsl(" + hue + ", 100%, 50%)";
-    }
 
     // Draw the body
     {
+      // change the color based on speed
+      if (colorByCharge) {
+        drawColor =
+          "rgb(" +
+          (128 + this.charge * 10) +
+          ", " +
+          (128 - Math.abs(this.charge * 10)) +
+          ", " +
+          (128 - this.charge * 10) +
+          ")";
+      } else if (colorBySpeed) {
+        let speed = Math.hypot(
+          this.xVel - (trackBody ? trackBody.xVel : 0),
+          this.yVel - (trackBody ? trackBody.yVel : 0)
+        );
+        let hue = Math.max(240 - 10 * speed, 0);
+        drawColor = "hsl(" + hue + ", 100%, 50%)";
+      }
       if (!isInView(this) && drawOffscreen) {
         // offscreen indicators
         // use slope to draw lines pointing toward center
@@ -412,7 +414,7 @@ class Body {
         }
 
         // black outline for field visualization
-        if (drawField) {
+        if (drawGField || drawEPot) {
           ctx.strokeStyle = "black";
           ctx.lineWidth = 1;
           ctx.beginPath();
@@ -454,16 +456,16 @@ class Body {
           const dt2 = timestep * timestep;
           
           // Calculate velocity
-          this.xVel += 0.5 * (this.xAccel + this.xAccelP) * timestep;
-          this.yVel += 0.5 * (this.yAccel + this.yAccelP) * timestep;
+          this.xVel += 0.5 * (this.xAccel + this.xAccelPrev) * timestep;
+          this.yVel += 0.5 * (this.yAccel + this.yAccelPrev) * timestep;
     
           // Calculate position      
           this.xPos += this.xVel * timestep + 0.5 * this.xAccel * dt2;
           this.yPos += this.yVel * timestep + 0.5 * this.yAccel * dt2;
 
           // Store previous accelerations for next timestep
-          this.xAccelP = this.xAccel;
-          this.yAccelP = this.yAccel;
+          this.xAccelPrev = this.xAccel;
+          this.yAccelPrev = this.yAccel;
           break;
         case Integrators.EULER:
           // Euler integration
@@ -540,7 +542,8 @@ function runSim() {
     const forces = grav || soft || elec;
 
     // for max field strength calibration
-    if (drawField && body1.mass > maxBody.mass) maxBody = body1;
+    if (drawGField && body1.mass > maxBody.mass) maxBody = body1;
+    if (drawEPot && Math.abs(body1.charge) > Math.abs(maxBodyE.charge)) maxBodyE = body1;
 
     // do calculations if needed
     if (
@@ -868,18 +871,18 @@ function collision(body1, body2) {
 }
 
 /**
- * calculate field strength at a given point
+ * calculate gravitational field strength at a given point
  * @param {Number} x X-coordinate for field calculation
  * @param {Number} y Y-coordinate for field calculation
  * @param {Number} res resolution of the grid for full field calculation
  * @param {Boolean} hypot whether to retern the net strength or the X and Y components
  * @returns Net field strength if hypot is true, otherwise an object with the X and Y components
  */
-function calcFieldAtPoint(x, y, res = 0, hypot = false) {
+function calcGFieldAtPoint(x, y, res = 0, hypot = false) {
   let xPot = 0,
     yPot = 0;
 
-  // accumulate total potential using vector sum
+  // accumulate total field using vector sum
   bodies.forEach((body) => {
     let distance = res
       ? Math.hypot(body.xPos - x - res / 2, body.yPos - y - res / 2)
@@ -911,28 +914,32 @@ function hsl2rgb(h, s, l) {
   return [f(0), f(8), f(4)];
 }
 
-/** display gravitational field for the whole canvas */
-function drawFullField() {
+/** 
+ * Display gravitational field for the whole canvas
+ */
+function drawFullGField() {
   const res = heatmapRes / totalzoom;
   const width = canvas.width;
   const imgData = ctx.createImageData(width, canvas.height);
   const data = imgData.data;
 
   // used to adjust coloring based on the max potential value
-  const maxPotential = (G * maxBody.mass) / (maxBody.radius * maxBody.radius);
+  const maxField = (G * maxBody.mass) / (maxBody.radius * maxBody.radius);
 
   // calculate for every res*res block of pixels
   for (let y = center.y - viewport.y / 2, py = 0; y < center.y + viewport.y / 2; y += res, py++) {
     for (let x = center.x - viewport.x / 2, px = 0; x < center.x + viewport.x / 2; x += res, px++) {
-      const potential = calcFieldAtPoint(x, y, res, true); //Math.hypot(vector.x, vector.y);
+      const field = calcGFieldAtPoint(x, y, res, true); //Math.hypot(vector.x, vector.y);
       let rgbColor = [0, 0, 0.2];
-      if (potential >= 0.05) {
+      if (field >= 0.05) {
         // Map the potential to HSL color space
-        const hue = 240 - potential.lerp(minPotential, maxPotential, 0, 240);
-        const lightness = potential.lerp(minPotential, maxPotential, 0.01, 0.5);
+        const hue = 240 - field.lerp(minField, maxField, 0, 240);
+        const lightness = field.lerp(minField, maxField, 0.01, 0.5);
 
         // Convert HSL to RGB
         rgbColor = hsl2rgb(hue, 1, lightness);
+
+        // rgbColor[0] = field.lerp(minField, maxField, 0, 1)
 
         // set the pixels to that color
         for (let i = 0; i < heatmapRes; i++) {
@@ -951,12 +958,71 @@ function drawFullField() {
   ctx.putImageData(imgData, 0, 0);
 }
 
+/**
+ * calculate electric field strength at a given point
+ * @param {Number} x X-coordinate for field calculation
+ * @param {Number} y Y-coordinate for field calculation
+ * @param {Number} res resolution of the grid for full field calculation
+ * @returns Net field strength if hypot is true, otherwise an object with the X and Y components
+ */
+function calcEPotAtPoint(x, y, res = 0) {
+  let h = 0;
+
+  // accumulate total field
+  bodies.forEach((body) => {
+    let distance = res
+      ? Math.hypot(body.xPos - x - res / 2, body.yPos - y - res / 2)
+      : Math.hypot(body.xPos - x, body.yPos - y);
+    if (distance >= body.radius - (res ? res : 0)) {
+      h += (K * body.charge) / (distance);
+    }
+  });
+  return h;
+}
+
+/** 
+ * Display electric potential for the whole canvas
+ */
+function drawFullEPot() {
+  const res = heatmapRes / totalzoom;
+  const width = canvas.width;
+  const imgData = ctx.createImageData(width, canvas.height);
+  const data = imgData.data;
+
+  // used to adjust coloring based on the max potential value
+  const maxPotential = Math.abs(K * maxBodyE.charge) / (maxBodyE.radius);
+  
+  // calculate for every res*res block of pixels
+  for (let y = center.y - viewport.y / 2, py = 0; y < center.y + viewport.y / 2; y += res, py++) {
+    for (let x = center.x - viewport.x / 2, px = 0; x < center.x + viewport.x / 2; x += res, px++) {
+      const potential = calcEPotAtPoint(x, y, res); //Math.hypot(vector.x, vector.y);
+      if (Math.abs(potential) >= 0.05) {
+        const r = Math.max(potential, 0).lerp(0, maxPotential, 0, 255);
+        const b = Math.min(potential, 0).lerp(-maxPotential, 0, 255, 0);
+
+        // set the pixels to that color
+        for (let i = 0; i < heatmapRes; i++) {
+          for (let j = 0; j < heatmapRes; j++) {
+            const index = ((py * 4 + i) * width + (px * 4 + j)) * heatmapRes;
+            data[index] = r;
+            data[index + 1] = 0;
+            data[index + 2] = b;
+            data[index + 3] = 255;
+          }
+        }
+      }
+    }
+  }
+  // update the field visualization
+  ctx.putImageData(imgData, 0, 0);
+}
+
 /** display gravitational field vector at the mouse position */
 function drawPointField() {
   const x = (mouseX / canvas.width) * viewport.x + center.x - viewport.x / 2;
   const y = (mouseY / canvas.height) * viewport.y + center.y - viewport.y / 2;
 
-  const vector = calcFieldAtPoint(x, y);
+  const vector = calcGFieldAtPoint(x, y);
 
   // draw the vector line
   ctx.beginPath();
@@ -1107,8 +1173,8 @@ function draw() {
   // update the FPS and bodycount graphs
   updateGraphs(100);
 
-  if (!maxBody && bodies[0]) maxBody = bodies[0];
-  else if (!bodies[0]) maxBody = null;
+  if (!maxBody && bodies[0]) maxBody = bodies[0], maxBodyE = bodies[0];
+  else if (!bodies[0]) maxBody = maxBodyE = null;
 
   if (!paused) rotate(rotationRate);
   if (gameMode) rotationRate *= 0.9;
@@ -1127,9 +1193,13 @@ function draw() {
       // fade by covering canvas with a slightly opaque black
       ctx.fillStyle = "rgba(0, 0, 0, " + fadeStrength + ")";
       ctx.fillRect(center.x - viewport.x / 2, center.y - viewport.y / 2, viewport.x, viewport.y);
-    } else if (!trace && drawField && G && bodies[0]) {
-      // draw the field
-      drawFullField();
+    } else if (!trace && bodies[0] && (drawGField || drawEPot)) {
+      if (drawGField && G)
+        // draw the gravity field
+        drawFullGField();
+      else if (drawEPot && K)
+        // draw the electrostatic field
+        drawFullEPot();
     } else if (!trace) {
       // remove trails by drawing black over the canvas
       ctx.fillStyle = "rgba(0, 0, 0, 1)";
