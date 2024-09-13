@@ -67,7 +67,7 @@ A Javascript-based N-body simulation for calculating interactions between an arb
 3. Electrostatics
     - Electric force
     - Conservation of charge
-    - Electric field and potential visualization Soon(tm)
+    - Electric potential visualization
 5. Magnetism?
     - Magnetic fields and Lorentz force Soon(tm)?
 
@@ -88,7 +88,7 @@ A Javascript-based N-body simulation for calculating interactions between an arb
 ## Planned
 - Other numerical solution methods such as Verlet integration
 - EM forces
-- Rotational tracking
+- Rotational tracking (in progress)
 - Torque and rotational motion implementation (?)
 - Particle trajectory prediction
 - Move calculations to gpu (especially field calcs)
@@ -97,8 +97,10 @@ A Javascript-based N-body simulation for calculating interactions between an arb
 
 ## Changelog
 ### 2024-09-13
-- Added velocity verlet integration
+- Added verlet integration
 - Added integrator options
+- Added electric potential visualization
+- Fixed some bugs
 
 ## Image gallery
 ### Binary generator
