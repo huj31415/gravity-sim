@@ -1031,7 +1031,7 @@ function track(body) {
   pan({
     x: center.x - body.xPos,
     y: center.y - body.yPos,
-  },false);
+  },newBody);
   newBody = false;
 }
 
