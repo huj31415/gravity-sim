@@ -14,15 +14,17 @@ A Javascript-based N-body simulation for calculating interactions between an arb
   - Spring (softbody approximation)
 - Conservation laws
   - Momentum, energy, charge
-  - Better implementation in velocity-verlet integration
+  - Better implementation in verlet integration
+    - Not currently working for collisions or rotating frame
 - Various draw options
   - Trace paths
   - Color based on speed or charge
   - Gravitational field visualization (VERY SLOW)
     - Can show the Lagrange points
+  - Electric potential visualization (Also very slow)
   - Center of mass indicator
   - Velocity, acceleration vectors
-  - etc.
+  - and many more
 - Presets and generators
   - Planets
   - Planets with moons
@@ -40,7 +42,7 @@ A Javascript-based N-body simulation for calculating interactions between an arb
   - Many others
 - Export as image
 
-### Physics principles
+## Physics principles
 #### AP Physics 1
 1. Kinematics
     - Position, velocity, acceleration - particle motion
