@@ -8,6 +8,7 @@ const ui = {
   timestep: document.getElementById("timestep"),
   tOut: document.getElementById("tOut"),
   numBodies: document.getElementById("num"),
+  integrator: document.getElementById("integrator"),
   // draw settings
   trace: document.getElementById("trace"),
   continuous: document.getElementById("continuous"),
@@ -148,6 +149,13 @@ let dampening = 0.99;
 let springEquilPos = 25;
 let springEquilSqr = springEquilPos * springEquilPos;
 
+// integrators enum
+const Integrators = Object.freeze({
+  VERLET: 0,
+  EULER: 1,
+});
+let integrator = Integrators.VERLET;
+
 // tracking variables
 let collisionCount = (frameCount = bodyCount = activeBodies = 0);
 let lastTime = performance.now();
@@ -175,6 +183,9 @@ let maxBody;
 const minPotential = 0;
 const heatmapRes = 4;
 let minL = 0.1;
+
+let player = null;
+let gameMode = false;
 
 // initialize settings
 let colorBySpeed = ui.colorByVel.checked,
@@ -270,7 +281,7 @@ const isInView = (body, offset = { x: 0, y: 0 }) =>
  * @param {Boolean} clampMax whether to clamp the maximum value if the input exceeds max
  * @param {Boolean} clampMin whether to clamp the minimum value if the input exceeds min
  */
-Number.prototype.map = function (
+Number.prototype.lerp = function (
   in_min,
   in_max,
   out_min,
@@ -297,7 +308,8 @@ class Body {
     collide = true,
     charge = 0,
     immovable = false,
-    lockAxis = "none"
+    lockAxis = "none",
+    control = false,
   ) {
     this.xPos = this.xPrev = xPos;
     this.yPos = this.yPrev = yPos;
@@ -307,6 +319,9 @@ class Body {
 
     this.xAccel = 0;
     this.yAccel = 0;
+
+    this.xAccelP = 0;
+    this.yAccelP = 0;
 
     this.radius = r ? r : getRadius(mass);
     this.mass = mass ? mass : (4 / 3) * Math.PI * (r * r * r);
@@ -319,6 +334,12 @@ class Body {
 
     this.immovable = immovable;
     this.lockAxis = lockAxis;
+    this.control = control;
+
+    if (control) {
+      trackBody = player = this;
+      gameMode = true;
+    }
   }
   /** Returns the x and y momentum */
   getMomentum() {
@@ -427,14 +448,34 @@ class Body {
     if (!this.immovable) {
       this.xPrev = this.xPos;
       this.yPrev = this.yPos;
+      switch (integrator) {
+        case Integrators.VERLET:
+          // Velocity-verlet integration
+          const dt2 = timestep * timestep;
+          
+          // Calculate velocity
+          this.xVel += 0.5 * (this.xAccel + this.xAccelP) * timestep;
+          this.yVel += 0.5 * (this.yAccel + this.yAccelP) * timestep;
+    
+          // Calculate position      
+          this.xPos += this.xVel * timestep + 0.5 * this.xAccel * dt2;
+          this.yPos += this.yVel * timestep + 0.5 * this.yAccel * dt2;
 
-      // implement acceleration
-      this.xVel += this.xAccel * timestep;
-      this.yVel += this.yAccel * timestep;
+          // Store previous accelerations for next timestep
+          this.xAccelP = this.xAccel;
+          this.yAccelP = this.yAccel;
+          break;
+        case Integrators.EULER:
+          // Euler integration
+          // implement acceleration
+          this.xVel += this.xAccel * timestep;
+          this.yVel += this.yAccel * timestep;
 
-      // change pos based on velocity
-      this.xPos += this.xVel * timestep;
-      this.yPos += this.yVel * timestep;
+          // change pos based on velocity
+          this.xPos += this.xVel * timestep;
+          this.yPos += this.yVel * timestep;
+          break;
+      }
 
       // reset acceleration
       this.xAccel = 0;
@@ -719,7 +760,7 @@ function collision(body1, body2) {
   collisionCount += 1;
   ui.collisionCount.innerText = collisionCount;
 
-  if (inelastic) merge(body1, body2); // combine the bodies into one
+  if (inelastic && !(body1.control || body2.control)) merge(body1, body2); // combine the bodies into one
 
   else { // calculate non-perfectly inelastic collisions
     // determine larger and smaller bodies
@@ -887,8 +928,8 @@ function drawFullField() {
       let rgbColor = [0, 0, 0.2];
       if (potential >= 0.05) {
         // Map the potential to HSL color space
-        const hue = 240 - potential.map(minPotential, maxPotential, 0, 240);
-        const lightness = potential.map(minPotential, maxPotential, 0.01, 0.5);
+        const hue = 240 - potential.lerp(minPotential, maxPotential, 0, 240);
+        const lightness = potential.lerp(minPotential, maxPotential, 0.01, 0.5);
 
         // Convert HSL to RGB
         rgbColor = hsl2rgb(hue, 1, lightness);
@@ -976,15 +1017,21 @@ function pan2(offset = { x: 0, y: 0 }, clrTrails = true) {
  * @param {Body} body the body to track
  */
 function track(body) {
-  if (newBody) {
-    // place the tracked body in the center
-    pan({
-      x: center.x - body.xPrev,
-      y: center.y - body.yPrev,
-    });
-  }
-  // follow the body
-  pan({ x: -body.xVel * timestep, y: -body.yVel * timestep }, false);
+  // if (newBody) {
+  //   // place the tracked body in the center
+  //   pan({
+  //     x: center.x - body.xPrev,
+  //     y: center.y - body.yPrev,
+  //   });
+  // }
+  // // follow the body
+  // pan({ x: -body.xVel * timestep, y: -body.yVel * timestep }, false);
+  // newBody = false;
+
+  pan({
+    x: center.x - body.xPos,
+    y: center.y - body.yPos,
+  },false);
   newBody = false;
 }
 
@@ -1064,6 +1111,7 @@ function draw() {
   else if (!bodies[0]) maxBody = null;
 
   if (!paused) rotate(rotationRate);
+  if (gameMode) rotationRate *= 0.9;
   if (rotateTarget) rotateTrack(rotateTarget);
 
   // check draw settings and draw stuff

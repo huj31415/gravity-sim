@@ -198,7 +198,7 @@ function updateSettings() {
     };
     ui.timestep.oninput = (event) => {
       ui.tOut.innerText = event.target.value;
-      timestep = event.target.value;
+      timestep = parseFloat(event.target.value);
     };
     ui.CoR.oninput = (event) => {
       ui.CoROut.innerText = parseFloat(event.target.value);
@@ -251,6 +251,10 @@ function updateSettings() {
     ui.trackCoM.oninput = () => {
       ui.drawCoM.checked = true;
       trackCoM = ui.trackCoM.checked;
+    };
+
+    ui.integrator.oninput = (event) => {
+      integrator = parseInt(event.target.value);
     };
   }
 }
@@ -316,6 +320,7 @@ function updateSettings() {
     };
 
     canvas.onwheel = (event) => {
+      event.preventDefault();
       if (!event.ctrlKey) {
         zoom(Math.sign(event.deltaY) < 0 ? 1.05 : 1 / 1.05);
       }
@@ -337,32 +342,39 @@ function updateSettings() {
           case "ArrowLeft":
           case "KeyA":
             event.preventDefault();
-            panOffset.x = panSpeed / totalzoom;
+            if (!gameMode)
+              panOffset.x = panSpeed / totalzoom;
+            else rotationRate -= 0.01;
             break;
           case "ArrowRight":
           case "KeyD":
             event.preventDefault();
-            panOffset.x = -panSpeed / totalzoom;
+            if (!gameMode)
+              panOffset.x = -panSpeed / totalzoom;
+            else rotationRate += 0.01;
             break;
           case "ArrowUp":
           case "KeyW":
             event.preventDefault();
-            panOffset.y = panSpeed / totalzoom;
+            if (!gameMode)
+              panOffset.y = panSpeed / totalzoom;
+            else player.yVel -= 1;
             break;
           case "ArrowDown":
           case "KeyS":
             event.preventDefault();
-            if (event.ctrlKey) {
-              // save the canvas image
-              const dl = document.createElement('a');
-              // Add the name of the file to the link
-              dl.download = "nbody-" + Date.now() + ".png";
-              // Attach the data to the link
-              dl.href = canvas.toDataURL();
-              dl.click();
-            } else {
-              panOffset.y = -panSpeed / totalzoom;
-            }
+            if (!gameMode)
+              if (event.ctrlKey) {
+                // save the canvas image
+                const dl = document.createElement('a');
+                // Add the name of the file to the link
+                dl.download = "nbody-" + Date.now() + ".png";
+                // Attach the data to the link
+                dl.href = canvas.toDataURL();
+                dl.click();
+              } else {
+                panOffset.y = -panSpeed / totalzoom;
+              }
             break;
           case "Space":
             event.preventDefault();
@@ -391,7 +403,7 @@ function updateSettings() {
                 trackCoM = false;
                 ui.trackCoM.checked = false;
               }
-              if (trackNum < bodies.length) {
+              if (trackNum < bodies.length && !gameMode) {
                 trackBody = bodies[trackNum++];
                 newBody = true;
               } else {
@@ -528,11 +540,13 @@ function updateSettings() {
             ui.trackCoM.click();
             break;
           case "Period":
-            timestep = ~~((timestep + 0.05) * 100) / 100;
+            // timestep = ~~((timestep + 0.05) * 100) / 100;
+            timestep = (parseFloat(timestep) + 0.05).toFixed(2);
             ui.timestep.value = ui.tOut.innerText = timestep;
             break;
           case "Comma":
-            timestep = timestep <= 0.05 ? 0 : ~~((timestep - 0.05) * 100) / 100;
+            // timestep = timestep <= 0.05 ? 0 : ~~((timestep - 0.05) * 100) / 100;
+            timestep = (parseFloat(timestep) - 0.05).toFixed(2);
             ui.timestep.value = ui.tOut.innerText = timestep;
             break;
         }

@@ -14,6 +14,7 @@ A Javascript-based N-body simulation for calculating interactions between an arb
   - Spring (softbody approximation)
 - Conservation laws
   - Momentum, energy, charge
+  - Better implementation in velocity-verlet integration
 - Various draw options
   - Trace paths
   - Color based on speed or charge
@@ -27,17 +28,17 @@ A Javascript-based N-body simulation for calculating interactions between an arb
   - Planets with moons
   - Galaxy collision generator
   - Solar system generator
+  - Resonant orbit generator
   - Binary system generator
     - Circular and non-circular
   - Momentum demonstrations
     - Newton's cradle
-    - Calculate pi with collision count
+    - Calculate pi with collisions
   - Soft bodies (try hitting it with other objects)
     - Square grid
     - Hex grid
   - Many others
-- Resonant orbit generator
-- Save as image
+- Export as image
 
 ### Physics principles
 #### AP Physics 1
@@ -83,6 +84,7 @@ A Javascript-based N-body simulation for calculating interactions between an arb
   - Setting G to 1 helps with large numbers of bodies
 
 ## Planned
+- Other numerical solution methods such as Verlet integration
 - EM forces
 - Rotational tracking
 - Torque and rotational motion implementation (?)
@@ -90,6 +92,11 @@ A Javascript-based N-body simulation for calculating interactions between an arb
 - Move calculations to gpu (especially field calcs)
 - Implement optimized algorithms
 - 3D version
+
+## Changelog
+### 2024-09-13
+- Added velocity verlet integration
+- Added integrator options
 
 ## Image gallery
 ### Binary generator

@@ -250,7 +250,7 @@ function generateGalaxy(
     let mass = spiral ? (minMass + maxMass) / 2 : randInt(minMass, maxMass);
     let r = getRadius(mass);
     let angle = spiral ? (i * Math.PI * (2 / arms + Math.sign(rotDir - 0.5) * Math.PI / num)) : randInt(0, 314);
-    let input = i.map(0, num, 0, radius) / radius; // input to distance probability distribution
+    let input = i.lerp(0, num, 0, radius) / radius; // input to distance probability distribution
     let distance = centerRadius + 10 + radius * (((2 ** (-exp * (input - 1)) - 1) / (2 ** exp - 1))); //randInt(centerRadius * 2, radius)
     if (spiral && thickArms) {
       angle *= (1 + (Math.random() - 0.5) * 0.005); // random offset to spiral arms to add thickness
@@ -287,6 +287,7 @@ function initPiCollisions(initV = 1) {
   ui.decoupleFPS.checked = true;
   ui.inelastic.checked = inelastic = false;
   ui.gravity.checked = gravity = false;
+  ui.CoR.value = ui.CoROut.innerText = CoR = 1;
   // ui.collide.checked = collide = true;
   let mass = 10;
   let ratio = 100000000;
@@ -431,7 +432,7 @@ function generateResonance(mass = 1e5, ratios = [1, 2], offsets = null) {
   if (!offsets) offsets = new Array(ratios.length).fill(0);
 
   // sort the array
-  ratios.sort(function(a, b){return a - b})//.reverse(); console.log(ratios)
+  ratios.sort(function (a, b) { return a - b })//.reverse(); console.log(ratios)
 
   // add the central body
   bodies.push(new Body(center.x, center.y, 0, 0, 0, mass));
@@ -470,4 +471,8 @@ function generateResonance(mass = 1e5, ratios = [1, 2], offsets = null) {
     // add the body
     bodies.push(new Body(center.x + x, center.y + y, vx, vy, 0, orbitMass));
   });
+}
+
+function game() {
+  bodies.push(new Body(center.x,center.y,0,0,5,100,"white",true,0,false,"",true));
 }
