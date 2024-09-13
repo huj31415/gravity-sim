@@ -255,6 +255,7 @@ function updateSettings() {
 
     ui.integrator.oninput = (event) => {
       integrator = parseInt(event.target.value);
+      if (integrator = Integrators.VERLET) alert("May not be stable in some scenarios such as rotation");
     };
   }
 }

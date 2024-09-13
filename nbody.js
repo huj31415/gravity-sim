@@ -151,10 +151,10 @@ let springEquilSqr = springEquilPos * springEquilPos;
 
 // integrators enum
 const Integrators = Object.freeze({
-  VERLET: 0,
-  EULER: 1,
+  EULER: 0,
+  VERLET: 1,
 });
-let integrator = Integrators.VERLET;
+let integrator = Integrators.EULER;
 
 // tracking variables
 let collisionCount = (frameCount = bodyCount = activeBodies = 0);
